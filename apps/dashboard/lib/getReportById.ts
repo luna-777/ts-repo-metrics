@@ -1,9 +1,10 @@
 /**
- * Server-only: fetches a report by resultId from Supabase.
- * Used by both the API route and the results page to avoid HTTP fetch issues.
+ * Server-only: fetches a report by resultId from Supabase (or dev memory fallback).
+ * Used by the results page to avoid HTTP fetch issues.
  */
 
-import { getSupabase } from "@/lib/supabase/server";
+import { getSupabase, useDevReportMemoryFallback } from "@/lib/supabase/server";
+import { devGetReport } from "@/lib/devReportStore";
 import type { RepoReport } from "@/lib/reportTypes";
 
 const MAX_RETRIES = 3;
@@ -16,6 +17,12 @@ export async function getReportById(id: string): Promise<{
   const trimmedId = id.trim();
 
   try {
+    if (useDevReportMemoryFallback()) {
+      const mem = devGetReport(trimmedId);
+      if (mem) return { data: mem, error: null };
+      return { data: null, error: "Result not found" };
+    }
+
     const supabase = getSupabase();
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -34,7 +41,6 @@ export async function getReportById(id: string): Promise<{
       }
     }
 
-    // Partial match fallback
     const { data: partial } = await supabase
       .from("analyses")
       .select("report_json")

@@ -76,17 +76,12 @@ export interface GitMetrics {
   avgLinesPerCommit: number;
   largeCommitRatio: number;
   commitsPerWeek: number;
-  /** Source of metrics: "local" (git CLI), "api" (GitHub REST API), "none" (unavailable). */
+  /** Source of metrics when set (CLI git vs GitHub API vs unavailable). */
   mode?: "local" | "api" | "none";
-  /** True when git CLI failed and API fallback also failed. */
   unavailable?: boolean;
-  /** Unique commit dates in last 90 days (API mode only). */
   activeDaysLast90Days?: number;
-  /** Median inter-commit interval in hours (API mode only). */
   medianInterCommitHours?: number;
-  /** % commits within 1 hour of previous (API mode only). */
   burstRatio?: number;
-  /** Median length of commit message (API mode only). */
   medianCommitMessageLength?: number;
 }
 
@@ -199,6 +194,49 @@ export interface DistributionMetrics {
   percent_high_complexity_in_top_10_percent_files: number;
 }
 
+/** Hook safety heuristics for one React component. */
+export interface ReactHookSafetyFlags {
+  conditionalHookCalls: number;
+  asyncUseEffect: number;
+  missingOrInvalidDepsArray: number;
+  nonPrimitiveDepRisk: number;
+}
+
+/** Per-component React / RQ3 metrics (TSX). */
+export interface ReactComponentMetrics {
+  name: string;
+  file: string;
+  startLine: number;
+  lines: number;
+  hookCount: number;
+  hooksPerSloc: number;
+  ferreiraLackOfCohesion: boolean;
+  maxJsxDepth: number;
+  tampereJsxDepthExceeded: boolean;
+  propDrillingEdges: number;
+  hookSafety: ReactHookSafetyFlags;
+}
+
+/** Aggregated React metrics for the repo. */
+export interface ReactMetricsSummary {
+  tsxFilesAnalyzed: number;
+  componentsAnalyzed: number;
+  ferreiraLackOfCohesionCount: number;
+  tampereJsxDepthExceededCount: number;
+  totalPropDrillingEdges: number;
+  totalConditionalHookCalls: number;
+  totalAsyncUseEffect: number;
+  totalMissingOrInvalidDepsArray: number;
+  totalNonPrimitiveDepRisk: number;
+  maxJsxDepthRepo: number;
+}
+
+/** Optional RQ3 React block when TSX files were analyzed. */
+export interface ReactMetricsReport {
+  components: ReactComponentMetrics[];
+  summary: ReactMetricsSummary;
+}
+
 /**
  * Complete repository analysis report.
  *
@@ -229,4 +267,6 @@ export interface RepoReport {
   gitMetricsV2: GitMetricsV2 | null;
   framework: FrameworkInfo | null;
   perFile: PerFileEntry[];
+  /** React/TSX static metrics when at least one .tsx file was analyzed. */
+  reactMetrics?: ReactMetricsReport;
 }

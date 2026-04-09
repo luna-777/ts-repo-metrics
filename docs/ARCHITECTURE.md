@@ -35,7 +35,7 @@ The analysis logic lives in a single **engine** package. The **CLI** and the **d
 ## Pipeline Overview
 
 - **CLI** (`src/cli.ts`): Parses args; for GitHub URLs calls `analyzeFromGitHubUrl`, for local paths calls `getSourceMetadata` + `analyzeRepo`; batch mode calls `batchAnalyze` (which uses `analyzeRepo` from the engine).
-- **Dashboard** (`apps/dashboard/app/api/analyze/route.ts`): Validates URL, calls `analyzeFromGitHubUrl(normalizedUrl, { useCache: true, cacheDir })` with `cacheDir = os.tmpdir()` on Vercel, returns the report.
+- **Dashboard** (`apps/dashboard/app/api/analyze/route.ts`): Validates URL, calls `analyzeFromGitHubUrl(normalizedUrl, { useCache: true, cacheDir })` with `cacheDir` under **`os.tmpdir()`** (e.g. `…/repo-metrics-git-cache/.cache/ts-repo-metrics/…`). Using the app directory as `cacheDir` reused stale clones with **0 `.tsx` files** after the repo layout changed; the temp-dir default avoids that.
 
 ## GitHub URL Support
 
@@ -61,8 +61,8 @@ When `cloneOrUseCache` fails because the git binary is unavailable (e.g. on Verc
 │ loc,     │ │ tsParser │   │ fnCount  │   │ complex. │   │ smells,  │
 │ fileDis.,│ │          │   │ fnMetric │   │ distrib. │   │ testCov,  │
 │ dup,     │ │          │   │ maintIdx │   │          │   │          │
-│ git,     │ │          │   │          │   │          │   │          │
-│ gitMetApi│ │          │   │          │   │          │   │          │
+│ git,     │ │          │   │ react/   │   │          │   │          │
+│ gitMetApi│ │          │   │ (TSX)    │   │          │   │          │
 │ gitClone,│ │          │   │          │   │          │   │          │
 │ fwDetect │ │          │   │          │   │          │   │          │
 └──────────┘ └──────────┘   └──────────┘   └──────────┘   └──────────┘
@@ -78,7 +78,8 @@ When `cloneOrUseCache` fails because the git binary is unavailable (e.g. on Verc
 | Location | Purpose |
 |----------|---------|
 | `packages/engine` | Pure analysis: pipeline, collect, parsing, extract, types, utils. Builds to `dist/`. Consumed by CLI and dashboard. |
-| `packages/engine/src/index.ts` | Exports `analyzeRepo`, `analyzeFromGitHubUrl`, `getSourceMetadata`, `parseGitHubUrl`, and key types. |
+| `packages/engine/src/index.ts` | Exports `analyzeRepo`, `analyzeFromGitHubUrl`, `getSourceMetadata`, `parseGitHubUrl`, React report types, and key types. |
+| `packages/engine/src/extract/react/` | RQ3 React metrics: TSX components, hooks, JSX depth, Ferreira/Tampere-style flags, prop pass-through MVP, hook safety heuristics. |
 | `packages/engine/src/collect/gitMetricsApi.ts` | GitHub REST API fallback for git metrics when git CLI unavailable (Vercel zipball mode). |
 | `src/cli.ts` | CLI entrypoint — imports from `@repo-metrics/engine`; routes single (URL vs path) and batch. |
 | `src/batch/` | Batch analysis over multiple repos; imports `analyzeRepo` and `RepoReport` from the engine. |
@@ -89,7 +90,7 @@ When `cloneOrUseCache` fails because the git binary is unavailable (e.g. on Verc
 2. **Create the extractor** in `packages/engine/src/extract/` (AST-based) or `packages/engine/src/collect/`.
 3. **Add constants/thresholds** to `packages/engine/src/utils/constants.ts`.
 4. **Integrate** in `packages/engine/src/pipeline/analyzeRepo.ts`.
-5. **Update docs** — `docs/SCHEMA.md`, `README.md`.
+5. **Update docs** — `docs/SCHEMA.md`, `README.md`, and (for RQ-sized features) `docs/planning/`.
 
 ## Build and Test
 

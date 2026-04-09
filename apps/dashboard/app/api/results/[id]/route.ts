@@ -6,7 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase/server";
+import { getSupabase, useDevReportMemoryFallback } from "@/lib/supabase/server";
+import { devGetReport } from "@/lib/devReportStore";
 
 export async function GET(
   _request: NextRequest,
@@ -17,6 +18,14 @@ export async function GET(
   console.log("[results] GET request for result_id:", trimmedId);
 
   try {
+    if (useDevReportMemoryFallback()) {
+      const report = devGetReport(trimmedId);
+      if (report) {
+        return NextResponse.json(report);
+      }
+      return NextResponse.json({ error: "Result not found" }, { status: 404 });
+    }
+
     const supabase = getSupabase();
     
     // Retry logic to handle race condition (Supabase replication delay)

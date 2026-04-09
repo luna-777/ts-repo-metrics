@@ -26,6 +26,7 @@ This document describes the complete JSON report produced by `ts-repo-metrics`.
 | `gitMetricsV2` | `GitMetricsV2` | **yes** | Extended git metrics (Epic D; null for non-git repos) |
 | `framework` | `FrameworkInfo` | **yes** | Detected framework (null if no package.json) |
 | `perFile` | `PerFileEntry[]` | no | Per-file metrics |
+| `reactMetrics` | `ReactMetricsReport` | **yes** | RQ3 React/TSX static metrics (present when at least one `.tsx` file was analyzed) |
 
 ## `distributions` — Distribution Metrics (optional)
 
@@ -210,3 +211,54 @@ Returns `null` if no `package.json` is found.
 | `type` | `string` | AST node type |
 | `startLine` | `number` | 1-based line number |
 | `complexity` | `number` | Cyclomatic complexity (>= 1) |
+
+## `reactMetrics` — React / TSX (optional)
+
+Present when at least one `.tsx` file was successfully parsed. Heuristic **components** are function-like nodes whose body contains JSX.
+
+### `ReactMetricsReport`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `components` | `ReactComponentMetrics[]` | Per-component metrics |
+| `summary` | `ReactMetricsSummary` | Repo-level aggregates |
+
+### `ReactMetricsSummary`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tsxFilesAnalyzed` | `number` | Count of `.tsx` files included |
+| `componentsAnalyzed` | `number` | Heuristic component count |
+| `ferreiraLackOfCohesionCount` | `number` | Components exceeding Ferreira-style hook + SLOC thresholds |
+| `tampereJsxDepthExceededCount` | `number` | Components whose max nested JSX depth exceeds the configured threshold |
+| `totalPropDrillingEdges` | `number` | Same-file prop pass-through edges (MVP) |
+| `totalConditionalHookCalls` | `number` | Sum of conditional `use*` calls (heuristic) |
+| `totalAsyncUseEffect` | `number` | Sum of async `useEffect` patterns |
+| `totalMissingOrInvalidDepsArray` | `number` | Sum of missing or non-literal dependency arrays |
+| `totalNonPrimitiveDepRisk` | `number` | Sum of non-primitive dependency entries (heuristic) |
+| `maxJsxDepthRepo` | `number` | Maximum JSX nesting depth observed |
+
+### `ReactComponentMetrics`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Component name |
+| `file` | `string` | Path relative to repo root |
+| `startLine` | `number` | 1-based start line |
+| `lines` | `number` | Lines of code (SLOC) |
+| `hookCount` | `number` | React hook call count |
+| `hooksPerSloc` | `number` | Hooks per line |
+| `ferreiraLackOfCohesion` | `boolean` | True when hook + SLOC thresholds both exceeded |
+| `maxJsxDepth` | `number` | Max nested JSX depth in this component |
+| `tampereJsxDepthExceeded` | `boolean` | True when depth exceeds threshold |
+| `propDrillingEdges` | `number` | Same-file pass-through edges |
+| `hookSafety` | `ReactHookSafetyFlags` | Hook idiom heuristics |
+
+### `ReactHookSafetyFlags`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `conditionalHookCalls` | `number` | `use*` under conditional / loop (heuristic) |
+| `asyncUseEffect` | `number` | `useEffect` with async callback pattern |
+| `missingOrInvalidDepsArray` | `number` | Missing or non-array-literal deps |
+| `nonPrimitiveDepRisk` | `number` | Object/array/call deps (heuristic) |

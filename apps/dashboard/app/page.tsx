@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Github, ArrowRight } from "lucide-react";
 import { isValidGitHubUrl, normalizeGitHubUrl } from "@/lib/githubUrl";
+import { writeReportToSessionStorage } from "@/lib/reportLocalCache";
 
 export default function HomePage() {
   const [url, setUrl] = useState("");
@@ -37,7 +38,10 @@ export default function HomePage() {
         return;
       }
       toast.success("Analysis complete");
-      router.push(`/r/${data.resultId}`);
+      if (data.resultId && data.report) {
+        writeReportToSessionStorage(data.resultId, data.report);
+      }
+      router.push(`/r/${encodeURIComponent(data.resultId)}`);
     } catch {
       setError("Analysis failed. Please try again.");
       toast.error("Analysis failed");

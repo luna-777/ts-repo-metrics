@@ -93,4 +93,45 @@ export interface RepoReport {
   } | null;
   framework?: { type: string; hasReact: boolean; hasBackend: boolean } | null;
   perFile: PerFileEntry[];
+  /** Present when the analyzer includes RQ3 React metrics (TSX). */
+  reactMetrics?: ReactMetricsReport;
+}
+
+export interface ReactHookSafetyFlags {
+  conditionalHookCalls: number;
+  asyncUseEffect: number;
+  missingOrInvalidDepsArray: number;
+  nonPrimitiveDepRisk: number;
+}
+
+export interface ReactComponentMetrics {
+  name: string;
+  file: string;
+  startLine: number;
+  lines: number;
+  hookCount: number;
+  hooksPerSloc: number;
+  ferreiraLackOfCohesion: boolean;
+  maxJsxDepth: number;
+  tampereJsxDepthExceeded: boolean;
+  propDrillingEdges: number;
+  hookSafety: ReactHookSafetyFlags;
+}
+
+export interface ReactMetricsSummary {
+  tsxFilesAnalyzed: number;
+  componentsAnalyzed: number;
+  ferreiraLackOfCohesionCount: number;
+  tampereJsxDepthExceededCount: number;
+  totalPropDrillingEdges: number;
+  totalConditionalHookCalls: number;
+  totalAsyncUseEffect: number;
+  totalMissingOrInvalidDepsArray: number;
+  totalNonPrimitiveDepRisk: number;
+  maxJsxDepthRepo: number;
+}
+
+export interface ReactMetricsReport {
+  components: ReactComponentMetrics[];
+  summary: ReactMetricsSummary;
 }

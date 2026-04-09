@@ -6,9 +6,15 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import path from "node:path";
 import os from "node:os";
 import { randomUUID } from "node:crypto";
-import { getSupabase } from "@/lib/supabase/server";
+import {
+  getSupabase,
+  isSupabaseConfigured,
+  useDevReportMemoryFallback,
+} from "@/lib/supabase/server";
+import { devStoreReport } from "@/lib/devReportStore";
 import { analyzeFromGitHubUrl } from "@repo-metrics/engine";
 
 export const runtime = "nodejs";
@@ -59,7 +65,9 @@ export async function POST(request: NextRequest) {
         ? `https://github.com/${url}`
         : `https://${url}`;
 
-    const cacheDir = process.env.VERCEL ? os.tmpdir() : process.cwd();
+    // Always clone under the OS temp dir — using process.cwd() (e.g. apps/dashboard) reused a
+    // stale .cache/ts-repo-metrics/* tree from an older repo layout (0 .tsx files) and broke profiles.
+    const cacheDir = path.join(os.tmpdir(), "repo-metrics-git-cache");
     const report = await analyzeFromGitHubUrl(normalizedUrl, {
       useCache: true,
       cacheDir,
@@ -81,22 +89,38 @@ export async function POST(request: NextRequest) {
 
     console.log("[analyze] Generated resultId:", resultId, "commitSha:", commitSha);
 
-    const row = {
-      result_id: resultId,
-      repo_url: normalizedUrl,
-      commit_sha: commitSha,
-      report_json: report as object,
-    };
+    if (isSupabaseConfigured()) {
+      const row = {
+        result_id: resultId,
+        repo_url: normalizedUrl,
+        commit_sha: commitSha,
+        report_json: report as object,
+      };
 
-    const { error } = await getSupabase()
-      .from("analyses")
-      .upsert(row, { onConflict: "result_id" });
+      const { error } = await getSupabase()
+        .from("analyses")
+        .upsert(row, { onConflict: "result_id" });
 
-    if (error) {
-      console.error("Supabase upsert failed:", error);
+      if (error) {
+        console.error("Supabase upsert failed:", error);
+        return NextResponse.json(
+          { error: "Failed to save result.", status: "failed" },
+          { status: 500 }
+        );
+      }
+    } else if (useDevReportMemoryFallback()) {
+      devStoreReport(resultId, report);
+      console.warn(
+        "[analyze] Supabase not configured; result kept in server memory (dev only)."
+      );
+    } else {
       return NextResponse.json(
-        { error: "Failed to save result.", status: "failed" },
-        { status: 500 }
+        {
+          error:
+            "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (see .env.example), or run with NODE_ENV=development for in-memory dev mode.",
+          status: "failed",
+        },
+        { status: 503 }
       );
     }
 

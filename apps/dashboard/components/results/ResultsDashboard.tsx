@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RQ1Tab } from "./rq/RQ1Tab";
 import { RQ2Tab } from "./rq/RQ2Tab";
 import { RQ3Tab } from "./rq/RQ3Tab";
+import { RQ3ReactTab } from "./rq/RQ3ReactTab";
 import { DatasetTab } from "./dataset/DatasetTab";
 import { CrossRQInsightPanel } from "./CrossRQInsightPanel";
 import type { RepoReport } from "@/lib/reportTypes";
@@ -55,10 +56,11 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
       </div>
 
       <Tabs defaultValue="rq1">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="rq1">RQ1 — Behavioral Shift</TabsTrigger>
           <TabsTrigger value="rq2">RQ2 — Verification & Engagement</TabsTrigger>
           <TabsTrigger value="rq3">RQ3 — Quality Outcomes</TabsTrigger>
+          <TabsTrigger value="rq3-react">RQ3 — React / TSX</TabsTrigger>
           <TabsTrigger value="dataset">Dataset</TabsTrigger>
         </TabsList>
         <TabsContent value="rq1">
@@ -76,6 +78,12 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
         <TabsContent value="rq3">
           <div className="space-y-8">
             <RQ3Tab report={report} />
+            <CrossRQInsightPanel report={report} />
+          </div>
+        </TabsContent>
+        <TabsContent value="rq3-react">
+          <div className="space-y-8">
+            <RQ3ReactTab report={report} />
             <CrossRQInsightPanel report={report} />
           </div>
         </TabsContent>

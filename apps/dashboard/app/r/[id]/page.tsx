@@ -1,12 +1,11 @@
 /**
  * Results page: displays analysis result for a given resultId.
- * Fetches directly from Supabase (avoids HTTP fetch to own API which can fail in serverless).
+ * Fetches from Supabase, dev memory, or client sessionStorage fallback.
  */
 
 import { Metadata } from "next";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { ResultsDashboard } from "@/components/results/ResultsDashboard";
+import { ResultsPageClientLoader } from "@/components/results/ResultsPageClientLoader";
 import { getReportById } from "@/lib/getReportById";
 
 interface PageProps {
@@ -19,24 +18,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function ResultsPage({ params }: PageProps) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = decodeURIComponent(rawId);
   const { data, error } = await getReportById(id);
 
-  if (error || !data) {
+  if (data) {
     return (
-      <div className="mx-auto max-w-xl space-y-6 text-center">
-        <h1 className="text-2xl font-semibold">Result not found</h1>
-        <p className="text-muted-foreground">{error ?? "Failed to load result"}</p>
-        <Button asChild>
-          <Link href="/">Back to Analyze</Link>
-        </Button>
+      <div className="w-full max-w-6xl">
+        <ResultsDashboard report={data} resultId={id} />
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-6xl">
-      <ResultsDashboard report={data} resultId={id} />
-    </div>
+    <ResultsPageClientLoader
+      resultId={id}
+      serverMessage={error ?? "Failed to load result"}
+    />
   );
 }

@@ -1,6 +1,6 @@
 # ts-repo-metrics
 
-A TypeScript CLI tool that statically analyzes TypeScript and TSX repositories using [Tree-sitter](https://tree-sitter.github.io/tree-sitter/), producing a comprehensive JSON report covering repository profiling, function metrics, cyclomatic complexity, code smells, duplication, git history, extended git metrics (Epic D: commit size distribution, bursts, entropy, churn hotspots, test coupling, refactor rate), framework detection, maintainability index, and test coverage proxy.
+A TypeScript CLI tool that statically analyzes TypeScript and TSX repositories using [Tree-sitter](https://tree-sitter.github.io/tree-sitter/), producing a comprehensive JSON report covering repository profiling, function metrics, cyclomatic complexity, code smells, duplication, git history, extended git metrics (Epic D: commit size distribution, bursts, entropy, churn hotspots, test coupling, refactor rate), framework detection, maintainability index, test coverage proxy, and **optional RQ3 React/TSX metrics** (`reactMetrics`: hooks, JSX depth, cohesion-style flags, prop pass-through MVP, hook-safety heuristics).
 
 ## Prerequisites
 
@@ -136,6 +136,8 @@ When run via the engine (CLI or dashboard), `analyzer_version` is the engine pac
 }
 ```
 
+When the repo contains `.tsx` files, the report also includes **`reactMetrics`** (per-component and summary aggregates for RQ3). See [docs/SCHEMA.md](docs/SCHEMA.md).
+
 ## Metrics at a Glance
 
 | Section | Source | Description |
@@ -150,13 +152,14 @@ When run via the engine (CLI or dashboard), `analyzer_version` is the engine pac
 | `duplication` | jscpd | Duplicate percentage, lines, clone clusters |
 | `git` | simple-git or GitHub API (fallback) | Commit count, sizes, frequency, large commit ratio. On Vercel (no git CLI), metrics come from the GitHub REST API when `GITHUB_TOKEN` is set. |
 | `framework` | package.json | React, Next.js, Express, NestJS, Fastify, or Node |
+| `reactMetrics` | `extract/react` (TSX only) | RQ3: components with JSX, hooks, nested JSX depth, Ferreira/Tampere-style flags, prop pass-through MVP, hook-safety heuristics |
 
 ## Dashboard
 
 A Next.js dashboard app in `apps/dashboard/` provides a web UI:
 
 - Analyze public GitHub repos from URL
-- RQ-driven results (RQ1 Behavioral Shift, RQ2 Verification & Engagement, RQ3 Quality Outcomes)
+- RQ-driven results (RQ1 Behavioral Shift, RQ2 Verification & Engagement, RQ3 Quality Outcomes, **RQ3 — React / TSX** with methodology citations)
 - Dataset tab: metadata, feature vector, data dictionary, export
 
 Run with `npm run dashboard` (starts `next dev` in `apps/dashboard/`). For Vercel deployment, set `GITHUB_TOKEN` to enable API-derived git metrics when the git CLI is unavailable.
@@ -177,7 +180,7 @@ repo-metrics/
 │       │   ├── pipeline/           # analyzeRepo, analyzeFromGitHubUrl
 │       │   ├── collect/            # fileDiscovery, loc, duplication, gitClone, gitMetrics, gitMetricsApi, repoMetadata, frameworkDetection
 │       │   ├── parsing/            # tsParser (Tree-sitter)
-│       │   ├── extract/           # functionCount, functionMetrics, complexity, smells, testCoverageProxy, maintainabilityIndex, distributions
+│       │   ├── extract/           # functionCount, functionMetrics, complexity, smells, testCoverageProxy, maintainabilityIndex, distributions, react/
 │       │   ├── types/              # report.ts (RepoReport, etc.)
 │       │   └── utils/              # constants, githubUrl, math, text, astWalker
 │       └── __tests__/              # Engine test suite (+ fixtures)
@@ -195,8 +198,9 @@ repo-metrics/
    - Per-function metrics (length, nesting depth, parameter count)
    - Cyclomatic complexity per function
    - Code smell detection (5 detectors)
+   - For each `.tsx` file: React RQ3 metrics (components, hooks, JSX depth, cohesion-style flags, hook safety)
 5. **Collect** — Non-AST modules gather duplication (jscpd), git history (simple-git), and framework info (package.json).
-6. **Aggregate** — Pipeline combines all results into a typed `RepoReport`, computes composite metrics (maintainability index, test coverage proxy).
+6. **Aggregate** — Pipeline combines all results into a typed `RepoReport`, computes composite metrics (maintainability index, test coverage proxy, optional `reactMetrics`).
 7. **Report** — JSON output to stdout (single mode) or individual files + optional CSV (batch mode).
 
 ## Documentation
@@ -205,6 +209,7 @@ repo-metrics/
 - [Full JSON schema reference](docs/SCHEMA.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Sprint planning](docs/planning/) — roadmap and epic specifications
+- [RQ3 React/TSX implementation (Phase 1)](docs/planning/RQ3_REACT_METRICS_IMPLEMENTATION.md)
 
 ## Scripts
 

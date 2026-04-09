@@ -64,6 +64,19 @@ export const DEEP_NESTING_THRESHOLD = 4;
 /** Functions with more parameters than this are flagged as "long parameter list". */
 export const LONG_PARAM_LIST_THRESHOLD = 4;
 
+/* ------------------------------------------------------------------ */
+/*  React / RQ3 (TSX)                                                  */
+/* ------------------------------------------------------------------ */
+
+/** Tampere-style: flag when max nested JSX depth exceeds this (exclusive). */
+export const JSX_NESTING_TAMPERE_THRESHOLD = 5;
+
+/** Ferreira-style: hook count above this contributes to lack-of-cohesion when SLOC is high. */
+export const FERREIRA_HOOK_COUNT_THRESHOLD = 5;
+
+/** Ferreira-style: component SLOC above this contributes with high hook count. */
+export const FERREIRA_COMPONENT_SLOC_THRESHOLD = 50;
+
 /**
  * Tree-sitter node types that add one branch point to cyclomatic complexity.
  * Logical operators (`&&`, `||`) are handled separately via binary_expression inspection.

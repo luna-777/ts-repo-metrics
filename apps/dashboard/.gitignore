@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# stale git clone cache (prefer tmpdir in /api/analyze; do not commit)
+.cache/
+
 # production
 /build
 

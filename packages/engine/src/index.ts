@@ -18,4 +18,8 @@ export type {
   ComplexitySummary,
   SmellCounts,
   PerFileEntry,
+  ReactHookSafetyFlags,
+  ReactComponentMetrics,
+  ReactMetricsSummary,
+  ReactMetricsReport,
 } from "./types/report.js";

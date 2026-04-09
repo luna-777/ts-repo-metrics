@@ -3,8 +3,7 @@
  *
  * Orchestrates the end-to-end flow: profiles the repo (LOC and file counts),
  * discovers source files, reads each one, parses it with Tree-sitter, and
- * runs every registered extractor (currently function count). Returns a
- * JSON-serializable report with aggregate totals and per-file breakdowns.
+ * runs every registered extractor. Returns a JSON-serializable report.
  */
 
 import { readFile } from "node:fs/promises";
@@ -24,6 +23,10 @@ import { detectSmells } from "../extract/smells.js";
 import { computeTestCoverageProxy } from "../extract/testCoverageProxy.js";
 import { computeMaintainabilityIndex } from "../extract/maintainabilityIndex.js";
 import { computeDistributions } from "../extract/distributions.js";
+import {
+  extractReactMetricsFromTsx,
+  mergeReactMetricsReports,
+} from "../extract/react/extractReactMetrics.js";
 import { LONG_FUNCTION_THRESHOLD } from "../utils/constants.js";
 import { median } from "../utils/math.js";
 import { getSourceMetadata } from "../collect/repoMetadata.js";
@@ -35,6 +38,7 @@ import type {
   SmellCounts,
   PerFileEntry,
   SourceInfo,
+  ReactComponentMetrics,
 } from "../types/report.js";
 
 function flavorForFile(filePath: string): "ts" | "tsx" {
@@ -51,7 +55,7 @@ export interface AnalyzeOptions {
  *
  * @param repoPath - Absolute path to the repository root.
  * @param options - Optional source metadata (for cloned repos).
- * @returns A JSON-serializable report with profile, totals, and per-file data.
+ * @returns A JSON-serializable report with aggregate totals and per-file breakdowns.
  */
 export async function analyzeRepo(
   repoPath: string,
@@ -75,6 +79,8 @@ export async function analyzeRepo(
   };
   const perFile: PerFileEntry[] = [];
   let filesSkipped = 0;
+  const reactMetricsByFile: ReactComponentMetrics[][] = [];
+  let tsxFilesAnalyzed = 0;
 
   for (const filePath of files) {
     let code: string;
@@ -115,6 +121,13 @@ export async function analyzeRepo(
       functionMetrics: fnMetrics.functions,
       complexity: fileComplexity,
     });
+
+    if (flavorForFile(filePath) === "tsx") {
+      tsxFilesAnalyzed++;
+      reactMetricsByFile.push(
+        extractReactMetricsFromTsx(tree.rootNode, path.relative(repoPath, filePath)),
+      );
+    }
   }
 
   const lengths = allFunctionDetails.map((f) => f.lines).sort((a, b) => a - b);
@@ -145,7 +158,6 @@ export async function analyzeRepo(
   const testCoverageProxy = computeTestCoverageProxy(profile);
   const duplication = await detectDuplication(repoPath);
   const git = await extractGitMetrics(repoPath);
-  if (git) git.mode = "local";
   const gitMetricsV2 = await extractGitMetricsV2(repoPath);
   const framework = await detectFramework(repoPath);
 
@@ -159,6 +171,11 @@ export async function analyzeRepo(
   } catch {
     // ignore
   }
+
+  const reactMetrics =
+    tsxFilesAnalyzed > 0
+      ? mergeReactMetricsReports(reactMetricsByFile, tsxFilesAnalyzed)
+      : undefined;
 
   return {
     repoPath,
@@ -182,5 +199,6 @@ export async function analyzeRepo(
     gitMetricsV2,
     framework,
     perFile,
+    reactMetrics,
   };
 }
