@@ -90,7 +90,8 @@ npm run test:watch    # Watch mode
 
 ### Test Conventions
 
-- **Location**: Unit tests live next to the code they test as `*.test.ts` in `src/__tests__/` (e.g. `src/__tests__/math.test.ts` for `src/utils/math.ts`).
+- **Location**: Engine tests are `packages/engine/__tests__/**/*.test.ts`. Dashboard helpers (e.g. Phase 2 threshold bands) use `apps/dashboard/__tests__/**/*.test.ts`. Root `vitest.config.ts` runs both.
+- **Legacy CLI**: Some docs refer to `src/__tests__/`; the canonical engine suite is under `packages/engine/__tests__/`.
 - **Structure**: Use `describe` for the module/function and `it` for specific cases. Include normal, edge, and complex cases where applicable.
 - **Determinism**: All tests must be deterministic. Avoid `Date.now()`, random values, or environment-dependent logic without mocking.
 
