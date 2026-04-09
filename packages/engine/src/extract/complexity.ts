@@ -25,11 +25,16 @@ export type { FunctionComplexity, ComplexitySummary } from "../types/report.js";
 
 /**
  * Count branch points within a function body (not descending into nested functions).
+ * Cyclomatic complexity = 1 + countCyclomaticBranchPoints(functionNode).
  *
  * @param node - Current AST node.
  * @returns Number of branch points found in the subtree.
  */
-function countBranches(node: SyntaxNode): number {
+export function countCyclomaticBranchPoints(node: SyntaxNode): number {
+  return countBranchesInner(node);
+}
+
+function countBranchesInner(node: SyntaxNode): number {
   let count = 0;
 
   if (COMPLEXITY_BRANCH_TYPES.has(node.type)) {
@@ -47,7 +52,7 @@ function countBranches(node: SyntaxNode): number {
   for (let i = 0; i < node.namedChildCount; i++) {
     const child = node.namedChild(i);
     if (child && !FUNCTION_NODE_TYPES.has(child.type)) {
-      count += countBranches(child);
+      count += countBranchesInner(child);
     }
   }
 
@@ -86,7 +91,7 @@ export function computeComplexity(root: SyntaxNode): FunctionComplexity[] {
   walkTree(root, {
     enter(node) {
       if (FUNCTION_NODE_TYPES.has(node.type)) {
-        const complexity = 1 + countBranches(node);
+        const complexity = 1 + countBranchesInner(node);
         results.push({
           name: getFunctionName(node),
           type: node.type,

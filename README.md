@@ -153,14 +153,15 @@ When the repo contains `.tsx` files, the report also includes **`reactMetrics`**
 | `git` | simple-git or GitHub API (fallback) | Commit count, sizes, frequency, large commit ratio. On Vercel (no git CLI), metrics come from the GitHub REST API when `GITHUB_TOKEN` is set. |
 | `framework` | package.json | React, Next.js, Express, NestJS, Fastify, or Node |
 | `reactMetrics` | `extract/react` (TSX only) | RQ3: components with JSX, hooks, nested JSX depth, Ferreira/Tampere-style flags, prop pass-through MVP, hook-safety heuristics |
+| Per-function (in `perFile[].functionMetrics`) | `tokenScanner`, `halstead`, `cognitiveComplexity`, `utils/metrics` | Phase 2: Halstead volume, cyclomatic on each function, cognitive complexity, GRAD-AI `MI_raw` / `MI_norm`, `isReactComponent` heuristic |
 
 ## Dashboard
 
 A Next.js dashboard app in `apps/dashboard/` provides a web UI:
 
 - Analyze public GitHub repos from URL
-- RQ-driven results (RQ1 Behavioral Shift, RQ2 Verification & Engagement, RQ3 Quality Outcomes, **RQ3 — React / TSX** with methodology citations)
-- Dataset tab: metadata, feature vector, data dictionary, export
+- RQ-driven results (RQ1 Behavioral Shift, RQ2 Verification & Engagement, RQ3 Quality Outcomes, **RQ3 — React / TSX**, **Phase 2 — Lexical & cognitive** with citations)
+- Dataset tab: metadata, feature vector (including Phase 2 aggregates), data dictionary, export
 
 Run with `npm run dashboard` (starts `next dev` in `apps/dashboard/`). For Vercel deployment, set `GITHUB_TOKEN` to enable API-derived git metrics when the git CLI is unavailable.
 
@@ -179,8 +180,8 @@ repo-metrics/
 │       ├── src/
 │       │   ├── pipeline/           # analyzeRepo, analyzeFromGitHubUrl
 │       │   ├── collect/            # fileDiscovery, loc, duplication, gitClone, gitMetrics, gitMetricsApi, repoMetadata, frameworkDetection
-│       │   ├── parsing/            # tsParser (Tree-sitter)
-│       │   ├── extract/           # functionCount, functionMetrics, complexity, smells, testCoverageProxy, maintainabilityIndex, distributions, react/
+│       │   ├── parsing/            # tsParser, tokenScanner (Halstead atoms)
+│       │   ├── extract/           # functionCount, functionMetrics, complexity, halstead, cognitiveComplexity, smells, testCoverageProxy, maintainabilityIndex, distributions, react/
 │       │   ├── types/              # report.ts (RepoReport, etc.)
 │       │   └── utils/              # constants, githubUrl, math, text, astWalker
 │       └── __tests__/              # Engine test suite (+ fixtures)
@@ -210,6 +211,7 @@ repo-metrics/
 - [Contributing guide](CONTRIBUTING.md)
 - [Sprint planning](docs/planning/) — roadmap and epic specifications
 - [RQ3 React/TSX implementation (Phase 1)](docs/planning/RQ3_REACT_METRICS_IMPLEMENTATION.md)
+- [Metrics concepts & citations (Phase 2)](docs/METRICS_CONCEPTS.md)
 
 ## Scripts
 

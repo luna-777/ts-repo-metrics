@@ -202,6 +202,24 @@ Returns `null` if no `package.json` is found.
 | `lines` | `number` | Total line count |
 | `maxNestingDepth` | `number` | Deepest nesting of control flow |
 | `parameterCount` | `number` | Number of declared parameters |
+| `cyclomaticComplexity` | `number` | Cyclomatic complexity (same as `1 +` branch points + `&&`/`||`); aligns with `FunctionComplexity.complexity` |
+| `halstead` | `HalsteadMetrics` | Halstead operator/operand metrics (lexical volume) |
+| `cognitiveComplexity` | `number` | Additive cognitive score (nesting-aware; Sonar-style) |
+| `maintainabilityIndexGradAiRaw` | `number` | GRAD-AI raw MI: `171 - 5.2·ln(V) - 0.23·CC - 16.2·ln(LOC)` (natural logs); `V` = Halstead `volume`, `CC` = cyclomatic, `LOC` = `lines` |
+| `maintainabilityIndexGradAiNorm` | `number` | `max(0, MI_raw · 100 / 171)` — use for dashboards / cohort charts (0–100) |
+| `isReactComponent` | `boolean` | Heuristic: `.tsx` file and (PascalCase name or JSX in body) |
+
+### `HalsteadMetrics`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `n1`, `n2` | `number` | Distinct operators / operands |
+| `N1`, `N2` | `number` | Total operator / operand occurrences |
+| `volume` | `number` | `(N1+N2) * log2(n1+n2)` when `n1+n2 > 0` |
+| `difficulty` | `number` | `(n1/2) * (N2/n2)` when `n2 > 0` |
+| `effort` | `number` | `difficulty * volume` |
+
+Repo-level `maintainability` (Coleman-style index from average complexity and LOC) is **separate** from per-function `maintainabilityIndexGradAi*`.
 
 ### `FunctionComplexity`
 

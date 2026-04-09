@@ -3,7 +3,7 @@
  * Features use snake_case. Categories and RQ mappings support the Dataset tab.
  */
 
-import type { RepoReport } from "./reportTypes";
+import type { RepoReport, FunctionDetail } from "./reportTypes";
 
 export type FeatureCategory =
   | "Structural"
@@ -65,6 +65,17 @@ export const FEATURE_SPEC: Record<
     category: "Distribution",
     rq: "RQ3",
   },
+  phase2_halstead_volume_mean: { category: "Structural", rq: "RQ3" },
+  phase2_halstead_volume_p90: { category: "Distribution", rq: "RQ3" },
+  phase2_halstead_volume_max: { category: "Structural", rq: "RQ3" },
+  phase2_cognitive_mean: { category: "Structural", rq: "RQ3" },
+  phase2_cognitive_p90: { category: "Distribution", rq: "RQ3" },
+  phase2_cognitive_max: { category: "Structural", rq: "RQ3" },
+  phase2_mi_norm_mean: { category: "Structural", rq: "RQ3" },
+  phase2_mi_norm_median: { category: "Distribution", rq: "RQ3" },
+  phase2_mi_raw_mean: { category: "Structural", rq: "RQ3" },
+  phase2_react_component_count: { category: "Structural", rq: "RQ3" },
+  phase2_react_component_share: { category: "Structural", rq: "RQ3" },
 };
 
 export function getFeatureCategory(name: string): FeatureCategory {
@@ -73,6 +84,39 @@ export function getFeatureCategory(name: string): FeatureCategory {
 
 export function getFeatureRqMapping(name: string): RQMapping {
   return FEATURE_SPEC[name]?.rq ?? "TBD";
+}
+
+function flattenFunctionDetails(report: RepoReport): FunctionDetail[] {
+  const out: FunctionDetail[] = [];
+  for (const pf of report.perFile ?? []) {
+    out.push(...(pf.functionMetrics ?? []));
+  }
+  return out;
+}
+
+function mean(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+function sortedCopy(nums: number[]): number[] {
+  return [...nums].sort((a, b) => a - b);
+}
+
+function percentileSorted(sortedAsc: number[], p: number): number {
+  if (sortedAsc.length === 0) return 0;
+  const idx = Math.min(
+    sortedAsc.length - 1,
+    Math.ceil((p / 100) * (sortedAsc.length - 1)),
+  );
+  return sortedAsc[idx]!;
+}
+
+function medianSorted(sortedAsc: number[]): number {
+  if (sortedAsc.length === 0) return 0;
+  const mid = Math.floor((sortedAsc.length - 1) / 2);
+  if (sortedAsc.length % 2 === 1) return sortedAsc[mid]!;
+  return (sortedAsc[mid]! + sortedAsc[mid + 1]!) / 2;
 }
 
 /**
@@ -150,6 +194,31 @@ export function buildFeatureVector(
     vec.p90_complexity = r.distributions.p90_complexity;
     vec.percent_high_complexity_in_top_10_percent_files =
       r.distributions.percent_high_complexity_in_top_10_percent_files;
+  }
+
+  const fds = flattenFunctionDetails(r);
+  const p2 = fds.filter((f) => f.halstead !== undefined);
+  if (p2.length > 0) {
+    const vol = p2.map((f) => f.halstead!.volume);
+    const cog = p2.map((f) => f.cognitiveComplexity ?? 0);
+    const miN = p2.map((f) => f.maintainabilityIndexGradAiNorm ?? 0);
+    const miR = p2.map((f) => f.maintainabilityIndexGradAiRaw ?? 0);
+    const sv = sortedCopy(vol);
+    const sc = sortedCopy(cog);
+    const sm = sortedCopy(miN);
+    vec.phase2_halstead_volume_mean = Math.round(mean(vol) * 1000) / 1000;
+    vec.phase2_halstead_volume_p90 = Math.round(percentileSorted(sv, 90) * 1000) / 1000;
+    vec.phase2_halstead_volume_max = Math.max(...vol, 0);
+    vec.phase2_cognitive_mean = Math.round(mean(cog) * 1000) / 1000;
+    vec.phase2_cognitive_p90 = Math.round(percentileSorted(sc, 90) * 1000) / 1000;
+    vec.phase2_cognitive_max = Math.max(...cog, 0);
+    vec.phase2_mi_norm_mean = Math.round(mean(miN) * 1000) / 1000;
+    vec.phase2_mi_norm_median = Math.round(medianSorted(sm) * 1000) / 1000;
+    vec.phase2_mi_raw_mean = Math.round(mean(miR) * 1000) / 1000;
+    const reactC = p2.filter((f) => Boolean(f.isReactComponent)).length;
+    vec.phase2_react_component_count = reactC;
+    vec.phase2_react_component_share =
+      Math.round((reactC / p2.length) * 1000) / 1000;
   }
 
   return vec;

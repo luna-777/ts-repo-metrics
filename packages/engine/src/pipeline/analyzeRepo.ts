@@ -18,7 +18,7 @@ import { detectFramework } from "../collect/frameworkDetection.js";
 import { parseTypeScript } from "../parsing/tsParser.js";
 import { countFunctions } from "../extract/functionCount.js";
 import { extractFunctionMetrics } from "../extract/functionMetrics.js";
-import { computeComplexity, summarizeComplexity } from "../extract/complexity.js";
+import { summarizeComplexity } from "../extract/complexity.js";
 import { detectSmells } from "../extract/smells.js";
 import { computeTestCoverageProxy } from "../extract/testCoverageProxy.js";
 import { computeMaintainabilityIndex } from "../extract/maintainabilityIndex.js";
@@ -102,8 +102,18 @@ export async function analyzeRepo(
     }
 
     const fnCount = countFunctions(tree.rootNode);
-    const fnMetrics = extractFunctionMetrics(tree.rootNode);
-    const fileComplexity = computeComplexity(tree.rootNode);
+    const relFile = path.relative(repoPath, filePath);
+    const fnMetrics = extractFunctionMetrics(tree.rootNode, {
+      relativeFilePath: relFile,
+    });
+    const fileComplexity: FunctionComplexity[] = fnMetrics.functions.map(
+      (f) => ({
+        name: f.name,
+        type: f.type,
+        startLine: f.startLine,
+        complexity: f.cyclomaticComplexity,
+      }),
+    );
     const fileSmells = detectSmells(tree.rootNode);
 
     totalFunctions += fnCount.total;

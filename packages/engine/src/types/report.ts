@@ -22,6 +22,20 @@ export interface FunctionCounts {
   byType: Record<string, number>;
 }
 
+/**
+ * Halstead metrics for one function (lexical / volume-style).
+ * Volume uses: (N1+N2) * log2(n1+n2) when n1+n2 > 0.
+ */
+export interface HalsteadMetrics {
+  n1: number;
+  n2: number;
+  N1: number;
+  N2: number;
+  volume: number;
+  difficulty: number;
+  effort: number;
+}
+
 /** Metrics for a single function. */
 export interface FunctionDetail {
   name: string;
@@ -30,6 +44,18 @@ export interface FunctionDetail {
   lines: number;
   maxNestingDepth: number;
   parameterCount: number;
+  /** Cyclomatic complexity (1 + branch points + logical ops), same rule as `FunctionComplexity`. */
+  cyclomaticComplexity: number;
+  /** Halstead suite when analyzable (empty body may yield zeros). */
+  halstead: HalsteadMetrics;
+  /** Sonar-style additive cognitive complexity (nested control increases contribution). */
+  cognitiveComplexity: number;
+  /** GRAD-AI-style MI from Halstead volume + cyclomatic + LOC; natural-log formula. */
+  maintainabilityIndexGradAiRaw: number;
+  /** Normalized to 0–100 for dashboards: max(0, MI_raw * 100 / 171). */
+  maintainabilityIndexGradAiNorm: number;
+  /** Heuristic: `.tsx` and (PascalCase name or JSX in body). */
+  isReactComponent: boolean;
 }
 
 /** Aggregated function metrics for an entire repository. */

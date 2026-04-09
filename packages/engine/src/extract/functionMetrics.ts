@@ -2,8 +2,8 @@
  * Function-level structural metrics extractor.
  *
  * For every function-like AST node in a file, computes line count, maximum
- * nesting depth, and parameter count. Also produces a file-level summary
- * with averages, medians, maximums, and percentages.
+ * nesting depth, parameter count, cyclomatic complexity, Halstead metrics,
+ * cognitive complexity, GRAD-AI MI (raw + normalized), and React component heuristic.
  */
 
 import type { SyntaxNode } from "tree-sitter";
@@ -12,8 +12,12 @@ import {
   NESTING_NODE_TYPES,
   LONG_FUNCTION_THRESHOLD,
 } from "../utils/constants.js";
-import { walkTree } from "../utils/astWalker.js";
+import { SKIP, walkTree } from "../utils/astWalker.js";
 import { median } from "../utils/math.js";
+import { countCyclomaticBranchPoints } from "./complexity.js";
+import { computeHalsteadForFunction } from "./halstead.js";
+import { computeCognitiveComplexity } from "./cognitiveComplexity.js";
+import { calculateMIGradAiRaw, normalizeMIGradAi } from "../utils/metrics.js";
 import type {
   FunctionDetail,
   FunctionMetricsSummary,
@@ -26,11 +30,13 @@ export type {
   FunctionMetricsResult,
 } from "../types/report.js";
 
+export interface ExtractFunctionMetricsOptions {
+  /** Relative path like `src/App.tsx` — used for `isReactComponent` when `.tsx`. */
+  relativeFilePath?: string;
+}
+
 /**
  * Derive a human-readable name for a function node.
- *
- * @param node - A function-like AST node.
- * @returns The function name, or "(anonymous)" if none can be determined.
  */
 function getFunctionName(node: SyntaxNode): string {
   const nameChild = node.childForFieldName("name");
@@ -49,36 +55,25 @@ function getFunctionName(node: SyntaxNode): string {
   return "(anonymous)";
 }
 
-/**
- * Count parameters of a function node.
- *
- * @param node - A function-like AST node.
- * @returns Number of declared parameters.
- */
 function countParameters(node: SyntaxNode): number {
   const params = node.childForFieldName("parameters");
   if (!params) return 0;
   let count = 0;
   for (let i = 0; i < params.namedChildCount; i++) {
     const child = params.namedChild(i);
-    if (child && (child.type === "required_parameter" ||
-                  child.type === "optional_parameter" ||
-                  child.type === "rest_parameter" ||
-                  child.type === "identifier")) {
+    if (
+      child &&
+      (child.type === "required_parameter" ||
+        child.type === "optional_parameter" ||
+        child.type === "rest_parameter" ||
+        child.type === "identifier")
+    ) {
       count++;
     }
   }
   return count;
 }
 
-/**
- * Compute the maximum nesting depth within a subtree.
- * Only counts nesting structures (if, for, while, do, switch, try).
- *
- * @param node - Root of the subtree to measure.
- * @param currentDepth - Depth accumulated from parent nesting nodes.
- * @returns The deepest nesting level found.
- */
 function maxNesting(node: SyntaxNode, currentDepth: number): number {
   const depth = NESTING_NODE_TYPES.has(node.type)
     ? currentDepth + 1
@@ -95,26 +90,86 @@ function maxNesting(node: SyntaxNode, currentDepth: number): number {
   return max;
 }
 
+/** True if function subtree contains JSX (TSX), excluding nested functions. */
+function functionBodyContainsJsx(fnNode: SyntaxNode): boolean {
+  let found = false;
+  walkTree(fnNode, {
+    enter(node) {
+      if (node !== fnNode && FUNCTION_NODE_TYPES.has(node.type)) {
+        return SKIP;
+      }
+      if (
+        node.type === "jsx_element" ||
+        node.type === "jsx_self_closing_element" ||
+        node.type === "jsx_fragment"
+      ) {
+        found = true;
+        return SKIP;
+      }
+      return undefined;
+    },
+  });
+  return found;
+}
+
+function isPascalCaseComponentName(name: string): boolean {
+  return name !== "(anonymous)" && /^[A-Z][a-zA-Z0-9]*$/.test(name);
+}
+
+function computeIsReactComponent(
+  fnNode: SyntaxNode,
+  relativeFilePath: string | undefined,
+  name: string,
+): boolean {
+  if (!relativeFilePath?.endsWith(".tsx")) return false;
+  return isPascalCaseComponentName(name) || functionBodyContainsJsx(fnNode);
+}
+
 /**
- * Extract structural metrics for every function in a syntax tree.
- *
- * @param root - The root node of a Tree-sitter syntax tree.
- * @returns Per-function details and a repo-level summary.
+ * Extract structural and Phase 2 metrics for every function in a syntax tree.
  */
-export function extractFunctionMetrics(root: SyntaxNode): FunctionMetricsResult {
+export function extractFunctionMetrics(
+  root: SyntaxNode,
+  options?: ExtractFunctionMetricsOptions,
+): FunctionMetricsResult {
+  const relativeFilePath = options?.relativeFilePath;
   const functions: FunctionDetail[] = [];
 
   walkTree(root, {
     enter(node) {
       if (FUNCTION_NODE_TYPES.has(node.type)) {
         const lines = node.endPosition.row - node.startPosition.row + 1;
+        const name = getFunctionName(node);
+        const branches = countCyclomaticBranchPoints(node);
+        const cyclomaticComplexity = 1 + branches;
+        const halstead = computeHalsteadForFunction(node);
+        const cognitiveComplexity = computeCognitiveComplexity(node);
+        const maintainabilityIndexGradAiRaw = calculateMIGradAiRaw(
+          halstead.volume,
+          cyclomaticComplexity,
+          lines,
+        );
+        const maintainabilityIndexGradAiNorm = normalizeMIGradAi(
+          maintainabilityIndexGradAiRaw,
+        );
+
         functions.push({
-          name: getFunctionName(node),
+          name,
           type: node.type,
           startLine: node.startPosition.row + 1,
           lines,
           maxNestingDepth: maxNesting(node, 0),
           parameterCount: countParameters(node),
+          cyclomaticComplexity,
+          halstead,
+          cognitiveComplexity,
+          maintainabilityIndexGradAiRaw,
+          maintainabilityIndexGradAiNorm,
+          isReactComponent: computeIsReactComponent(
+            node,
+            relativeFilePath,
+            name,
+          ),
         });
       }
     },
@@ -124,13 +179,15 @@ export function extractFunctionMetrics(root: SyntaxNode): FunctionMetricsResult 
   const totalFunctions = functions.length;
   const averageLength =
     totalFunctions > 0
-      ? Math.round((lengths.reduce((a, b) => a + b, 0) / totalFunctions) * 10) / 10
+      ? Math.round((lengths.reduce((a, b) => a + b, 0) / totalFunctions) * 10) /
+        10
       : 0;
   const maxNestingDepth = functions.reduce(
     (max, f) => Math.max(max, f.maxNestingDepth),
     0,
   );
-  const longCount = functions.filter((f) => f.lines > LONG_FUNCTION_THRESHOLD).length;
+  const longCount = functions.filter((f) => f.lines > LONG_FUNCTION_THRESHOLD)
+    .length;
   const longFunctionPercentage =
     totalFunctions > 0
       ? Math.round((longCount / totalFunctions) * 1000) / 10

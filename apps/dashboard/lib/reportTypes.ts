@@ -12,6 +12,16 @@ export interface DistributionMetrics {
   percent_high_complexity_in_top_10_percent_files: number;
 }
 
+export interface HalsteadMetrics {
+  n1: number;
+  n2: number;
+  N1: number;
+  N2: number;
+  volume: number;
+  difficulty: number;
+  effort: number;
+}
+
 export interface FunctionDetail {
   name: string;
   type: string;
@@ -19,6 +29,13 @@ export interface FunctionDetail {
   lines: number;
   maxNestingDepth: number;
   parameterCount: number;
+  /** Phase 2+; absent in older cached reports. */
+  cyclomaticComplexity?: number;
+  halstead?: HalsteadMetrics;
+  cognitiveComplexity?: number;
+  maintainabilityIndexGradAiRaw?: number;
+  maintainabilityIndexGradAiNorm?: number;
+  isReactComponent?: boolean;
 }
 
 export interface FunctionComplexity {

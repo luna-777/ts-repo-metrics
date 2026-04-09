@@ -73,6 +73,10 @@ When `cloneOrUseCache` fails because the git binary is unavailable (e.g. on Verc
                     └──────────────────────────────┘
 ```
 
+## Phase 2 (lexical / cognitive / GRAD-AI MI)
+
+Per-function extraction runs in `extract/functionMetrics.ts` (with `parsing/tokenScanner.ts` for Halstead atoms, `extract/halstead.ts`, `extract/cognitiveComplexity.ts`, `utils/metrics.ts` for `MI_raw` / `MI_norm`). Cyclomatic branch counting is shared with `extract/complexity.ts` via `countCyclomaticBranchPoints`. The dashboard **Dataset** tab aggregates Phase 2 metrics into `featureVector.ts`; the **Phase 2 — Lexical & cognitive** results tab shows per-function tables.
+
 ## Module Responsibilities
 
 | Location | Purpose |

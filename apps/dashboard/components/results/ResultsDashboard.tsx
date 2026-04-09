@@ -9,6 +9,7 @@ import { RQ1Tab } from "./rq/RQ1Tab";
 import { RQ2Tab } from "./rq/RQ2Tab";
 import { RQ3Tab } from "./rq/RQ3Tab";
 import { RQ3ReactTab } from "./rq/RQ3ReactTab";
+import { Phase2ComplexityTab } from "./rq/Phase2ComplexityTab";
 import { DatasetTab } from "./dataset/DatasetTab";
 import { CrossRQInsightPanel } from "./CrossRQInsightPanel";
 import type { RepoReport } from "@/lib/reportTypes";
@@ -84,6 +85,12 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
         <TabsContent value="rq3-react">
           <div className="space-y-8">
             <RQ3ReactTab report={report} />
+            <CrossRQInsightPanel report={report} />
+          </div>
+        </TabsContent>
+        <TabsContent value="phase2-complexity">
+          <div className="space-y-8">
+            <Phase2ComplexityTab report={report} />
             <CrossRQInsightPanel report={report} />
           </div>
         </TabsContent>

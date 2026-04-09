@@ -15,6 +15,7 @@ export type {
   RepoProfile,
   FunctionDetail,
   FunctionMetricsSummary,
+  HalsteadMetrics,
   ComplexitySummary,
   SmellCounts,
   PerFileEntry,
@@ -23,3 +24,10 @@ export type {
   ReactMetricsSummary,
   ReactMetricsReport,
 } from "./types/report.js";
+
+export {
+  calculateMIGradAiRaw,
+  normalizeMIGradAi,
+} from "./utils/metrics.js";
+export { computeHalsteadForFunction } from "./extract/halstead.js";
+export { computeCognitiveComplexity } from "./extract/cognitiveComplexity.js";
