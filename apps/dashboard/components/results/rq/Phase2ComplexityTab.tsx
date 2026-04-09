@@ -11,6 +11,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  MetricHelpButton,
+  Phase2MethodologyCard,
+  Phase2ReferencesFooter,
+} from "./MetricGlossary";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Phase2ThresholdLegend } from "./Phase2ThresholdLegend";
+import { phase2TrafficCellClass } from "@/lib/phase2Traffic";
 
 interface Phase2ComplexityTabProps {
   report: RepoReport;
@@ -92,32 +100,92 @@ export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
   return (
     <div className="space-y-6">
       <RQFramingHeader rq="RQ3" />
-      <p className="text-muted-foreground text-sm max-w-2xl">
-        <strong>Lexical</strong> (Halstead volume), <strong>structural</strong> (cyclomatic), and{" "}
-        <strong>cognitive</strong> complexity per function, plus GRAD-AI maintainability index (
-        <code className="rounded bg-muted px-1">MI_norm</code> on 0–100 for charts). See references below.
-      </p>
+      <Phase2MethodologyCard />
 
       {summary && (
-        <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
-          <p className="font-medium">Repo-level aggregates (functions: {rows.length})</p>
-          <ul className="list-disc pl-5 text-muted-foreground">
-            <li>
-              Halstead volume — mean {summary.halsteadVolMean.toFixed(1)}, p90{" "}
-              {summary.halsteadVolP90.toFixed(1)}
-            </li>
-            <li>
-              Cognitive complexity — mean {summary.cognitiveMean.toFixed(2)}, p90{" "}
-              {summary.cognitiveP90.toFixed(2)}
-            </li>
-            <li>
-              <code className="rounded bg-muted px-1">MI_norm</code> — mean {summary.miNormMean.toFixed(1)}, median{" "}
-              {summary.miNormMedian.toFixed(1)}
-            </li>
-            <li>React component heuristic — {(summary.reactShare * 100).toFixed(1)}% of functions</li>
-          </ul>
-        </div>
+        <section className="space-y-3">
+          <div>
+            <h3 className="text-foreground text-sm font-semibold tracking-tight">
+              Repo-level aggregates
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              Across {rows.length} function{rows.length === 1 ? "" : "s"} with Phase 2 metrics
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Card className="gap-0 py-4 shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-2 pt-0">
+                <CardTitle className="text-muted-foreground text-sm font-medium leading-snug">
+                  Halstead volume
+                </CardTitle>
+                <MetricHelpButton metricId="halstead" label="" align="right" className="shrink-0" />
+              </CardHeader>
+              <CardContent className="px-5 pt-0">
+                <p className="text-foreground text-3xl font-semibold tabular-nums tracking-tight">
+                  {summary.halsteadVolMean.toFixed(1)}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs tabular-nums">
+                  Mean · p90 {summary.halsteadVolP90.toFixed(1)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="gap-0 py-4 shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-2 pt-0">
+                <CardTitle className="text-muted-foreground text-sm font-medium leading-snug">
+                  Cognitive complexity
+                </CardTitle>
+                <MetricHelpButton metricId="cognitive" label="" align="right" className="shrink-0" />
+              </CardHeader>
+              <CardContent className="px-5 pt-0">
+                <p className="text-foreground text-3xl font-semibold tabular-nums tracking-tight">
+                  {summary.cognitiveMean.toFixed(2)}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs tabular-nums">
+                  Mean · p90 {summary.cognitiveP90.toFixed(2)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="gap-0 py-4 shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-2 pt-0">
+                <CardTitle className="text-muted-foreground text-sm font-medium leading-snug">
+                  <span className="font-mono text-[0.8125rem]">MI_norm</span>
+                  <span className="text-muted-foreground/80 font-sans font-normal"> (0–100)</span>
+                </CardTitle>
+                <MetricHelpButton metricId="mi" label="" align="right" className="shrink-0" />
+              </CardHeader>
+              <CardContent className="px-5 pt-0">
+                <p className="text-foreground text-3xl font-semibold tabular-nums tracking-tight">
+                  {summary.miNormMean.toFixed(1)}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs tabular-nums">
+                  Mean · median {summary.miNormMedian.toFixed(1)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="gap-0 py-4 shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-2 pt-0">
+                <CardTitle className="text-muted-foreground text-sm font-medium leading-snug">
+                  React component share
+                </CardTitle>
+                <MetricHelpButton metricId="reactShare" label="" align="right" className="shrink-0" />
+              </CardHeader>
+              <CardContent className="px-5 pt-0">
+                <p className="text-foreground text-3xl font-semibold tabular-nums tracking-tight">
+                  {(summary.reactShare * 100).toFixed(1)}%
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs leading-snug">
+                  UI-layer density vs logic · domain filter for RQ3
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
       )}
+
+      <Phase2ThresholdLegend />
 
       <div className="rounded-md border overflow-x-auto">
         <Table>
@@ -125,12 +193,22 @@ export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
             <TableRow>
               <TableHead>File</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead className="text-right">CC</TableHead>
-              <TableHead className="text-right">Halstead V</TableHead>
-              <TableHead className="text-right">Cognitive</TableHead>
-              <TableHead className="text-right">MI_norm</TableHead>
-              <TableHead className="text-right">MI_raw</TableHead>
-              <TableHead>React?</TableHead>
+              <TableHead className="text-right">
+                <MetricHelpButton metricId="cyclomatic" label="CC" align="right" />
+              </TableHead>
+              <TableHead className="text-right">
+                <MetricHelpButton metricId="halstead" label="Halstead V" align="right" />
+              </TableHead>
+              <TableHead className="text-right">
+                <MetricHelpButton metricId="cognitive" label="Cognitive" align="right" />
+              </TableHead>
+              <TableHead className="text-right">
+                <MetricHelpButton metricId="mi" label="MI_norm" align="right" />
+              </TableHead>
+              <TableHead className="text-right text-muted-foreground">MI_raw</TableHead>
+              <TableHead>
+                <MetricHelpButton metricId="reactShare" label="React?" align="left" />
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -138,12 +216,18 @@ export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
               <TableRow key={`${file}:${fn.name}:${fn.startLine}`}>
                 <TableCell className="font-mono text-xs max-w-[140px] truncate">{file}</TableCell>
                 <TableCell className="font-mono text-sm">{fn.name}</TableCell>
-                <TableCell className="text-right tabular-nums">{fn.cyclomaticComplexity}</TableCell>
+                <TableCell className={phase2TrafficCellClass(fn.cyclomaticComplexity, "cc")}>
+                  {fn.cyclomaticComplexity}
+                </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {fn.halstead?.volume?.toFixed(1) ?? "—"}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{fn.cognitiveComplexity}</TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className={phase2TrafficCellClass(fn.cognitiveComplexity, "cognitive")}>
+                  {fn.cognitiveComplexity}
+                </TableCell>
+                <TableCell
+                  className={phase2TrafficCellClass(fn.maintainabilityIndexGradAiNorm, "mi")}
+                >
                   {fn.maintainabilityIndexGradAiNorm?.toFixed(1) ?? "—"}
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">
@@ -156,27 +240,7 @@ export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
         </Table>
       </div>
 
-      <div className="rounded-lg border p-4 text-sm space-y-2 text-muted-foreground">
-        <p className="font-medium text-foreground">References</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>
-            Imai, S. (2022). Halstead-style volume and AI-assisted code quality.{" "}
-            <em>Information and Software Technology</em>.
-          </li>
-          <li>
-            Gambo, I., et al. (2025). GRAD-AI maintainability-style scoring.{" "}
-            <em>Education and Information Technologies</em>.
-          </li>
-          <li>
-            Jönsson, A., &amp; Wehbi, N. (2025). Cognitive / structural quality of AI-generated mobile apps. Blekinge
-            Institute of Technology.
-          </li>
-        </ul>
-        <p>
-          Repo-level <code className="rounded bg-muted px-1">maintainability.score</code> uses the Coleman-style index;
-          per-function <code className="rounded bg-muted px-1">MI_norm</code> here is GRAD-AI–style (see docs).
-        </p>
-      </div>
+      <Phase2ReferencesFooter />
     </div>
   );
 }

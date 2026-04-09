@@ -4,14 +4,17 @@ import { resolve } from "node:path";
 export default defineConfig({
   test: {
     globals: true,
-    include: ["packages/engine/__tests__/**/*.test.ts"],
+    include: [
+      "packages/engine/__tests__/**/*.test.ts",
+      "apps/dashboard/__tests__/**/*.test.ts",
+    ],
     exclude: ["**/node_modules/**", "**/dist/**", "**/fixtures/**"],
     environment: "node",
     passWithNoTests: true,
   },
   resolve: {
     alias: {
-      "@": resolve(__dirname, "./src"),
+      "@": resolve(__dirname, "./apps/dashboard"),
     },
   },
 });

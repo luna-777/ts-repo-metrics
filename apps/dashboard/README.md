@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Results dashboard (`apps/dashboard`)
 
-## Getting Started
+Next.js app for analyzing GitHub repos via `@repo-metrics/engine` (same package as the CLI). No subprocess: the API route imports the engine directly.
 
-First, run the development server:
+## Scripts
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+| Command | Description |
+|--------|-------------|
+| `npm run dev` | Dev server (http://localhost:3000) |
+| `npm run build` | Build engine, then `next build` |
+| `npm run start` | Production server after build |
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+From repo root: `npm run dashboard` / `npm run dashboard:build`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Phase 2 — Lexical & cognitive
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The **Phase 2 — Lexical & cognitive** tab (under Results) shows per-function Halstead volume, cyclomatic complexity, cognitive complexity, GRAD-AI `MI_norm` / `MI_raw`, and React component heuristics. It includes:
 
-## Learn More
+- **The Research Lens** — tri-metric framing and verification-gap narrative  
+- **Definitions & formulas** — collapsible glossary with KaTeX and citations  
+- **Threshold calibration** — collapsible sourced table (MI / CC / CoC bands and significance)  
+- **Repo-level summary cards** — aggregates with methodology help icons  
+- **Traffic-light cell tinting** — `lib/phase2Traffic.ts` applies bands documented in the threshold panel  
 
-To learn more about Next.js, take a look at the following resources:
+See `docs/METRICS_CONCEPTS.md` and `docs/ARCHITECTURE.md` for engine vs dashboard responsibilities.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tests
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Dashboard logic for threshold bands is covered by root Vitest: `apps/dashboard/__tests__/phase2Traffic.test.ts` (run `npm test` from the repo root).
 
-## Deploy on Vercel
+## Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md).

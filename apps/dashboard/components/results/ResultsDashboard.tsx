@@ -62,6 +62,7 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
           <TabsTrigger value="rq2">RQ2 — Verification & Engagement</TabsTrigger>
           <TabsTrigger value="rq3">RQ3 — Quality Outcomes</TabsTrigger>
           <TabsTrigger value="rq3-react">RQ3 — React / TSX</TabsTrigger>
+          <TabsTrigger value="phase2-complexity">Phase 2 — Lexical &amp; cognitive</TabsTrigger>
           <TabsTrigger value="dataset">Dataset</TabsTrigger>
         </TabsList>
         <TabsContent value="rq1">

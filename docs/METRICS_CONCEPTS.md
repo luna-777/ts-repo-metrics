@@ -32,3 +32,15 @@ Together, these support claims that AI-assisted code may look *neat* (low SLOC) 
 - Bollu, P. (2024). Maintainability in React web applications. Tampere University (related to RQ3 React metrics).
 
 See also [planning/RQ3_REACT_METRICS_IMPLEMENTATION.md](planning/RQ3_REACT_METRICS_IMPLEMENTATION.md) for TSX-specific RQ3 metrics.
+
+## Dashboard: threshold calibration
+
+The **Results** dashboard **Phase 2 — Lexical & cognitive** tab applies **conditional cell tinting** to `MI_norm`, cyclomatic complexity (CC), and cognitive complexity using fixed bands documented in-app:
+
+| Metric | Green | Yellow | Red | Primary sources (interpretation) |
+|--------|--------|--------|-----|----------------------------------|
+| **MI_norm** (0–100) | ≥85 | 65–84 | &lt;65 | Gambo et al. (2025) GRAD-AI; Microsoft-style MI bands |
+| **CC** | ≤10 | 11–20 | &gt;20 | McCabe (1976); NIST / testing-coverage practice |
+| **Cognitive** | ≤8 | 9–15 | &gt;15 | SonarSource-style; Jönsson & Wehbi (2025) |
+
+Implementation: [`apps/dashboard/lib/phase2Traffic.ts`](../apps/dashboard/lib/phase2Traffic.ts). The collapsible **Threshold calibration** panel and **Metric glossary** (definitions, formulas, citations) explain provenance for committee-facing use. **React component share** is a separate structural-density / domain-filter metric (heuristic: `.tsx`, PascalCase or JSX in body); see glossary in [`MetricGlossary.tsx`](../apps/dashboard/components/results/rq/MetricGlossary.tsx).

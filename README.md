@@ -160,7 +160,7 @@ When the repo contains `.tsx` files, the report also includes **`reactMetrics`**
 A Next.js dashboard app in `apps/dashboard/` provides a web UI:
 
 - Analyze public GitHub repos from URL
-- RQ-driven results (RQ1 Behavioral Shift, RQ2 Verification & Engagement, RQ3 Quality Outcomes, **RQ3 — React / TSX**, **Phase 2 — Lexical & cognitive** with citations)
+- RQ-driven results (RQ1 Behavioral Shift, RQ2 Verification & Engagement, RQ3 Quality Outcomes, **RQ3 — React / TSX**, **Phase 2 — Lexical & cognitive** with metric glossary, collapsible threshold calibration, and traffic-light bands for MI/CC/cognitive)
 - Dataset tab: metadata, feature vector (including Phase 2 aggregates), data dictionary, export
 
 Run with `npm run dashboard` (starts `next dev` in `apps/dashboard/`). For Vercel deployment, set `GITHUB_TOKEN` to enable API-derived git metrics when the git CLI is unavailable.
@@ -222,7 +222,7 @@ repo-metrics/
 | `start` | `node dist/cli.js` | Run the compiled CLI |
 | `dashboard` | `cd apps/dashboard && npm run dev` | Start Next.js dashboard |
 | `dashboard:build` | Build engine then Next | Build `packages/engine` then `apps/dashboard` (for production/Vercel) |
-| `test` | `vitest run` | Run engine test suite (`packages/engine/__tests__/`) |
+| `test` | `vitest run` | Run engine tests and dashboard threshold tests (`packages/engine/__tests__/`, `apps/dashboard/__tests__/`) |
 | `test:watch` | `vitest` | Run tests in watch mode |
 
 ## License
