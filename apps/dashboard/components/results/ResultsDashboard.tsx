@@ -10,6 +10,7 @@ import { RQ2Tab } from "./rq/RQ2Tab";
 import { RQ3Tab } from "./rq/RQ3Tab";
 import { RQ3ReactTab } from "./rq/RQ3ReactTab";
 import { Phase2ComplexityTab } from "./rq/Phase2ComplexityTab";
+import { Phase3PathologyTab } from "./rq/Phase3PathologyTab";
 import { DatasetTab } from "./dataset/DatasetTab";
 import { CrossRQInsightPanel } from "./CrossRQInsightPanel";
 import type { RepoReport } from "@/lib/reportTypes";
@@ -57,14 +58,55 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
       </div>
 
       <Tabs defaultValue="rq1">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="rq1">RQ1 — Behavioral Shift</TabsTrigger>
-          <TabsTrigger value="rq2">RQ2 — Verification & Engagement</TabsTrigger>
-          <TabsTrigger value="rq3">RQ3 — Quality Outcomes</TabsTrigger>
-          <TabsTrigger value="rq3-react">RQ3 — React / TSX</TabsTrigger>
-          <TabsTrigger value="phase2-complexity">Phase 2 — Lexical &amp; cognitive</TabsTrigger>
-          <TabsTrigger value="dataset">Dataset</TabsTrigger>
-        </TabsList>
+        <div className="w-full max-w-full overflow-x-auto rounded-lg border border-border/80 bg-muted/80 p-1 shadow-sm [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
+          <TabsList className="flex h-auto min-h-10 w-max min-w-full flex-nowrap justify-start gap-0.5 bg-transparent p-0 sm:gap-1">
+            <TabsTrigger
+              className="shrink-0 px-2.5 sm:px-3"
+              value="rq1"
+              title="Behavioral shift — git workflow and churn"
+            >
+              Behavioral
+            </TabsTrigger>
+            <TabsTrigger
+              className="shrink-0 px-2.5 sm:px-3"
+              value="rq2"
+              title="Verification — tests, coupling, risk vs verification"
+            >
+              Verification
+            </TabsTrigger>
+            <TabsTrigger
+              className="shrink-0 px-2.5 sm:px-3"
+              value="rq3"
+              title="Quality — complexity, maintainability, duplication"
+            >
+              Quality
+            </TabsTrigger>
+            <TabsTrigger
+              className="shrink-0 px-2.5 sm:px-3"
+              value="rq3-react"
+              title="React & TSX — hooks, JSX depth, cohesion heuristics"
+            >
+              React &amp; TSX
+            </TabsTrigger>
+            <TabsTrigger
+              className="shrink-0 px-2.5 sm:px-3"
+              value="phase2-complexity"
+              title="Lexical & cognitive — Halstead, cognitive complexity, MI (per function)"
+            >
+              Lexical
+            </TabsTrigger>
+            <TabsTrigger
+              className="shrink-0 px-2.5 sm:px-3"
+              value="phase3-pathology"
+              title="AI smell & bloat — silent failures, redundancy, monolith signals"
+            >
+              AI smells
+            </TabsTrigger>
+            <TabsTrigger className="shrink-0 px-2.5 sm:px-3" value="dataset" title="Dataset export">
+              Dataset
+            </TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="rq1">
           <div className="space-y-8">
             <RQ1Tab report={report} />
@@ -92,6 +134,12 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
         <TabsContent value="phase2-complexity">
           <div className="space-y-8">
             <Phase2ComplexityTab report={report} />
+            <CrossRQInsightPanel report={report} />
+          </div>
+        </TabsContent>
+        <TabsContent value="phase3-pathology">
+          <div className="space-y-8">
+            <Phase3PathologyTab report={report} />
             <CrossRQInsightPanel report={report} />
           </div>
         </TabsContent>

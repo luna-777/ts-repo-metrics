@@ -27,6 +27,7 @@ This document describes the complete JSON report produced by `ts-repo-metrics`.
 | `framework` | `FrameworkInfo` | **yes** | Detected framework (null if no package.json) |
 | `perFile` | `PerFileEntry[]` | no | Per-file metrics |
 | `reactMetrics` | `ReactMetricsReport` | **yes** | RQ3 React/TSX static metrics (present when at least one `.tsx` file was analyzed) |
+| `phase3` | `Phase3Metrics` | **yes** | Phase 3 — silent failures (TSX), monolithic component rate, weighted jscpd redundancy |
 
 ## `distributions` — Distribution Metrics (optional)
 
@@ -208,6 +209,7 @@ Returns `null` if no `package.json` is found.
 | `maintainabilityIndexGradAiRaw` | `number` | GRAD-AI raw MI: `171 - 5.2·ln(V) - 0.23·CC - 16.2·ln(LOC)` (natural logs); `V` = Halstead `volume`, `CC` = cyclomatic, `LOC` = `lines` |
 | `maintainabilityIndexGradAiNorm` | `number` | `max(0, MI_raw · 100 / 171)` — use for dashboards / cohort charts (0–100) |
 | `isReactComponent` | `boolean` | Heuristic: `.tsx` file and (PascalCase name or JSX in body) |
+| `isMonolithic` | `boolean` | `true` when `isReactComponent` and `lines` exceed the monolithic threshold (50 SLOC; see `constants.ts`) |
 
 ### `HalsteadMetrics`
 
@@ -280,3 +282,29 @@ Present when at least one `.tsx` file was successfully parsed. Heuristic **compo
 | `asyncUseEffect` | `number` | `useEffect` with async callback pattern |
 | `missingOrInvalidDepsArray` | `number` | Missing or non-array-literal deps |
 | `nonPrimitiveDepRisk` | `number` | Object/array/call deps (heuristic) |
+
+## `phase3` — AI smell / pathology (optional)
+
+Present when the analyzer build includes Phase 3. **Silent failure** events are collected from **`.tsx`** files only (empty `catch` or `catch` that only logs to console). **SRS** uses jscpd duplicate pairs with per-pair similarity (file excerpt + Levenshtein ratio when fragments are unavailable); see [METRICS_CONCEPTS.md](METRICS_CONCEPTS.md).
+
+### `SilentFailureEvent`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `file` | `string` | Path relative to repo root |
+| `line` | `number` | 1-based line (catch keyword) |
+| `kind` | `string` | `empty_catch` or `console_only_catch` |
+
+### `Phase3Metrics`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sfd` | `number` | Silent failure density: `silentFailureEvents.length / (profile.sourceLOC / 1000)`; `0` if `sourceLOC === 0` |
+| `mcr` | `number \| null` | Monolithic component rate: `monolithicComponentCount / reactComponentCount`; **`null`** if `reactComponentCount === 0` |
+| `srs` | `number` | Structural redundancy score: `srsWeightedNumerator / (profile.sourceLOC / 1000)`; `0` if `sourceLOC === 0` |
+| `silentFailureEvents` | `SilentFailureEvent[]` | All TSX silent-failure events |
+| `srsWeightedNumerator` | `number` | Sum of weighted duplicate line mass (1.0 @ 100% similarity, 0.5 for similarity in (80%, 100%), 0 otherwise) |
+| `srsExactWeightedLines` | `number` | Portion of numerator from 100% matches |
+| `srsNearWeightedLines` | `number` | Portion of numerator from (80%, 100%) near-clone matches |
+| `monolithicComponentCount` | `number` | React components with `lines` > threshold |
+| `reactComponentCount` | `number` | Functions with `isReactComponent === true` |

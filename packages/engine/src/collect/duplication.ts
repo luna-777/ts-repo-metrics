@@ -12,10 +12,17 @@ import { promisify } from "node:util";
 import path from "node:path";
 import { readFile, rm } from "node:fs/promises";
 import type { DuplicationMetrics } from "../types/report.js";
+import type { JscpdDuplicateJson } from "./weightedRedundancy.js";
 
 export type { DuplicationMetrics } from "../types/report.js";
+export type { JscpdDuplicateJson } from "./weightedRedundancy.js";
 
 const execFileAsync = promisify(execFile);
+
+export interface DuplicationDetectionResult {
+  metrics: DuplicationMetrics;
+  duplicates: JscpdDuplicateJson[];
+}
 
 /**
  * Detect code duplication in a repository using jscpd.
@@ -25,11 +32,11 @@ const execFileAsync = promisify(execFile);
  * unavailable rather than crashing the pipeline.
  *
  * @param repoPath - Absolute path to the repository root.
- * @returns Duplication metrics, or null if analysis fails.
+ * @returns Metrics plus raw duplicate entries for Phase 3 SRS weighting, or null if analysis fails.
  */
 export async function detectDuplication(
   repoPath: string,
-): Promise<DuplicationMetrics | null> {
+): Promise<DuplicationDetectionResult | null> {
   const outputDir = path.join(repoPath, ".jscpd-report");
 
   try {
@@ -61,17 +68,23 @@ export async function detectDuplication(
         };
         clones?: number;
       };
-      duplicates?: unknown[];
+      duplicates?: JscpdDuplicateJson[];
     };
 
     const stats = report.statistics?.total;
+    const duplicates = Array.isArray(report.duplicates)
+      ? report.duplicates
+      : [];
     const cloneClusters =
-      report.statistics?.clones ?? report.duplicates?.length ?? 0;
+      report.statistics?.clones ?? duplicates.length ?? 0;
 
     return {
-      percentage: Math.round((stats?.percentage ?? 0) * 10) / 10,
-      duplicateLines: stats?.duplicatedLines ?? 0,
-      cloneClusters,
+      metrics: {
+        percentage: Math.round((stats?.percentage ?? 0) * 10) / 10,
+        duplicateLines: stats?.duplicatedLines ?? 0,
+        cloneClusters,
+      },
+      duplicates,
     };
   } catch {
     return null;

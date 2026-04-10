@@ -1,6 +1,6 @@
-# Metrics concepts (Phase 2 + research framing)
+# Metrics concepts (Phase 2 + Phase 3 + research framing)
 
-This document complements [SCHEMA.md](SCHEMA.md) with citations and interpretation guidance for **lexical** (Halstead), **structural** (cyclomatic), **cognitive** (Sonar-style), and **GRAD-AI** per-function maintainability metrics.
+This document complements [SCHEMA.md](SCHEMA.md) with citations and interpretation guidance for **lexical** (Halstead), **structural** (cyclomatic), **cognitive** (Sonar-style), and **GRAD-AI** per-function maintainability metrics, plus **Phase 3** repo-level pathology metrics.
 
 ## Tri-metric framing (dissertation / committee)
 
@@ -32,6 +32,18 @@ Together, these support claims that AI-assisted code may look *neat* (low SLOC) 
 - Bollu, P. (2024). Maintainability in React web applications. Tampere University (related to RQ3 React metrics).
 
 See also [planning/RQ3_REACT_METRICS_IMPLEMENTATION.md](planning/RQ3_REACT_METRICS_IMPLEMENTATION.md) for TSX-specific RQ3 metrics.
+
+## Phase 3 — SFD, MCR, SRS
+
+These aggregates appear under `RepoReport.phase3` when the engine build includes Phase 3.
+
+| Metric | Definition |
+|--------|------------|
+| **SFD** (silent failure density) | `totalEvents / (sourceLOC / 1000)`, where `totalEvents` counts `extractSilentFailures` results across **`.tsx`** only. If `sourceLOC === 0`, SFD is **0**. |
+| **MCR** (monolithic component rate) | `monolithicCount / reactComponentCount`, where monolithic means `isReactComponent && lines > 50` (threshold in `constants.ts`). If `reactComponentCount === 0`, MCR is **`null`**. |
+| **SRS** (structural redundancy score) | Weighted duplicate line mass from **jscpd** duplicate records: weight **1.0** at **100%** similarity, **0.5** for similarity **strictly between 80% and 100%**, **0** at **≤ 80%**. Numerator units follow jscpd line ranges per duplicate pair. **SRS** = weighted numerator / `(sourceLOC / 1000)`; **0** if `sourceLOC === 0`. |
+
+Similarity for a duplicate pair is derived from compared source excerpts (and optional `fragment` fields) when available; implementation lives in [`packages/engine/src/collect/weightedRedundancy.ts`](../packages/engine/src/collect/weightedRedundancy.ts).
 
 ## Dashboard: threshold calibration
 

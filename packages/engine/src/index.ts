@@ -23,6 +23,8 @@ export type {
   ReactComponentMetrics,
   ReactMetricsSummary,
   ReactMetricsReport,
+  Phase3Metrics,
+  SilentFailureEvent,
 } from "./types/report.js";
 
 export {

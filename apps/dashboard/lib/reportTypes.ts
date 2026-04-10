@@ -36,6 +36,28 @@ export interface FunctionDetail {
   maintainabilityIndexGradAiRaw?: number;
   maintainabilityIndexGradAiNorm?: number;
   isReactComponent?: boolean;
+  /** Phase 3: React component with SLOC above monolithic threshold. */
+  isMonolithic?: boolean;
+}
+
+/** Phase 3 — silent failure in TSX (empty or console-only catch). */
+export interface SilentFailureEvent {
+  file: string;
+  line: number;
+  kind: "empty_catch" | "console_only_catch";
+}
+
+/** Phase 3 aggregates: SFD, MCR, SRS. */
+export interface Phase3Metrics {
+  sfd: number;
+  mcr: number | null;
+  srs: number;
+  silentFailureEvents: SilentFailureEvent[];
+  srsWeightedNumerator: number;
+  srsExactWeightedLines: number;
+  srsNearWeightedLines: number;
+  monolithicComponentCount: number;
+  reactComponentCount: number;
 }
 
 export interface FunctionComplexity {
@@ -112,6 +134,8 @@ export interface RepoReport {
   perFile: PerFileEntry[];
   /** Present when the analyzer includes RQ3 React metrics (TSX). */
   reactMetrics?: ReactMetricsReport;
+  /** Phase 3 — AI smell / pathology metrics when the engine version supports them. */
+  phase3?: Phase3Metrics;
 }
 
 export interface ReactHookSafetyFlags {

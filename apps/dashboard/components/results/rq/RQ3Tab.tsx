@@ -5,6 +5,20 @@ import { RQFramingHeader } from "./RQFramingHeader";
 import { HotspotTables } from "../HotspotTables";
 import { FileTable } from "../FileTable";
 import type { RepoReport } from "@/lib/reportTypes";
+import {
+  RQ3AvgFunctionLengthBody,
+  RQ3CyclomaticAvgBody,
+  RQ3CyclomaticMaxBody,
+  RQ3DuplicationPercentBody,
+  RQ3HighComplexityCountBody,
+  RQ3LongFunctionCountBody,
+  RQ3MaintainabilityClassBody,
+  RQ3MaintainabilityScoreBody,
+  RQ3MaxNestingDepthBody,
+  RQ3P90ComplexityBody,
+  RQ3P90FunctionLengthBody,
+  RQ3PercentHighInTop10FilesBody,
+} from "./metricHelpContent";
 
 interface RQ3TabProps {
   report: RepoReport;
@@ -50,55 +64,87 @@ export function RQ3Tab({ report }: RQ3TabProps) {
             label="Total functions"
             value={totalFunctions}
             rq="RQ3"
-            tooltip="Count of function-like AST nodes"
+            tooltip="Count of function-like AST nodes in analyzed source"
           />
           <MetricCard
             label="Avg complexity"
             value={formatNumber(avgComplexity)}
             rq="RQ3"
-            tooltip="Mean cyclomatic complexity"
+            tooltip="Mean cyclomatic complexity across functions."
+            metricHelp={{
+              title: "Average cyclomatic complexity",
+              children: <RQ3CyclomaticAvgBody />,
+            }}
           />
           <MetricCard
             label="Max complexity"
             value={maxComplexity}
             rq="RQ3"
-            tooltip="Highest single-function complexity"
+            tooltip="Largest per-function cyclomatic value in this repo."
+            metricHelp={{
+              title: "Maximum cyclomatic complexity",
+              children: <RQ3CyclomaticMaxBody />,
+            }}
           />
           <MetricCard
             label="High complexity count"
             value={highComplexityCount}
             rq="RQ3"
-            tooltip="Functions with complexity ≥ 10"
+            tooltip="Functions with complexity > 10 (engine threshold)."
+            metricHelp={{
+              title: "High complexity function count",
+              children: <RQ3HighComplexityCountBody />,
+            }}
           />
           <MetricCard
             label="Avg function length"
             value={formatNumber(avgFunctionLength)}
             rq="RQ3"
-            tooltip="Mean line count"
+            tooltip="Mean physical lines per function."
+            metricHelp={{
+              title: "Average function length",
+              children: <RQ3AvgFunctionLengthBody />,
+            }}
           />
           <MetricCard
             label="Long function count"
             value={longFunctionCount}
             rq="RQ3"
-            tooltip="Functions > 50 lines"
+            tooltip="Functions with more than 50 lines."
+            metricHelp={{
+              title: "Long function count",
+              children: <RQ3LongFunctionCountBody />,
+            }}
           />
           <MetricCard
             label="Max nesting depth"
             value={maxNestingDepth}
             rq="RQ3"
-            tooltip="Deepest nesting level"
+            tooltip="Deepest control-structure nesting in any function."
+            metricHelp={{
+              title: "Maximum nesting depth",
+              children: <RQ3MaxNestingDepthBody />,
+            }}
           />
           <MetricCard
             label="P90 function length"
             value={formatNumber(p90FunctionLength)}
             rq="RQ3"
-            tooltip="90th percentile function length"
+            tooltip="90th percentile of function lengths."
+            metricHelp={{
+              title: "P90 function length",
+              children: <RQ3P90FunctionLengthBody />,
+            }}
           />
           <MetricCard
             label="P90 complexity"
             value={formatNumber(p90Complexity)}
             rq="RQ3"
-            tooltip="90th percentile complexity"
+            tooltip="90th percentile of cyclomatic complexity."
+            metricHelp={{
+              title: "P90 cyclomatic complexity",
+              children: <RQ3P90ComplexityBody />,
+            }}
           />
         </div>
       </section>
@@ -109,37 +155,49 @@ export function RQ3Tab({ report }: RQ3TabProps) {
             label="Maintainability score"
             value={formatNumber(maintainabilityScore)}
             rq="RQ3"
-            tooltip="Maintainability Index (0-100)"
+            tooltip="Repo-level index on 0–100 (Coleman-style composite)."
+            metricHelp={{
+              title: "Maintainability score",
+              children: <RQ3MaintainabilityScoreBody />,
+            }}
           />
           <MetricCard
             label="Maintainability class"
             value={maintainabilityClass}
             rq="RQ3"
-            tooltip="low / moderate / high"
+            tooltip="Band from the score: low / moderate / high."
+            metricHelp={{
+              title: "Maintainability class",
+              children: <RQ3MaintainabilityClassBody />,
+            }}
           />
           <MetricCard
             label="Duplication %"
             value={`${formatNumber(duplicationPercent)}%`}
             rq="RQ3"
-            tooltip="Duplicate code percentage"
+            tooltip="jscpd duplicate-line percentage when available."
+            metricHelp={{
+              title: "Duplication percentage",
+              children: <RQ3DuplicationPercentBody />,
+            }}
           />
           <MetricCard
             label="Console log count"
             value={consoleLogCount}
             rq="RQ3"
-            tooltip="console.log/warn/error calls"
+            tooltip="Calls to console.log, console.warn, or console.error"
           />
           <MetricCard
             label="Empty catch blocks"
             value={emptyCatchBlocks}
             rq="RQ3"
-            tooltip="Catch clauses with empty body"
+            tooltip="Catch clauses with an empty body"
           />
           <MetricCard
             label="Long parameter list count"
             value={longParamCount}
             rq="RQ3"
-            tooltip="Functions with > 4 parameters"
+            tooltip="Functions with more than 4 parameters"
           />
         </div>
       </section>
@@ -150,7 +208,11 @@ export function RQ3Tab({ report }: RQ3TabProps) {
             label="% high complexity in top 10% files"
             value={`${formatNumber(percentHighInTop10)}%`}
             rq="RQ3"
-            tooltip="Concentration of high-complexity functions in few files"
+            tooltip="Share of all high-complexity functions that live in the busiest files."
+            metricHelp={{
+              title: "High complexity concentration (top files)",
+              children: <RQ3PercentHighInTop10FilesBody />,
+            }}
           />
           <HotspotTables report={report} />
         </div>

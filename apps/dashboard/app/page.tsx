@@ -12,6 +12,9 @@ import { Github, ArrowRight } from "lucide-react";
 import { isValidGitHubUrl, normalizeGitHubUrl } from "@/lib/githubUrl";
 import { writeReportToSessionStorage } from "@/lib/reportLocalCache";
 
+/** Example analysis target: the ts-repo-metrics analyzer repo (same stack as this dashboard). */
+const EXAMPLE_GITHUB_REPO = "https://github.com/scottyUX/ts-repo-metrics";
+
 export default function HomePage() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,35 +23,47 @@ export default function HomePage() {
 
   const valid = isValidGitHubUrl(url);
 
-  const runAnalysis = useCallback(async () => {
-    if (!valid || loading) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: normalizeGitHubUrl(url) }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        const err = data.error ?? "Analysis failed";
-        setError(err);
-        toast.error(err);
+  const runAnalysisForUrl = useCallback(
+    async (rawUrl: string) => {
+      if (loading) return;
+      if (!isValidGitHubUrl(rawUrl)) {
+        setError("Enter a valid GitHub repository URL");
         return;
       }
-      toast.success("Analysis complete");
-      if (data.resultId && data.report) {
-        writeReportToSessionStorage(data.resultId, data.report);
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: normalizeGitHubUrl(rawUrl) }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const err = data.error ?? "Analysis failed";
+          setError(err);
+          toast.error(err);
+          return;
+        }
+        toast.success("Analysis complete");
+        if (data.resultId && data.report) {
+          writeReportToSessionStorage(data.resultId, data.report);
+        }
+        router.push(`/r/${encodeURIComponent(data.resultId)}`);
+      } catch {
+        setError("Analysis failed. Please try again.");
+        toast.error("Analysis failed");
+      } finally {
+        setLoading(false);
       }
-      router.push(`/r/${encodeURIComponent(data.resultId)}`);
-    } catch {
-      setError("Analysis failed. Please try again.");
-      toast.error("Analysis failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [url, valid, loading, router]);
+    },
+    [loading, router],
+  );
+
+  const runAnalysis = useCallback(() => {
+    if (!valid || loading) return;
+    void runAnalysisForUrl(url);
+  }, [url, valid, loading, runAnalysisForUrl]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,6 +114,31 @@ export default function HomePage() {
           </button>
         </div>
       </form>
+
+      {/* Example repo — same stack as the analyzer; one click runs analyze */}
+      <div className="flex flex-col items-center gap-2 text-center">
+        <p className="text-sm text-muted-foreground">or try an example</p>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => {
+            setUrl(EXAMPLE_GITHUB_REPO);
+            void runAnalysisForUrl(EXAMPLE_GITHUB_REPO);
+          }}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50 disabled:pointer-events-none"
+        >
+          <Github className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <span>Analyze ts-repo-metrics</span>
+        </button>
+        <a
+          href={EXAMPLE_GITHUB_REPO}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+        >
+          View on GitHub
+        </a>
+      </div>
 
       {/* Footer */}
       <p className="text-center text-sm text-muted-foreground">

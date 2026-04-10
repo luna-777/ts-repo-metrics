@@ -77,6 +77,10 @@ When `cloneOrUseCache` fails because the git binary is unavailable (e.g. on Verc
 
 Per-function extraction runs in `extract/functionMetrics.ts` (with `parsing/tokenScanner.ts` for Halstead atoms, `extract/halstead.ts`, `extract/cognitiveComplexity.ts`, `utils/metrics.ts` for `MI_raw` / `MI_norm`). Cyclomatic branch counting is shared with `extract/complexity.ts` via `countCyclomaticBranchPoints`. The dashboard **Dataset** tab aggregates Phase 2 metrics into `featureVector.ts`; the **Phase 2 — Lexical & cognitive** results tab shows per-function tables, repo-level summary cards, a **metric glossary** (definitions, LaTeX formulas, citations), and a collapsible **Threshold calibration** table (academic/industry sources + significance). Cell backgrounds for `MI_norm`, CC, and cognitive complexity follow [`apps/dashboard/lib/phase2Traffic.ts`](../apps/dashboard/lib/phase2Traffic.ts) (GRAD-AI / Sonar-style bands; see `docs/METRICS_CONCEPTS.md`).
 
+## Phase 3 (AI smells / pathology)
+
+`extract/silentFailures.ts` scans **`.tsx`** try/catch nodes for empty or console-only catches. `analyzeRepo.ts` aggregates **SFD**, **MCR** (`isMonolithic` on `FunctionDetail` when `isReactComponent && lines > threshold`), and **SRS** from jscpd duplicate JSON via `collect/weightedRedundancy.ts`. The dashboard **Phase 3 — AI smells** tab shows KPI cards and tables; optional `phase3_*` columns are emitted in `featureVector.ts` when `report.phase3` is present.
+
 ## Module Responsibilities
 
 | Location | Purpose |

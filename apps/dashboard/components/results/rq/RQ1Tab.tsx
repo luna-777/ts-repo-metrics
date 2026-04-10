@@ -11,6 +11,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { RepoReport } from "@/lib/reportTypes";
+import {
+  RQ1AvgLinesPerCommitBody,
+  RQ1BurstRatioBody,
+  RQ1CommitsPerWeekBody,
+  RQ1DuplicationPercentBody,
+  RQ1EntropyBody,
+  RQ1LargeCommitRatioBody,
+  RQ1MedianCommitSizeBody,
+} from "./metricHelpContent";
 
 interface RQ1TabProps {
   report: RepoReport;
@@ -30,9 +39,9 @@ export function RQ1Tab({ report }: RQ1TabProps) {
   const medianCommitSize = gv2?.commitStats?.medianCommitSize ?? git?.medianCommitSize ?? 0;
   const avgLinesPerCommit = git?.avgLinesPerCommit ?? 0;
   const largeCommitRatio = gv2?.commitStats?.pctOver500Loc ?? git?.largeCommitRatio ?? 0;
-  const burstRatio = (gv2?.burstStats?.burstRatio ?? 0) * 100;
+  /** Engine stores this as 0–100 (e.g. 60 = 60%). */
+  const burstRatio = gv2?.burstStats?.burstRatio ?? 0;
   const entropy = gv2?.entropy?.stdDevTimeBetweenCommits ?? 0;
-  const pctOver500 = gv2?.commitStats?.pctOver500Loc ?? 0;
   const duplication = (report.duplication?.percentage ?? 0);
   const framework = report.framework?.type ?? "—";
 
@@ -57,63 +66,93 @@ export function RQ1Tab({ report }: RQ1TabProps) {
             label="Total commits"
             value={totalCommits}
             rq="RQ1"
-            tooltip="Total commits in history"
+            tooltip="All commits parsed from git history for this run"
           />
           <MetricCard
             label="Commits per week"
             value={formatNumber(commitsPerWeek)}
             rq="RQ1"
-            tooltip="Commits per week (last 13 weeks)"
+            tooltip="Recent commits in the last 13 weeks ÷ 13."
+            metricHelp={{
+              title: "Commits per week",
+              children: <RQ1CommitsPerWeekBody />,
+            }}
           />
           <MetricCard
             label="Median commit size"
             value={formatNumber(medianCommitSize)}
             rq="RQ1"
-            tooltip="Median lines changed per commit"
+            tooltip="Median total lines changed (add + delete) per commit."
+            metricHelp={{
+              title: "Median commit size",
+              children: <RQ1MedianCommitSizeBody />,
+            }}
           />
           <MetricCard
             label="Avg lines per commit"
             value={formatNumber(avgLinesPerCommit)}
             rq="RQ1"
-            tooltip="Mean lines changed per commit"
+            tooltip="Mean total lines changed per commit."
+            metricHelp={{
+              title: "Average lines per commit",
+              children: <RQ1AvgLinesPerCommitBody />,
+            }}
           />
           <MetricCard
             label="Large commit ratio (>500 LOC)"
             value={`${formatNumber(largeCommitRatio)}%`}
             rq="RQ1"
-            tooltip="Percent of commits > 500 lines changed"
+            tooltip="Share of commits with total churn &gt; 500 lines."
+            metricHelp={{
+              title: "Large commit ratio (&gt;500 LOC)",
+              children: <RQ1LargeCommitRatioBody />,
+            }}
           />
           <MetricCard
             label="Burst ratio"
             value={`${formatNumber(burstRatio)}%`}
             rq="RQ1"
-            tooltip="Percent of commits in bursts (≥3 in 30 min)"
+            tooltip="Share of commits that fall inside a burst cluster (≥3 commits within 30 min)."
+            metricHelp={{
+              title: "Burst ratio",
+              children: <RQ1BurstRatioBody />,
+            }}
           />
           <MetricCard
             label="Commit entropy (std dev ms)"
             value={formatNumber(entropy)}
             rq="RQ1"
-            tooltip="Std dev of time between consecutive commits"
+            tooltip="Standard deviation of gaps between consecutive commits (milliseconds)."
+            metricHelp={{
+              title: "Commit timing variability",
+              children: <RQ1EntropyBody />,
+            }}
           />
           <MetricCard
             label="Duplication %"
             value={`${formatNumber(duplication)}%`}
             rq="RQ1"
-            tooltip="Behavior proxy: duplicate code percentage"
+            tooltip="Same jscpd duplication % as RQ3 (cross-tab proxy)."
+            metricHelp={{
+              title: "Duplication percentage",
+              children: <RQ1DuplicationPercentBody />,
+            }}
           />
           <MetricCard
             label="Framework detected"
             value={framework}
             rq="RQ1"
-            tooltip="Primary detected framework"
+            tooltip="Primary framework signal from the analyzer"
           />
         </div>
       </section>
       <section>
         <h2 className="text-lg font-semibold mb-4">Churn Concentration</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Top files by modification count and lines changed. Concentrated churn
-          may indicate workflow patterns.
+          Top files by modification count and lines changed.{" "}
+          <strong>Modifications</strong> is how often a file appears in commit file lists;{" "}
+          <strong>lines changed</strong> is the sum of added + deleted lines across those commits.
+          Concentrated churn may indicate integration style or hotspots.
         </p>
         <div className="grid gap-6 md:grid-cols-2">
           <div className="rounded-md border">

@@ -332,4 +332,51 @@ export const DATA_DICTIONARY: Record<string, DataDictionaryEntry> = {
     rq: "RQ3",
     interpretation: "0–1 fraction of functions in TSX-tagged components.",
   },
+  phase3_sfd: {
+    definition:
+      "Silent failure density: TSX empty/console-only catch events per 1000 non-test source lines.",
+    unit: "ratio",
+    rq: "RQ3",
+    interpretation: "Higher: more swallowed or log-only error handling in UI code.",
+  },
+  phase3_mcr: {
+    definition:
+      "Monolithic component rate: share of heuristic React components with SLOC above threshold.",
+    unit: "ratio",
+    rq: "RQ3",
+    interpretation:
+      "Use with care: value is -1 when the engine reports null (no React components in scope).",
+  },
+  phase3_srs: {
+    definition:
+      "Structural redundancy score: jscpd weighted duplicate mass per 1000 source lines (exact vs near clones).",
+    unit: "ratio",
+    rq: "RQ3",
+    interpretation: "Higher: more duplicated structure weighted by clone similarity.",
+  },
+  phase3_silent_failure_count: {
+    definition: "Count of TSX silent-failure events (empty catch or console-only catch).",
+    unit: "count",
+    rq: "RQ3",
+    interpretation: "Raw event count before normalization by sourceLOC.",
+  },
+  phase3_monolithic_component_count: {
+    definition: "Count of heuristic React components exceeding the monolithic SLOC threshold.",
+    unit: "count",
+    rq: "RQ3",
+    interpretation: "Larger UI components; see Bollu / Tampere-style maintainability framing.",
+  },
+  phase3_react_component_count: {
+    definition: "Count of functions flagged as React components (denominator for MCR).",
+    unit: "count",
+    rq: "RQ3",
+    interpretation: "Stratify with phase2_react_component_count (Phase 2 uses functions with Halstead data).",
+  },
+  phase3_srs_weighted_numerator: {
+    definition:
+      "Weighted sum of duplicate line mass before dividing by KLOC (1.0 exact, 0.5 near-clone).",
+    unit: "count",
+    rq: "RQ3",
+    interpretation: "Intermediate value; pairs with phase3_srs for decomposition.",
+  },
 };

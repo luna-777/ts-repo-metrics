@@ -11,6 +11,7 @@ import {
   FUNCTION_NODE_TYPES,
   NESTING_NODE_TYPES,
   LONG_FUNCTION_THRESHOLD,
+  FERREIRA_COMPONENT_SLOC_THRESHOLD,
 } from "../utils/constants.js";
 import { SKIP, walkTree } from "../utils/astWalker.js";
 import { median } from "../utils/math.js";
@@ -153,6 +154,14 @@ export function extractFunctionMetrics(
           maintainabilityIndexGradAiRaw,
         );
 
+        const isReactComponent = computeIsReactComponent(
+          node,
+          relativeFilePath,
+          name,
+        );
+        const isMonolithic =
+          isReactComponent && lines > FERREIRA_COMPONENT_SLOC_THRESHOLD;
+
         functions.push({
           name,
           type: node.type,
@@ -165,11 +174,8 @@ export function extractFunctionMetrics(
           cognitiveComplexity,
           maintainabilityIndexGradAiRaw,
           maintainabilityIndexGradAiNorm,
-          isReactComponent: computeIsReactComponent(
-            node,
-            relativeFilePath,
-            name,
-          ),
+          isReactComponent,
+          isMonolithic,
         });
       }
     },

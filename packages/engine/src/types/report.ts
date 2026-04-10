@@ -56,6 +56,8 @@ export interface FunctionDetail {
   maintainabilityIndexGradAiNorm: number;
   /** Heuristic: `.tsx` and (PascalCase name or JSX in body). */
   isReactComponent: boolean;
+  /** Phase 3: React component with SLOC above monolithic threshold (Bollu / Tampere-style). */
+  isMonolithic: boolean;
 }
 
 /** Aggregated function metrics for an entire repository. */
@@ -263,6 +265,28 @@ export interface ReactMetricsReport {
   summary: ReactMetricsSummary;
 }
 
+/** Phase 3 — AI smell / pathology metrics (TSX silent failures, monolithic rate, weighted redundancy). */
+export interface SilentFailureEvent {
+  file: string;
+  line: number;
+  kind: "empty_catch" | "console_only_catch";
+}
+
+export interface Phase3Metrics {
+  /** Silent failure density: totalEvents / (sourceLOC / 1000). */
+  sfd: number;
+  /** Monolithic component rate: monolithicCount / reactComponentCount; null if no React components. */
+  mcr: number | null;
+  /** Structural redundancy score: weightedNumerator / (sourceLOC / 1000). */
+  srs: number;
+  silentFailureEvents: SilentFailureEvent[];
+  srsWeightedNumerator: number;
+  srsExactWeightedLines: number;
+  srsNearWeightedLines: number;
+  monolithicComponentCount: number;
+  reactComponentCount: number;
+}
+
 /**
  * Complete repository analysis report.
  *
@@ -295,4 +319,6 @@ export interface RepoReport {
   perFile: PerFileEntry[];
   /** React/TSX static metrics when at least one .tsx file was analyzed. */
   reactMetrics?: ReactMetricsReport;
+  /** Phase 3 — silent failures, monolithic rate, weighted jscpd redundancy. */
+  phase3?: Phase3Metrics;
 }

@@ -221,6 +221,19 @@ export function buildFeatureVector(
       Math.round((reactC / p2.length) * 1000) / 1000;
   }
 
+  if (r.phase3) {
+    const p3 = r.phase3;
+    vec.phase3_sfd = Math.round(p3.sfd * 1000) / 1000;
+    vec.phase3_srs = Math.round(p3.srs * 1000) / 1000;
+    vec.phase3_mcr =
+      p3.mcr === null ? -1 : Math.round(p3.mcr * 1000) / 1000;
+    vec.phase3_silent_failure_count = p3.silentFailureEvents.length;
+    vec.phase3_monolithic_component_count = p3.monolithicComponentCount;
+    vec.phase3_react_component_count = p3.reactComponentCount;
+    vec.phase3_srs_weighted_numerator =
+      Math.round(p3.srsWeightedNumerator * 1000) / 1000;
+  }
+
   return vec;
 }
 

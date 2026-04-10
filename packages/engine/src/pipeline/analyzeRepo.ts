@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { discoverSourceFiles } from "../collect/fileDiscovery.js";
 import { profileRepo } from "../collect/loc.js";
 import { detectDuplication } from "../collect/duplication.js";
+import { computeWeightedRedundancy } from "../collect/weightedRedundancy.js";
 import { extractGitMetrics } from "../collect/gitMetrics.js";
 import { extractGitMetricsV2 } from "../collect/gitMetricsV2.js";
 import { detectFramework } from "../collect/frameworkDetection.js";
@@ -27,6 +28,7 @@ import {
   extractReactMetricsFromTsx,
   mergeReactMetricsReports,
 } from "../extract/react/extractReactMetrics.js";
+import { extractSilentFailures } from "../extract/silentFailures.js";
 import { LONG_FUNCTION_THRESHOLD } from "../utils/constants.js";
 import { median } from "../utils/math.js";
 import { getSourceMetadata } from "../collect/repoMetadata.js";
@@ -39,6 +41,8 @@ import type {
   PerFileEntry,
   SourceInfo,
   ReactComponentMetrics,
+  Phase3Metrics,
+  SilentFailureEvent,
 } from "../types/report.js";
 
 function flavorForFile(filePath: string): "ts" | "tsx" {
@@ -81,6 +85,7 @@ export async function analyzeRepo(
   let filesSkipped = 0;
   const reactMetricsByFile: ReactComponentMetrics[][] = [];
   let tsxFilesAnalyzed = 0;
+  const silentFailureEvents: SilentFailureEvent[] = [];
 
   for (const filePath of files) {
     let code: string;
@@ -133,6 +138,9 @@ export async function analyzeRepo(
     });
 
     if (flavorForFile(filePath) === "tsx") {
+      silentFailureEvents.push(
+        ...extractSilentFailures(tree.rootNode, relFile),
+      );
       tsxFilesAnalyzed++;
       reactMetricsByFile.push(
         extractReactMetricsFromTsx(tree.rootNode, path.relative(repoPath, filePath)),
@@ -166,7 +174,44 @@ export async function analyzeRepo(
     functionMetricsSummary.averageLength,
   );
   const testCoverageProxy = computeTestCoverageProxy(profile);
-  const duplication = await detectDuplication(repoPath);
+  const duplicationResult = await detectDuplication(repoPath);
+  const duplication = duplicationResult?.metrics ?? null;
+  const sourceKlocDivisor = profile.sourceLOC / 1000;
+  const sfd =
+    sourceKlocDivisor > 0
+      ? silentFailureEvents.length / sourceKlocDivisor
+      : 0;
+  const reactComponentCount = allFunctionDetails.filter((f) => f.isReactComponent)
+    .length;
+  const monolithicComponentCount = allFunctionDetails.filter((f) => f.isMonolithic)
+    .length;
+  const mcr =
+    reactComponentCount === 0
+      ? null
+      : monolithicComponentCount / reactComponentCount;
+  const redundancyWeights = duplicationResult
+    ? computeWeightedRedundancy(
+        repoPath,
+        duplicationResult.duplicates,
+        profile.sourceLOC,
+      )
+    : {
+        weightedNumerator: 0,
+        srs: 0,
+        exactWeightedLines: 0,
+        nearWeightedLines: 0,
+      };
+  const phase3: Phase3Metrics = {
+    sfd: Math.round(sfd * 100000) / 100000,
+    mcr: mcr === null ? null : Math.round(mcr * 100000) / 100000,
+    srs: redundancyWeights.srs,
+    silentFailureEvents,
+    srsWeightedNumerator: redundancyWeights.weightedNumerator,
+    srsExactWeightedLines: redundancyWeights.exactWeightedLines,
+    srsNearWeightedLines: redundancyWeights.nearWeightedLines,
+    monolithicComponentCount,
+    reactComponentCount,
+  };
   const git = await extractGitMetrics(repoPath);
   const gitMetricsV2 = await extractGitMetricsV2(repoPath);
   const framework = await detectFramework(repoPath);
@@ -210,5 +255,6 @@ export async function analyzeRepo(
     framework,
     perFile,
     reactMetrics,
+    phase3,
   };
 }

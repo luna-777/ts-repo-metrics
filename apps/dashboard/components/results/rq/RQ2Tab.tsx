@@ -5,6 +5,14 @@ import { MetricCard } from "../MetricCard";
 import { RQFramingHeader } from "./RQFramingHeader";
 import { RQ2Quadrant } from "./RQ2Quadrant";
 import type { RepoReport } from "@/lib/reportTypes";
+import {
+  RQ2PctCommitsTouchingTestsBody,
+  RQ2RefactorCommitRatioBody,
+  RQ2TestLocRatioBody,
+  RQ3CyclomaticMaxBody,
+  RQ3HighComplexityCountBody,
+  RQ3LongFunctionCountBody,
+} from "./metricHelpContent";
 
 interface RQ2TabProps {
   report: RepoReport;
@@ -61,19 +69,23 @@ export function RQ2Tab({ report }: RQ2TabProps) {
             label="Test LOC"
             value={testLoc}
             rq="RQ2"
-            tooltip="Lines of code in test files"
+            tooltip="Lines of code in test files (*.test / *.spec)"
           />
           <MetricCard
             label="Source LOC"
             value={sourceLoc}
             rq="RQ2"
-            tooltip="Lines of code in non-test files"
+            tooltip="Lines of code in non-test source files"
           />
           <MetricCard
             label="Test LOC ratio"
             value={formatNumber(testLocRatio)}
             rq="RQ2"
-            tooltip="testLOC / sourceLOC"
+            tooltip="testLOC ÷ sourceLOC."
+            metricHelp={{
+              title: "Test LOC ratio",
+              children: <RQ2TestLocRatioBody />,
+            }}
           />
           <MetricCard
             label="Test files"
@@ -85,7 +97,11 @@ export function RQ2Tab({ report }: RQ2TabProps) {
             label="% commits touching tests"
             value={`${formatNumber(pctCommitsTouchingTests)}%`}
             rq="RQ2"
-            tooltip="Percent of commits that modify test files"
+            tooltip="Commits where any changed path is a test file."
+            metricHelp={{
+              title: "Percent of commits touching tests",
+              children: <RQ2PctCommitsTouchingTestsBody />,
+            }}
           />
           <MetricCard
             label="Empty catch blocks"
@@ -97,13 +113,17 @@ export function RQ2Tab({ report }: RQ2TabProps) {
             label="Console log count"
             value={consoleLogCount}
             rq="RQ2"
-            tooltip="console.log/warn/error calls"
+            tooltip="console.log / warn / error calls"
           />
           <MetricCard
             label="Refactor commit ratio"
             value={`${formatNumber(refactorCommitRatio)}%`}
             rq="RQ2"
-            tooltip="% commits with refactor/cleanup in message"
+            tooltip="Commits whose subject matches refactor-style keywords."
+            metricHelp={{
+              title: "Refactor commit ratio",
+              children: <RQ2RefactorCommitRatioBody />,
+            }}
           />
         </div>
       </section>
@@ -114,19 +134,31 @@ export function RQ2Tab({ report }: RQ2TabProps) {
             label="High complexity count"
             value={highComplexityCount}
             rq="RQ2"
-            tooltip="Functions with complexity ≥ 10"
+            tooltip="Functions with complexity > 10."
+            metricHelp={{
+              title: "High complexity function count",
+              children: <RQ3HighComplexityCountBody />,
+            }}
           />
           <MetricCard
             label="Long function count"
             value={longFunctionCount}
             rq="RQ2"
-            tooltip="Functions > 50 lines"
+            tooltip="Functions with more than 50 lines."
+            metricHelp={{
+              title: "Long function count",
+              children: <RQ3LongFunctionCountBody />,
+            }}
           />
           <MetricCard
             label="Max complexity"
             value={maxComplexity}
             rq="RQ2"
-            tooltip="Highest single-function complexity"
+            tooltip="Largest per-function cyclomatic value."
+            metricHelp={{
+              title: "Maximum cyclomatic complexity",
+              children: <RQ3CyclomaticMaxBody />,
+            }}
           />
         </div>
       </section>

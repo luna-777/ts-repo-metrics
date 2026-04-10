@@ -1,6 +1,6 @@
 # ts-repo-metrics
 
-A TypeScript CLI tool that statically analyzes TypeScript and TSX repositories using [Tree-sitter](https://tree-sitter.github.io/tree-sitter/), producing a comprehensive JSON report covering repository profiling, function metrics, cyclomatic complexity, code smells, duplication, git history, extended git metrics (Epic D: commit size distribution, bursts, entropy, churn hotspots, test coupling, refactor rate), framework detection, maintainability index, test coverage proxy, and **optional RQ3 React/TSX metrics** (`reactMetrics`: hooks, JSX depth, cohesion-style flags, prop pass-through MVP, hook-safety heuristics).
+A TypeScript CLI tool that statically analyzes TypeScript and TSX repositories using [Tree-sitter](https://tree-sitter.github.io/tree-sitter/), producing a comprehensive JSON report covering repository profiling, function metrics, cyclomatic complexity, code smells, duplication, git history, extended git metrics (Epic D: commit size distribution, bursts, entropy, churn hotspots, test coupling, refactor rate), framework detection, maintainability index, test coverage proxy, **optional RQ3 React/TSX metrics** (`reactMetrics`: hooks, JSX depth, cohesion-style flags, prop pass-through MVP, hook-safety heuristics), and **optional Phase 3 pathology** (`phase3`: silent-failure density, monolithic component rate, weighted structural redundancy from jscpd).
 
 ## Prerequisites
 

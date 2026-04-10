@@ -74,4 +74,11 @@ export const METRIC_TO_RQ: Record<string, RQId> = {
   maintainability_score: "RQ3",
   maintainability_classification: "RQ3",
   percent_high_complexity_in_top_10_percent_files: "RQ3",
+  phase3_sfd: "RQ3",
+  phase3_mcr: "RQ3",
+  phase3_srs: "RQ3",
+  phase3_silent_failure_count: "RQ3",
+  phase3_monolithic_component_count: "RQ3",
+  phase3_react_component_count: "RQ3",
+  phase3_srs_weighted_numerator: "RQ3",
 };
