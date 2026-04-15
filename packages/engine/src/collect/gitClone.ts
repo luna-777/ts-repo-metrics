@@ -31,6 +31,20 @@ export async function cloneOrUseCache(
 ): Promise<string> {
   const fullPath = path.resolve(baseDir, CACHE_DIR, cacheKey(parsed));
 
+  // A previous run may have left a partial tree (e.g. interrupted clone: `.git` without HEAD).
+  // Reusing that path skips clone and yields 0 source files — all metrics zero.
+  if (existsSync(fullPath)) {
+    let looksLikeGitRepo = false;
+    try {
+      looksLikeGitRepo = await simpleGit(fullPath).checkIsRepo();
+    } catch {
+      looksLikeGitRepo = false;
+    }
+    if (!looksLikeGitRepo) {
+      rmSync(fullPath, { recursive: true, force: true });
+    }
+  }
+
   if (useCache && existsSync(fullPath)) {
     return fullPath;
   }
