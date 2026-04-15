@@ -62,14 +62,14 @@ src/
 
 ## Adding a New Metric
 
-1. **Define the interface** in `src/types/report.ts` and add the field to `RepoReport`.
-2. **Add any constants/thresholds** to `src/utils/constants.ts`.
-3. **Create the extractor** in `src/extract/` (AST-based) or `src/collect/` (file/subprocess-based).
-4. **Integrate** in `src/pipeline/analyzeRepo.ts` — import, call, include in the return object.
+1. **Define the interface** in `packages/engine/src/types/report.ts` and add the field to `RepoReport`.
+2. **Add any constants/thresholds** to `packages/engine/src/utils/constants.ts`.
+3. **Create the extractor** in `packages/engine/src/extract/` (AST-based) or `packages/engine/src/collect/` (file/subprocess-based).
+4. **Integrate** in `packages/engine/src/pipeline/analyzeRepo.ts` — import, call, include in the return object. Export from `packages/engine/src/index.ts` if needed by the CLI or dashboard.
 5. **Update documentation**:
    - JSDoc on all exported functions (`@param`, `@returns`)
    - Add a section to `docs/SCHEMA.md`
-   - Update `README.md` example output
+   - Update `README.md` (metrics table and example output where relevant)
 
 ## Code Conventions
 

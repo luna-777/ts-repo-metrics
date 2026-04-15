@@ -152,18 +152,21 @@ When the repo contains `.tsx` files, the report also includes **`reactMetrics`**
 | `duplication` | jscpd | Duplicate percentage, lines, clone clusters |
 | `git` | simple-git or GitHub API (fallback) | Commit count, sizes, frequency, large commit ratio. On Vercel (no git CLI), metrics come from the GitHub REST API when `GITHUB_TOKEN` is set. |
 | `framework` | package.json | React, Next.js, Express, NestJS, Fastify, or Node |
-| `reactMetrics` | `extract/react` (TSX only) | RQ3: components with JSX, hooks, nested JSX depth, Ferreira/Tampere-style flags, prop pass-through MVP, hook-safety heuristics |
-| Per-function (in `perFile[].functionMetrics`) | `tokenScanner`, `halstead`, `cognitiveComplexity`, `utils/metrics` | Phase 2: Halstead volume, cyclomatic on each function, cognitive complexity, GRAD-AI `MI_raw` / `MI_norm`, `isReactComponent` heuristic |
+| `reactMetrics` | `extract/react` (TSX only) | React/TSX: components with JSX, hooks, nested JSX depth, Ferreira/Tampere-style flags, prop pass-through MVP, hook-safety heuristics |
+| `phase3` | `extract/silentFailures`, `collect/weightedRedundancy`, `functionMetrics` | Optional pathology block: silent-failure density (TSX), monolithic component rate, weighted structural redundancy (jscpd) |
+| Per-function (in `perFile[].functionMetrics`) | `tokenScanner`, `halstead`, `cognitiveComplexity`, `utils/metrics` | Lexical / cognitive: Halstead volume, cyclomatic, cognitive complexity, GRAD-AI `MI_raw` / `MI_norm`, `isReactComponent` heuristic |
 
 ## Dashboard
 
 A Next.js dashboard app in `apps/dashboard/` provides a web UI:
 
-- Analyze public GitHub repos from URL
-- RQ-driven results (RQ1 Behavioral Shift, RQ2 Verification & Engagement, RQ3 Quality Outcomes, **RQ3 — React / TSX**, **Phase 2 — Lexical & cognitive** with metric glossary, collapsible threshold calibration, and traffic-light bands for MI/CC/cognitive)
-- Dataset tab: metadata, feature vector (including Phase 2 aggregates), data dictionary, export
+- **Home:** paste a public GitHub URL, or use **Analyze ts-repo-metrics** to run the analyzer on this repository in one click.
+- **Results tabs** (plain labels, no RQ/phase codes): **Behavioral** (git workflow & churn), **Verification** (tests & risk profile), **Quality** (complexity, maintainability, duplication), **React & TSX** (hooks, JSX, cohesion heuristics), **Lexical** (per-function Halstead / cognitive / GRAD-AI MI, glossary, threshold calibration, traffic-light bands), **AI smells** (Phase 3 pathology KPIs when present), **Dataset** (metadata, feature vector, data dictionary, CSV/JSON export).
+- **Metric help:** cards and tables include short tooltips and optional **help dialogs** (definitions and how values are computed) for derived metrics.
 
 Run with `npm run dashboard` (starts `next dev` in `apps/dashboard/`). For Vercel deployment, set `GITHUB_TOKEN` to enable API-derived git metrics when the git CLI is unavailable.
+
+**GitHub analysis & cache:** The API clones under `os.tmpdir()/repo-metrics-git-cache/` (not the app folder) so stale layouts do not poison results. Cached directories are reused only if they pass `git` validation (`checkIsRepo()`); corrupt or partial clones (e.g. interrupted download) are removed and re-cloned. The CLI still uses `.cache/ts-repo-metrics/` under the current working directory unless you pass `--no-cache`.
 
 ## Project Structure
 
@@ -179,9 +182,9 @@ repo-metrics/
 │   └── engine/                     # @repo-metrics/engine (builds to dist/)
 │       ├── src/
 │       │   ├── pipeline/           # analyzeRepo, analyzeFromGitHubUrl
-│       │   ├── collect/            # fileDiscovery, loc, duplication, gitClone, gitMetrics, gitMetricsApi, repoMetadata, frameworkDetection
+│       │   ├── collect/            # fileDiscovery, loc, duplication, gitClone, weightedRedundancy, gitMetrics, gitMetricsApi, repoMetadata, frameworkDetection
 │       │   ├── parsing/            # tsParser, tokenScanner (Halstead atoms)
-│       │   ├── extract/           # functionCount, functionMetrics, complexity, halstead, cognitiveComplexity, smells, testCoverageProxy, maintainabilityIndex, distributions, react/
+│       │   ├── extract/           # functionCount, functionMetrics, complexity, halstead, cognitiveComplexity, smells, silentFailures, testCoverageProxy, maintainabilityIndex, distributions, react/
 │       │   ├── types/              # report.ts (RepoReport, etc.)
 │       │   └── utils/              # constants, githubUrl, math, text, astWalker
 │       └── __tests__/              # Engine test suite (+ fixtures)
@@ -201,7 +204,7 @@ repo-metrics/
    - Code smell detection (5 detectors)
    - For each `.tsx` file: React RQ3 metrics (components, hooks, JSX depth, cohesion-style flags, hook safety)
 5. **Collect** — Non-AST modules gather duplication (jscpd), git history (simple-git), and framework info (package.json).
-6. **Aggregate** — Pipeline combines all results into a typed `RepoReport`, computes composite metrics (maintainability index, test coverage proxy, optional `reactMetrics`).
+6. **Aggregate** — Pipeline combines all results into a typed `RepoReport`, computes composite metrics (maintainability index, test coverage proxy, optional `reactMetrics`, optional `phase3`).
 7. **Report** — JSON output to stdout (single mode) or individual files + optional CSV (batch mode).
 
 ## Documentation

@@ -1,6 +1,6 @@
 # Metrics concepts (Phase 2 + Phase 3 + research framing)
 
-This document complements [SCHEMA.md](SCHEMA.md) with citations and interpretation guidance for **lexical** (Halstead), **structural** (cyclomatic), **cognitive** (Sonar-style), and **GRAD-AI** per-function maintainability metrics, plus **Phase 3** repo-level pathology metrics.
+This document complements [SCHEMA.md](SCHEMA.md) with citations and interpretation guidance for **lexical** (Halstead), **structural** (cyclomatic), **cognitive** (Sonar-style), and **GRAD-AI** per-function maintainability metrics, plus **Phase 3** repo-level pathology metrics. In the dashboard, the **Lexical** tab surfaces Phase 2 per-function metrics; the **AI smells** tab surfaces Phase 3 aggregates when `phase3` is present.
 
 ## Tri-metric framing (dissertation / committee)
 

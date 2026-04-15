@@ -1,6 +1,6 @@
 # Output Schema Reference
 
-This document describes the complete JSON report produced by `ts-repo-metrics`.
+This document describes the complete JSON report produced by `ts-repo-metrics` (CLI and dashboard API). The web dashboard groups these fields into tabs (Behavioral, Verification, Quality, React & TSX, Lexical, AI smells, Dataset); see the [README](../README.md#dashboard) for the mapping.
 
 ## Top-level structure (`RepoReport`)
 
