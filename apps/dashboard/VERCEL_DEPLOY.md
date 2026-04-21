@@ -24,6 +24,8 @@ The dashboard’s `npm run build` does steps 2 and 3 via `build:engine` then `ne
 
 ## Environment variables
 
+**Without `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, the header shows “Sign in unavailable” and `/repos` returns “Authentication is not configured.”** These are inlined at **build time** — after adding or changing them in Vercel, trigger a new deployment.
+
 - **`NEXT_PUBLIC_SUPABASE_URL`**: Supabase project URL.
 - **`NEXT_PUBLIC_SUPABASE_ANON_KEY`**: Supabase **anon** (public) key. Required for cookie-based sessions and for **RLS-protected reads** of `analyses` (`GET /api/results/...`, server-side `getReportById`).
 - **`SUPABASE_SERVICE_ROLE_KEY`**: Service role key — **server-only**. Used for trusted upserts from `POST /api/analyze` and for persisting encrypted GitHub tokens after OAuth callback.

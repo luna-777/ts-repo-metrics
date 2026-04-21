@@ -44,7 +44,14 @@ export function HeaderGitHubAuth() {
   }, [refresh]);
 
   if (!isBrowserSupabaseConfigured()) {
-    return null;
+    return (
+      <span
+        className="max-w-[10rem] truncate text-right text-xs text-muted-foreground sm:max-w-none"
+        title="Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the host (e.g. Vercel), then redeploy so the Sign in button appears."
+      >
+        Sign in unavailable
+      </span>
+    );
   }
 
   if (loading) {
