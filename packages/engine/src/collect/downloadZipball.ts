@@ -15,15 +15,27 @@ function cacheKey(parsed: ParsedGitHubUrl): string {
   return `${parsed.owner}-${parsed.repo}`;
 }
 
+function githubApiHeaders(token?: string): Record<string, string> {
+  const h: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+  };
+  if (token?.trim()) {
+    h.Authorization = `Bearer ${token.trim()}`;
+  }
+  return h;
+}
+
 /**
- * Fetch default branch and latest commit SHA from GitHub API (no auth for public repos).
+ * Fetch default branch and latest commit SHA from GitHub API.
+ * @param token - Optional PAT for private repositories.
  */
 export async function getSourceFromGitHubApi(
   parsed: ParsedGitHubUrl,
+  token?: string,
 ): Promise<SourceInfo> {
   const apiUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`;
   const res = await fetch(apiUrl, {
-    headers: { Accept: "application/vnd.github.v3+json" },
+    headers: githubApiHeaders(token),
   });
   if (!res.ok) {
     throw new Error(`GitHub API error: ${res.status} for ${parsed.url}`);
@@ -33,7 +45,7 @@ export async function getSourceFromGitHubApi(
 
   const commitsUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/commits/${branch}`;
   const commitsRes = await fetch(commitsUrl, {
-    headers: { Accept: "application/vnd.github.v3+json" },
+    headers: githubApiHeaders(token),
   });
   if (!commitsRes.ok) {
     return {
@@ -58,11 +70,13 @@ export async function getSourceFromGitHubApi(
  * Download repo as zipball and extract to cache dir. Returns path to repo root.
  * Zipball has one top-level dir (owner-repo-sha); we flatten so repo root is fullPath.
  * If useCache is true and fullPath already exists (from a prior run), returns it.
+ * @param githubToken - Optional PAT for private repository zipball download.
  */
 export async function downloadZipball(
   parsed: ParsedGitHubUrl,
   baseDir: string,
   useCache: boolean = true,
+  githubToken?: string,
 ): Promise<string> {
   const fullPath = path.resolve(baseDir, CACHE_DIR, cacheKey(parsed));
 
@@ -85,7 +99,7 @@ export async function downloadZipball(
   const zipUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/zipball`;
   const res = await fetch(zipUrl, {
     redirect: "follow",
-    headers: { Accept: "application/vnd.github.v3+json" },
+    headers: githubApiHeaders(githubToken),
   });
   if (!res.ok) {
     throw new Error(`Failed to download zipball: ${res.status} for ${parsed.url}`);

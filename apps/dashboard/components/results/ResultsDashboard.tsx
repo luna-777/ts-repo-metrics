@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Download, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,18 +13,44 @@ import { Phase2ComplexityTab } from "./rq/Phase2ComplexityTab";
 import { Phase3PathologyTab } from "./rq/Phase3PathologyTab";
 import { DatasetTab } from "./dataset/DatasetTab";
 import { CrossRQInsightPanel } from "./CrossRQInsightPanel";
+import { GitHubRepositoryPanel } from "./GitHubRepositoryPanel";
 import { hasReactUiScope } from "@/lib/hasReactUiScope";
 import type { RepoReport } from "@/lib/reportTypes";
+import { createUserSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { isBrowserSupabaseConfigured } from "@/lib/supabase/browserConfigured";
 
 interface ResultsDashboardProps {
   report: RepoReport;
   resultId: string;
 }
 
+function reportHasGitHubSource(report: RepoReport): boolean {
+  const u = report.source?.url ?? "";
+  return typeof u === "string" && u.includes("github.com");
+}
+
 export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
   const showReact = hasReactUiScope(report);
   const commit = report?.source?.commit?.slice(0, 7) ?? "—";
   const exportFilename = `repo-metrics-${resultId}-${commit}.json`;
+  const [newAnalysisHref, setNewAnalysisHref] = useState("/");
+
+  useEffect(() => {
+    if (!isBrowserSupabaseConfigured()) return;
+    const supabase = createUserSupabaseBrowserClient();
+    const syncHref = () => {
+      void supabase.auth.getUser().then(({ data }) => {
+        setNewAnalysisHref(data.user ? "/repos" : "/");
+      });
+    };
+    syncHref();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      syncHref();
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleExport = useCallback(() => {
     const blob = new Blob([JSON.stringify(report, null, 2)], {
@@ -51,13 +77,20 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
             Export JSON
           </Button>
           <Button asChild variant="outline">
-            <Link href="/" className="gap-2">
+            <Link href={newAnalysisHref} className="gap-2">
               <ArrowLeft className="size-4" />
               New Analysis
             </Link>
           </Button>
         </div>
       </div>
+
+      {reportHasGitHubSource(report) ? (
+        <GitHubRepositoryPanel
+          meta={report.github ?? null}
+          repoUrl={report.source?.url}
+        />
+      ) : null}
 
       <Tabs defaultValue="rq1">
         <div className="w-full max-w-full overflow-x-auto rounded-lg border border-border/80 bg-muted/80 p-1 shadow-sm [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">

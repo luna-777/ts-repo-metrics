@@ -8,6 +8,7 @@ import { parseGitHubUrl } from "../utils/githubUrl.js";
 import { cloneOrUseCache } from "../collect/gitClone.js";
 import { downloadZipball, getSourceFromGitHubApi } from "../collect/downloadZipball.js";
 import { extractGitMetricsApi } from "../collect/gitMetricsApi.js";
+import { fetchGitHubRepositoryMeta } from "../collect/githubRepoMeta.js";
 import { getSourceMetadata } from "../collect/repoMetadata.js";
 import { analyzeRepo } from "./analyzeRepo.js";
 import type { RepoReport } from "../types/report.js";
@@ -16,6 +17,11 @@ export interface AnalyzeFromGitHubUrlOptions {
   useCache?: boolean;
   /** Writable directory for clone cache (e.g. os.tmpdir() on Vercel). Default: process.cwd() */
   cacheDir?: string;
+  /**
+   * GitHub PAT for private repos and higher API limits.
+   * When set, overrides GITHUB_TOKEN for clone, zipball, and REST enrichment.
+   */
+  githubToken?: string;
 }
 
 function normalizeGitHubUrl(input: string): string {
@@ -55,19 +61,23 @@ export async function analyzeFromGitHubUrl(
 
   const useCache = options?.useCache ?? true;
   const cacheDir = options?.cacheDir ?? process.cwd();
+  const ghToken =
+    options?.githubToken?.trim() ||
+    process.env.GITHUB_TOKEN?.trim() ||
+    undefined;
 
   let repoPath: string;
   let source: { type: "local" | "git"; url: string; commit: string; branch: string };
   let usedZipball = false;
 
   try {
-    repoPath = await cloneOrUseCache(parsed, useCache, cacheDir);
+    repoPath = await cloneOrUseCache(parsed, useCache, cacheDir, ghToken);
     source = await getSourceMetadata(repoPath, "git", parsed.url);
   } catch (err) {
     if (isGitUnavailable(err)) {
       usedZipball = true;
-      repoPath = await downloadZipball(parsed, cacheDir, useCache);
-      source = await getSourceFromGitHubApi(parsed);
+      repoPath = await downloadZipball(parsed, cacheDir, useCache, ghToken);
+      source = await getSourceFromGitHubApi(parsed, ghToken);
     } else {
       throw err;
     }
@@ -75,12 +85,26 @@ export async function analyzeFromGitHubUrl(
 
   const report = await analyzeRepo(repoPath, { source });
 
+  const token = ghToken;
+  try {
+    const ghMeta = await fetchGitHubRepositoryMeta(parsed, token);
+    if (ghMeta) {
+      report.github = ghMeta;
+    }
+  } catch {
+    // optional enrichment
+  }
+
   if (usedZipball) {
     try {
-      report.git = await extractGitMetricsApi(
+      const { metrics, contributors } = await extractGitMetricsApi(
         parsed,
-        process.env.GITHUB_TOKEN,
+        token,
       );
+      report.git = metrics;
+      if (contributors.length > 0) {
+        report.contributors = contributors;
+      }
     } catch {
       report.git = {
         mode: "none",

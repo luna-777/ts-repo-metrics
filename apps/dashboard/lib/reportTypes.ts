@@ -75,6 +75,54 @@ export interface PerFileEntry {
   complexity: FunctionComplexity[];
 }
 
+/** GitHub REST sidebar-style metadata. */
+export interface GitHubLanguageShare {
+  language: string;
+  bytes: number;
+  percentage: number;
+}
+
+export interface GitHubRepoContributor {
+  login: string;
+  avatarUrl: string;
+  htmlUrl: string;
+  contributions: number;
+  name?: string;
+}
+
+export interface GitHubRepositoryMeta {
+  description: string | null;
+  topics: string[];
+  stargazersCount: number;
+  forksCount: number;
+  subscribersCount: number;
+  languages: GitHubLanguageShare[];
+  contributors: GitHubRepoContributor[];
+}
+
+/** Per-author git activity (matches engine ContributorActivity). */
+export interface ContributorActivity {
+  id: string;
+  displayName: string;
+  authorEmail: string;
+  commitCount: number;
+  linesAdded: number;
+  linesDeleted: number;
+  commitStats: {
+    medianCommitSize: number;
+    p90CommitSize: number;
+    pctOver500Loc: number;
+    pctOver1000Loc: number;
+  };
+  burstStats: { burstCount: number; burstRatio: number };
+  entropy: { stdDevTimeBetweenCommits: number };
+  refactorBehavior: { refactorCommitRatio: number };
+  testCoupling: {
+    pctCommitsTouchingTests: number;
+    testToFeatureCommitRatio: number;
+  };
+}
+
 export interface RepoReport {
   repoPath: string;
   source: { type: string; url: string; commit: string; branch: string };
@@ -130,6 +178,8 @@ export interface RepoReport {
     refactorBehavior: { refactorCommitRatio: number };
     testCoupling: { pctCommitsTouchingTests: number; testToFeatureCommitRatio: number };
   } | null;
+  contributors?: ContributorActivity[];
+  github?: GitHubRepositoryMeta;
   framework?: { type: string; hasReact: boolean; hasBackend: boolean } | null;
   perFile: PerFileEntry[];
   /** Present when the analyzer includes RQ3 React metrics (TSX). */

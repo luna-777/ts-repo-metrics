@@ -9,12 +9,18 @@
  *
  * Note: These metrics are proxies—they approximate local git analysis using
  * commit metadata only (no diff stats). medianCommitSize, avgLinesPerCommit,
- * and largeCommitRatio are set to 0 in API mode.
+ * and largeCommitRatio are set to 0 in API mode. Contributor rows likewise
+ * have linesAdded/linesDeleted 0 and empty churn unless extended with
+ * per-commit APIs.
  */
 
 import { median } from "../utils/math.js";
 import type { ParsedGitHubUrl } from "../utils/githubUrl.js";
-import type { GitMetrics } from "../types/report.js";
+import type { GitMetrics, ContributorActivity } from "../types/report.js";
+import {
+  buildContributorActivityFromParsedCommits,
+  type ParsedCommit,
+} from "./gitMetricsV2.js";
 
 const DAYS_WINDOW = 90;
 const WEEKS_WINDOW = 13; // ~90 days
@@ -26,8 +32,8 @@ interface GhCommit {
   sha: string;
   commit: {
     message: string;
-    author?: { date: string } | null;
-    committer?: { date: string } | null;
+    author?: { name?: string; email?: string; date?: string } | null;
+    committer?: { name?: string; email?: string; date?: string } | null;
   };
 }
 
@@ -37,6 +43,26 @@ function toDateStr(iso: string): string {
 
 function toMs(iso: string): number {
   return new Date(iso).getTime();
+}
+
+function apiCommitsToParsed(commits: GhCommit[]): ParsedCommit[] {
+  return commits.map((c, i) => {
+    const date =
+      c.commit.author?.date ?? c.commit.committer?.date ?? "";
+    const tsSec = date
+      ? Math.floor(toMs(date) / 1000)
+      : Math.floor(Date.now() / 1000) - i;
+    const subject = (c.commit.message ?? "").split("\n")[0] ?? "";
+    return {
+      hash: c.sha,
+      timestamp: tsSec,
+      authorEmail: (c.commit.author?.email ?? "").trim(),
+      authorName: (c.commit.author?.name ?? "").trim(),
+      subject,
+      files: [],
+      totalLines: 0,
+    };
+  });
 }
 
 async function fetchCommits(
@@ -77,32 +103,40 @@ async function fetchCommits(
   return all.slice(0, MAX_COMMITS);
 }
 
+export interface GitMetricsApiResult {
+  metrics: GitMetrics;
+  contributors: ContributorActivity[];
+}
+
 /**
  * Extract git workflow metrics from GitHub REST API.
  * Used when git CLI is unavailable (zipball mode on Vercel).
  *
  * @param parsed - Parsed GitHub URL with owner and repo.
  * @param token - Optional GITHUB_TOKEN for authenticated requests.
- * @returns GitMetrics with mode "api", or throws on API failure.
+ * @returns Metrics with mode "api", plus per-author activity from commit metadata.
  */
 export async function extractGitMetricsApi(
   parsed: ParsedGitHubUrl,
   token?: string,
-): Promise<GitMetrics> {
+): Promise<GitMetricsApiResult> {
   const commits = await fetchCommits(parsed, token);
 
   if (commits.length === 0) {
     return {
-      mode: "api",
-      totalCommits: 0,
-      commitsPerWeek: 0,
-      activeDaysLast90Days: 0,
-      medianInterCommitHours: 0,
-      burstRatio: 0,
-      medianCommitMessageLength: 0,
-      medianCommitSize: 0,
-      avgLinesPerCommit: 0,
-      largeCommitRatio: 0,
+      metrics: {
+        mode: "api",
+        totalCommits: 0,
+        commitsPerWeek: 0,
+        activeDaysLast90Days: 0,
+        medianInterCommitHours: 0,
+        burstRatio: 0,
+        medianCommitMessageLength: 0,
+        medianCommitSize: 0,
+        avgLinesPerCommit: 0,
+        largeCommitRatio: 0,
+      },
+      contributors: [],
     };
   }
 
@@ -149,16 +183,22 @@ export async function extractGitMetricsApi(
   const sortedLengths = [...messageLengths].sort((a, b) => a - b);
   const medianCommitMessageLength = median(sortedLengths);
 
+  const parsedRows = apiCommitsToParsed(commits);
+  const contributors = buildContributorActivityFromParsedCommits(parsedRows);
+
   return {
-    mode: "api",
-    totalCommits,
-    commitsPerWeek,
-    activeDaysLast90Days,
-    medianInterCommitHours,
-    burstRatio,
-    medianCommitMessageLength,
-    medianCommitSize: 0,
-    avgLinesPerCommit: 0,
-    largeCommitRatio: 0,
+    metrics: {
+      mode: "api",
+      totalCommits,
+      commitsPerWeek,
+      activeDaysLast90Days,
+      medianInterCommitHours,
+      burstRatio,
+      medianCommitMessageLength,
+      medianCommitSize: 0,
+      avgLinesPerCommit: 0,
+      largeCommitRatio: 0,
+    },
+    contributors,
   };
 }

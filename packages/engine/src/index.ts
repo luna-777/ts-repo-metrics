@@ -25,6 +25,10 @@ export type {
   ReactMetricsReport,
   Phase3Metrics,
   SilentFailureEvent,
+  ContributorActivity,
+  GitHubRepositoryMeta,
+  GitHubLanguageShare,
+  GitHubRepoContributor,
 } from "./types/report.js";
 
 export {

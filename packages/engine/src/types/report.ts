@@ -166,6 +166,56 @@ export interface GitMetricsV2 {
   testCoupling: TestCouplingStats;
 }
 
+/**
+ * Per-author git activity (Phase 1): same class of signals as GitMetricsV2,
+ * computed on commits attributed to one author identity.
+ */
+export interface ContributorActivity {
+  /** Grouping key: lowercased author email when present, else name-based or "unknown". */
+  id: string;
+  displayName: string;
+  authorEmail: string;
+  commitCount: number;
+  linesAdded: number;
+  linesDeleted: number;
+  commitStats: CommitStats;
+  burstStats: BurstStats;
+  entropy: EntropyStats;
+  churn: ChurnStats;
+  testCoupling: TestCouplingStats;
+  refactorBehavior: RefactorBehaviorStats;
+}
+
+/** One language row from GitHub /repos/{owner}/{repo}/languages (bytes + share). */
+export interface GitHubLanguageShare {
+  language: string;
+  bytes: number;
+  /** 0–100 with one decimal, same spirit as GitHub’s language bar. */
+  percentage: number;
+}
+
+/** One contributor from GitHub /repos/{owner}/{repo}/contributors plus optional profile name. */
+export interface GitHubRepoContributor {
+  login: string;
+  avatarUrl: string;
+  htmlUrl: string;
+  contributions: number;
+  /** Display name from GET /users/{login} when available. */
+  name?: string;
+}
+
+/** GitHub About / Languages / Contributors (REST API), when analysis target is github.com. */
+export interface GitHubRepositoryMeta {
+  description: string | null;
+  topics: string[];
+  stargazersCount: number;
+  forksCount: number;
+  /** Users watching the repo (subscribers). */
+  subscribersCount: number;
+  languages: GitHubLanguageShare[];
+  contributors: GitHubRepoContributor[];
+}
+
 /** Code duplication metrics from jscpd analysis. */
 export interface DuplicationMetrics {
   percentage: number;
@@ -315,6 +365,10 @@ export interface RepoReport {
   duplication: DuplicationMetrics | null;
   git: GitMetrics | null;
   gitMetricsV2: GitMetricsV2 | null;
+  /** Per-contributor git activity when history was analyzed (local git or API). */
+  contributors?: ContributorActivity[];
+  /** GitHub REST metadata (About, languages, repo contributors) for github.com targets. */
+  github?: GitHubRepositoryMeta;
   framework: FrameworkInfo | null;
   perFile: PerFileEntry[];
   /** React/TSX static metrics when at least one .tsx file was analyzed. */

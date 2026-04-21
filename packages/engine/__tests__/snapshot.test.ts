@@ -18,7 +18,7 @@ const FIXTURE_PATH = path.resolve(__dirname, "fixtures", "sample-repo");
  * Normalize volatile fields that vary across machines or runs.
  * - repoPath: absolute path differs per environment
  * - source: commit/branch vary by git state
- * - git: history-dependent (fixture may inherit parent .git); exclude from snapshot
+ * - git / gitMetricsV2 / contributors: history-dependent; exclude from snapshot
  * - analysis_timestamp: varies each run
  */
 function normalizeForSnapshot(report: RepoReport): unknown {
@@ -32,6 +32,7 @@ function normalizeForSnapshot(report: RepoReport): unknown {
   };
   normalized.git = null;
   normalized.gitMetricsV2 = null;
+  delete normalized.contributors;
   if (normalized.analysis_timestamp) {
     normalized.analysis_timestamp = "<timestamp>";
   }

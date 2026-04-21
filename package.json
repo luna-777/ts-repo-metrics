@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "supabase:push": "supabase db push",
+    "supabase:link": "supabase link",
     "dashboard": "cd apps/dashboard && npm run dev",
     "dashboard:build": "cd packages/engine && npm run build && cd ../.. && cd apps/dashboard && npm run build",
     "dev": "tsx src/cli.ts",

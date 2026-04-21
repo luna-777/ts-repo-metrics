@@ -16,18 +16,28 @@ function cacheKey(parsed: ParsedGitHubUrl): string {
   return `${parsed.owner}-${parsed.repo}`;
 }
 
+function authenticatedCloneUrl(
+  parsed: ParsedGitHubUrl,
+  githubToken: string,
+): string {
+  const t = encodeURIComponent(githubToken);
+  return `https://x-access-token:${t}@github.com/${parsed.owner}/${parsed.repo}.git`;
+}
+
 /**
  * Clone a GitHub repo or return cached path.
  *
  * @param parsed - Parsed GitHub URL.
  * @param useCache - If false, clone fresh (removes cache first).
  * @param baseDir - Base directory for cache (default: cwd).
+ * @param githubToken - Optional PAT for private repositories (never logged).
  * @returns Absolute path to the cloned repo.
  */
 export async function cloneOrUseCache(
   parsed: ParsedGitHubUrl,
   useCache: boolean,
   baseDir: string = process.cwd(),
+  githubToken?: string,
 ): Promise<string> {
   const fullPath = path.resolve(baseDir, CACHE_DIR, cacheKey(parsed));
 
@@ -56,8 +66,11 @@ export async function cloneOrUseCache(
   const parentDir = path.dirname(fullPath);
   mkdirSync(parentDir, { recursive: true });
 
+  const cloneRemote =
+    githubToken?.trim() ? authenticatedCloneUrl(parsed, githubToken.trim()) : parsed.url;
+
   const git = simpleGit();
-  await git.clone(parsed.url, fullPath, ["--no-single-branch"]);
+  await git.clone(cloneRemote, fullPath, ["--no-single-branch"]);
 
   return fullPath;
 }

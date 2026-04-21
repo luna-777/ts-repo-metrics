@@ -35,17 +35,23 @@ The analysis logic lives in a single **engine** package. The **CLI** and the **d
 ## Pipeline Overview
 
 - **CLI** (`src/cli.ts`): Parses args; for GitHub URLs calls `analyzeFromGitHubUrl`, for local paths calls `getSourceMetadata` + `analyzeRepo`; batch mode calls `batchAnalyze` (which uses `analyzeRepo` from the engine).
-- **Dashboard** (`apps/dashboard/app/api/analyze/route.ts`): Validates URL, calls `analyzeFromGitHubUrl(normalizedUrl, { useCache: true, cacheDir })` with `cacheDir` under **`os.tmpdir()`** (e.g. `…/repo-metrics-git-cache/.cache/ts-repo-metrics/…`). Using the app directory as `cacheDir` reused stale clones with **0 `.tsx` files** after the repo layout changed; the temp-dir default avoids that.
+- **Dashboard** (`apps/dashboard/app/api/analyze/route.ts`): Validates URL, resolves an optional Supabase session (GitHub OAuth). If the user has a stored GitHub access token, passes `githubToken` into `analyzeFromGitHubUrl` and uses a per-user `cacheDir` under `os.tmpdir()/repo-metrics-git-cache/u/<userId>/`. Guests use `…/repo-metrics-git-cache/` only. Upserts `analyses` with `user_id` when signed in (null for guests).
 - **`cloneOrUseCache`** (`packages/engine/src/collect/gitClone.ts`): Before reusing a cached folder, the engine calls **`simple-git`'s `checkIsRepo()`**. If the directory is not a valid git working tree (e.g. interrupted clone with a broken `.git`), it is **deleted** and a fresh **`git clone`** runs. Without this, analysis could see **no source files** and return **all-zero metrics**.
 
 ## GitHub URL Support
 
-- **Engine** provides `analyzeFromGitHubUrl(url, { useCache?, cacheDir? })`: normalizes URL, parses with `parseGitHubUrl`, clones via `cloneOrUseCache(parsed, useCache, cacheDir)`, then `getSourceMetadata` + `analyzeRepo`.
+- **Engine** provides `analyzeFromGitHubUrl(url, { useCache?, cacheDir?, githubToken? })`: normalizes URL, parses with `parseGitHubUrl`, clones via `cloneOrUseCache(parsed, useCache, cacheDir, githubToken?)` (HTTPS with `x-access-token` when a PAT is set), then `getSourceMetadata` + `analyzeRepo`. Per-request **`githubToken`** overrides `process.env.GITHUB_TOKEN` for clone, zipball, and REST enrichment.
 - **CLI** and **API** use this; no subprocess or tsx.
 
 ### Zipball and API fallback (Vercel)
 
-When `cloneOrUseCache` fails because the git binary is unavailable (e.g. on Vercel), the engine calls `downloadZipball` instead. The extracted path has no `.git` directory, so `extractGitMetrics` and `extractGitMetricsV2` return null. `analyzeFromGitHubUrl` then calls `extractGitMetricsApi(parsed, GITHUB_TOKEN)` to populate `report.git` from the GitHub REST API. API-derived metrics are proxies (commit metadata only; no diff stats such as lines changed).
+When `cloneOrUseCache` fails because the git binary is unavailable (e.g. on Vercel), the engine calls `downloadZipball` with the same optional token. The extracted path has no `.git` directory, so `extractGitMetrics` and `extractGitMetricsV2` return null. `analyzeFromGitHubUrl` then calls `extractGitMetricsApi(parsed, token)` to populate `report.git` from the GitHub REST API. API-derived metrics are proxies (commit metadata only; no diff stats such as lines changed).
+
+## Dashboard Supabase clients
+
+- **`getSupabase()`** ([`apps/dashboard/lib/supabase/server.ts`](../apps/dashboard/lib/supabase/server.ts)): service role — trusted server writes (e.g. `analyses` upsert, `user_github_tokens` upsert in OAuth callback).
+- **`createUserSupabaseServerClient()`** ([`apps/dashboard/lib/supabase/server-user.ts`](../apps/dashboard/lib/supabase/server-user.ts)): anon key + user session cookies — reads subject to **RLS** (e.g. `getReportById`, `GET /api/results/[id]` when anon key is configured).
+- **`middleware.ts`**: refreshes the auth session cookie via `@supabase/ssr`.
 
 ## Data Flow (Engine Internals)
 

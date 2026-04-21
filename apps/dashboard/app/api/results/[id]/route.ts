@@ -6,8 +6,21 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase, useDevReportMemoryFallback } from "@/lib/supabase/server";
+import {
+  getSupabase,
+  isDevReportMemoryFallback,
+  isSupabaseConfigured,
+} from "@/lib/supabase/server";
+import {
+  createUserSupabaseServerClient,
+  isUserSupabaseConfigured,
+} from "@/lib/supabase/server-user";
 import { devGetReport } from "@/lib/devReportStore";
+
+const isDev = process.env.NODE_ENV === "development";
+
+/** Avoid broad prefix scans on very short strings (IDs are owner-repo-commit, typically longer). */
+const MIN_PARTIAL_RESULT_ID_LENGTH = 20;
 
 export async function GET(
   _request: NextRequest,
@@ -15,10 +28,12 @@ export async function GET(
 ) {
   const { id } = await params;
   const trimmedId = id.trim();
-  console.log("[results] GET request for result_id:", trimmedId);
+  if (isDev) {
+    console.log("[results] GET request for result_id:", trimmedId);
+  }
 
   try {
-    if (useDevReportMemoryFallback()) {
+    if (isDevReportMemoryFallback()) {
       const report = devGetReport(trimmedId);
       if (report) {
         return NextResponse.json(report);
@@ -26,8 +41,12 @@ export async function GET(
       return NextResponse.json({ error: "Result not found" }, { status: 404 });
     }
 
-    const supabase = getSupabase();
-    
+    const useRlsClient =
+      isSupabaseConfigured() && isUserSupabaseConfigured();
+    const supabase = useRlsClient
+      ? await createUserSupabaseServerClient()
+      : getSupabase();
+
     // Retry logic to handle race condition (Supabase replication delay)
     const maxRetries = 3;
     const retryDelay = 500; // ms
@@ -45,20 +64,32 @@ export async function GET(
       error = result.error;
 
       if (data && !error) {
-        console.log(`[results] Found on attempt ${attempt}`);
+        if (isDev) {
+          console.log(`[results] Found on attempt ${attempt}`);
+        }
         return NextResponse.json(data.report_json);
       }
 
       // If not found and not last attempt, wait and retry
       if (attempt < maxRetries) {
-        console.log(`[results] Not found on attempt ${attempt}, retrying in ${retryDelay * attempt}ms...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+        if (isDev) {
+          console.log(
+            `[results] Not found on attempt ${attempt}, retrying in ${retryDelay * attempt}ms...`,
+          );
+        }
+        await new Promise((resolve) =>
+          setTimeout(resolve, retryDelay * attempt),
+        );
       }
     }
 
-    // If still not found after retries, try partial match (for incomplete IDs)
-    if (error || !data) {
-      console.log("[results] Exact match failed after retries, trying partial match");
+    // If still not found after retries, try prefix match only for sufficiently long ids (RLS still applies).
+    if ((error || !data) && trimmedId.length >= MIN_PARTIAL_RESULT_ID_LENGTH) {
+      if (isDev) {
+        console.log(
+          "[results] Exact match failed after retries, trying partial match",
+        );
+      }
       const { data: partialData, error: partialError } = await supabase
         .from("analyses")
         .select("report_json, result_id")
@@ -66,9 +97,11 @@ export async function GET(
         .order("analyzed_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      
+
       if (!partialError && partialData) {
-        console.log("[results] Found via partial match:", partialData.result_id);
+        if (isDev) {
+          console.log("[results] Found via partial match:", partialData.result_id);
+        }
         return NextResponse.json(partialData.report_json);
       }
     }
@@ -76,31 +109,48 @@ export async function GET(
     // Final error handling
     if (error) {
       console.error("[results] Supabase error:", error.message, error.code, error.details);
-      // Debug: list all available IDs
-      const { data: all } = await supabase
-        .from("analyses")
-        .select("result_id")
-        .limit(10);
-      console.log("[results] Available result_ids:", all?.map(r => r.result_id));
-      return NextResponse.json({ 
-        error: "Result not found",
-        debug: { searched: trimmedId, available: all?.map(r => r.result_id) }
-      }, { status: 404 });
-    }
-
-    if (!data) {
-      console.log("[results] No row found for id:", trimmedId);
+      if (isDev) {
+        const { data: all } = await supabase
+          .from("analyses")
+          .select("result_id")
+          .limit(10);
+        if (isDev) {
+          console.log(
+            "[results] Available result_ids:",
+            all?.map((r) => r.result_id),
+          );
+        }
+        return NextResponse.json(
+          {
+            error: "Result not found",
+            debug: { searched: trimmedId, available: all?.map((r) => r.result_id) },
+          },
+          { status: 404 },
+        );
+      }
       return NextResponse.json({ error: "Result not found" }, { status: 404 });
     }
 
-    console.log("[results] Found report for id:", trimmedId);
+    if (!data) {
+      if (isDev) {
+        console.log("[results] No row found for id:", trimmedId);
+      }
+      return NextResponse.json({ error: "Result not found" }, { status: 404 });
+    }
+
+    if (isDev) {
+      console.log("[results] Found report for id:", trimmedId);
+    }
     return NextResponse.json(data.report_json);
   } catch (err) {
     console.error("[results] Exception:", err);
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ 
+    const body: { error: string; details?: string } = {
       error: "Failed to fetch result",
-      details: message 
-    }, { status: 500 });
+    };
+    if (isDev) {
+      body.details =
+        err instanceof Error ? err.message : "Unknown error";
+    }
+    return NextResponse.json(body, { status: 500 });
   }
 }

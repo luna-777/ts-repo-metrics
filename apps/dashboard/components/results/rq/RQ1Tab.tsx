@@ -146,6 +146,59 @@ export function RQ1Tab({ report }: RQ1TabProps) {
           />
         </div>
       </section>
+      {report.contributors && report.contributors.length > 0 ? (
+        <section>
+          <h2 className="text-lg font-semibold mb-2">Contributors (git activity)</h2>
+          <p className="text-muted-foreground text-sm mb-4 max-w-3xl">
+            Metrics grouped by commit author (email when present). Line counts come from{" "}
+            <code className="rounded bg-muted px-1 text-xs">git log --numstat</code> where available;
+            GitHub API mode has commit metadata only, so lines and some rates may be zero.
+          </p>
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contributor</TableHead>
+                  <TableHead className="text-right">Commits</TableHead>
+                  <TableHead className="text-right">+Lines</TableHead>
+                  <TableHead className="text-right">−Lines</TableHead>
+                  <TableHead className="text-right">Median Δ / commit</TableHead>
+                  <TableHead className="text-right">Burst %</TableHead>
+                  <TableHead className="text-right">Test-touch %</TableHead>
+                  <TableHead className="text-right">Refactor %</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {report.contributors.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <div className="font-medium">{c.displayName}</div>
+                      <div className="text-muted-foreground text-xs font-mono truncate max-w-[220px]">
+                        {c.authorEmail}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{c.commitCount}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.linesAdded}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.linesDeleted}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatNumber(c.commitStats.medianCommitSize)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatNumber(c.burstStats.burstRatio)}%
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatNumber(c.testCoupling.pctCommitsTouchingTests)}%
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatNumber(c.refactorBehavior.refactorCommitRatio)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+      ) : null}
       <section>
         <h2 className="text-lg font-semibold mb-4">Churn Concentration</h2>
         <p className="text-sm text-muted-foreground mb-4">

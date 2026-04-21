@@ -5,7 +5,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { extractGitMetricsV2 } from "../src/collect/gitMetricsV2.js";
+import {
+  extractGitMetricsV2,
+  extractGitHistoryBundle,
+} from "../src/collect/gitMetricsV2.js";
 
 const mockRaw = vi.fn();
 const mockCheckIsRepo = vi.fn();
@@ -37,36 +40,46 @@ describe("extractGitMetricsV2", () => {
     // Fixture: 5 commits, varying sizes, timestamps, and file paths
     // Commits spaced to create one burst (3 within 30 min) and one non-burst
     const t0 = 1700000000; // base
-    const t1 = t0 + 5 * 60;   // +5 min
-    const t2 = t0 + 10 * 60;  // +10 min (burst: t0,t1,t2 within 30 min)
+    const t1 = t0 + 5 * 60; // +5 min
+    const t2 = t0 + 10 * 60; // +10 min (burst: t0,t1,t2 within 30 min)
     const t3 = t0 + 120 * 60; // +2 hrs (gap > 30 min)
-    const t4 = t3 + 5 * 60;   // +5 min (second cluster of 2, no burst)
+    const t4 = t3 + 5 * 60; // +5 min (second cluster of 2, no burst)
     const fixture = [
       `COMMIT_END
 abc1
 ${t0}
+alice@example.com
+Alice
 feat: add foo
 10	5	src/foo.ts
 20	0	src/bar.test.ts`,
       `COMMIT_END
 abc2
 ${t1}
+alice@example.com
+Alice
 fix: bar
 5	2	src/foo.ts`,
       `COMMIT_END
 abc3
 ${t2}
+alice@example.com
+Alice
 refactor: extract helper
 100	50	src/baz.ts
 0	0	src/foo.test.ts`,
       `COMMIT_END
 abc4
 ${t3}
+bob@example.com
+Bob
 feat: big change
 600	200	src/foo.ts`,
       `COMMIT_END
 abc5
 ${t4}
+bob@example.com
+Bob
 chore: cleanup
 2	1	src/foo.ts`,
     ].join("\n");
@@ -124,5 +137,52 @@ chore: cleanup
   it("returns null on git error", async () => {
     mockRaw.mockRejectedValue(new Error("git failed"));
     expect(await extractGitMetricsV2("/tmp/repo")).toBeNull();
+  });
+});
+
+describe("extractGitHistoryBundle contributors", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCheckIsRepo.mockResolvedValue(true);
+  });
+
+  it("splits metrics by author email", async () => {
+    const t0 = 1700000000;
+    const fixture = [
+      `COMMIT_END
+a1
+${t0}
+alice@example.com
+Alice
+one
+10	0	src/a.ts`,
+      `COMMIT_END
+a2
+${t0 + 60}
+alice@example.com
+Alice
+two
+5	0	src/b.ts`,
+      `COMMIT_END
+b1
+${t0 + 120}
+bob@example.com
+Bob
+three
+100	0	src/c.ts`,
+    ].join("\n");
+    mockRaw.mockResolvedValue(fixture);
+
+    const bundle = await extractGitHistoryBundle("/tmp/repo");
+    expect(bundle).not.toBeNull();
+    expect(bundle!.contributors).toHaveLength(2);
+    const alice = bundle!.contributors.find((c) => c.id === "alice@example.com");
+    const bob = bundle!.contributors.find((c) => c.id === "bob@example.com");
+    expect(alice?.commitCount).toBe(2);
+    expect(alice?.linesAdded).toBe(15);
+    expect(bob?.commitCount).toBe(1);
+    expect(bob?.linesAdded).toBe(100);
+    expect(alice?.displayName).toBe("Alice");
+    expect(bob?.displayName).toBe("Bob");
   });
 });

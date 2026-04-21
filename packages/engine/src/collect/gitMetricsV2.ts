@@ -3,7 +3,7 @@
  *
  * Extended commit analysis: size distribution, bursts, entropy, churn,
  * test coupling, refactor rate. Uses git log --numstat for per-commit,
- * per-file data.
+ * per-file data. Contributor activity groups the same metrics by author.
  */
 
 import { simpleGit } from "simple-git";
@@ -15,12 +15,12 @@ import type {
   BurstStats,
   EntropyStats,
   ChurnStats,
-  ChurnHotspot,
   TestCouplingStats,
   RefactorBehaviorStats,
+  ContributorActivity,
 } from "../types/report.js";
 
-export type { GitMetricsV2 } from "../types/report.js";
+export type { GitMetricsV2, ContributorActivity } from "../types/report.js";
 
 const LARGE_COMMIT_500 = 500;
 const LARGE_COMMIT_1000 = 1000;
@@ -29,12 +29,41 @@ const BURST_MIN_COMMITS = 3;
 const CHURN_TOP_N = 10;
 const REFACTOR_KEYWORDS = /\b(refactor|cleanup|restructure|rename)\b/i;
 
-interface ParsedCommit {
+/** One commit as parsed from git log --numstat (includes author fields). */
+export interface ParsedCommit {
   hash: string;
   timestamp: number;
+  authorEmail: string;
+  authorName: string;
   subject: string;
   files: Array<{ path: string; add: number; del: number }>;
   totalLines: number;
+}
+
+function authorKey(email: string, name: string): string {
+  const e = (email ?? "").trim().toLowerCase();
+  if (e) return e;
+  const n = (name ?? "").trim();
+  if (n) return `name:${n.toLowerCase().replace(/\s+/g, " ")}`;
+  return "unknown";
+}
+
+function pickDisplayName(group: ParsedCommit[]): string {
+  const names = group.map((c) => c.authorName.trim()).filter(Boolean);
+  if (names.length === 0) return "Unknown";
+  const counts = new Map<string, number>();
+  for (const n of names) {
+    counts.set(n, (counts.get(n) ?? 0) + 1);
+  }
+  let best = names[0]!;
+  let bestC = 0;
+  for (const [n, c] of counts) {
+    if (c > bestC) {
+      best = n;
+      bestC = c;
+    }
+  }
+  return best;
 }
 
 async function parseLogWithNumstat(repoPath: string): Promise<ParsedCommit[]> {
@@ -46,7 +75,7 @@ async function parseLogWithNumstat(repoPath: string): Promise<ParsedCommit[]> {
     "log",
     "--all",
     "--numstat",
-    "--format=COMMIT_END%n%H%n%at%n%s",
+    "--format=COMMIT_END%n%H%n%at%n%aE%n%aN%n%s",
   ]);
 
   const commits: ParsedCommit[] = [];
@@ -54,9 +83,10 @@ async function parseLogWithNumstat(repoPath: string): Promise<ParsedCommit[]> {
 
   for (const block of blocks) {
     const lines = block.trim().split("\n");
-    if (lines.length < 3) continue;
+    if (lines.length < 5) continue;
 
-    const [hash, tsStr, subject, ...numstatLines] = lines;
+    const [hash, tsStr, authorEmail, authorName, subject, ...numstatLines] =
+      lines;
     const timestamp = parseInt(tsStr ?? "0", 10);
     if (isNaN(timestamp)) continue;
 
@@ -77,6 +107,8 @@ async function parseLogWithNumstat(repoPath: string): Promise<ParsedCommit[]> {
     commits.push({
       hash: hash ?? "",
       timestamp,
+      authorEmail: (authorEmail ?? "").trim(),
+      authorName: (authorName ?? "").trim(),
       subject: subject ?? "",
       files,
       totalLines,
@@ -230,6 +262,85 @@ function computeRefactorRate(commits: ParsedCommit[]): RefactorBehaviorStats {
   return { refactorCommitRatio: ratio };
 }
 
+function buildGitMetricsV2FromCommits(commits: ParsedCommit[]): GitMetricsV2 {
+  return {
+    commitStats: computeCommitStats(commits),
+    burstStats: computeBurstStats(commits),
+    entropy: computeEntropyStats(commits),
+    churn: computeChurnStats(commits),
+    refactorBehavior: computeRefactorRate(commits),
+    testCoupling: computeTestCoupling(commits),
+  };
+}
+
+/**
+ * Build per-contributor activity from parsed commits (local git or API-shaped rows).
+ */
+export function buildContributorActivityFromParsedCommits(
+  commits: ParsedCommit[],
+): ContributorActivity[] {
+  const byKey = new Map<string, ParsedCommit[]>();
+  for (const c of commits) {
+    const key = authorKey(c.authorEmail, c.authorName);
+    const list = byKey.get(key) ?? [];
+    list.push(c);
+    byKey.set(key, list);
+  }
+
+  const out: ContributorActivity[] = [];
+  for (const [id, group] of byKey) {
+    const displayName = pickDisplayName(group);
+    const email = (group[0]!.authorEmail ?? "").trim();
+    let linesAdded = 0;
+    let linesDeleted = 0;
+    for (const c of group) {
+      for (const f of c.files) {
+        linesAdded += f.add;
+        linesDeleted += f.del;
+      }
+    }
+    out.push({
+      id,
+      displayName,
+      authorEmail: email || id,
+      commitCount: group.length,
+      linesAdded,
+      linesDeleted,
+      commitStats: computeCommitStats(group),
+      burstStats: computeBurstStats(group),
+      entropy: computeEntropyStats(group),
+      churn: computeChurnStats(group),
+      testCoupling: computeTestCoupling(group),
+      refactorBehavior: computeRefactorRate(group),
+    });
+  }
+  out.sort((a, b) => b.commitCount - a.commitCount);
+  return out;
+}
+
+export interface GitHistoryBundle {
+  gitMetricsV2: GitMetricsV2;
+  contributors: ContributorActivity[];
+}
+
+/**
+ * Single git log read: repo-wide V2 metrics plus per-author activity.
+ */
+export async function extractGitHistoryBundle(
+  repoPath: string,
+): Promise<GitHistoryBundle | null> {
+  try {
+    const commits = await parseLogWithNumstat(repoPath);
+    if (commits.length === 0) return null;
+    return {
+      gitMetricsV2: buildGitMetricsV2FromCommits(commits),
+      contributors: buildContributorActivityFromParsedCommits(commits),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Extract Git metrics V2 (Epic D) from repository history.
  *
@@ -239,19 +350,6 @@ function computeRefactorRate(commits: ParsedCommit[]): RefactorBehaviorStats {
 export async function extractGitMetricsV2(
   repoPath: string,
 ): Promise<GitMetricsV2 | null> {
-  try {
-    const commits = await parseLogWithNumstat(repoPath);
-    if (commits.length === 0) return null;
-
-    return {
-      commitStats: computeCommitStats(commits),
-      burstStats: computeBurstStats(commits),
-      entropy: computeEntropyStats(commits),
-      churn: computeChurnStats(commits),
-      refactorBehavior: computeRefactorRate(commits),
-      testCoupling: computeTestCoupling(commits),
-    };
-  } catch {
-    return null;
-  }
+  const bundle = await extractGitHistoryBundle(repoPath);
+  return bundle?.gitMetricsV2 ?? null;
 }

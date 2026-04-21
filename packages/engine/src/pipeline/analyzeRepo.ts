@@ -14,7 +14,7 @@ import { profileRepo } from "../collect/loc.js";
 import { detectDuplication } from "../collect/duplication.js";
 import { computeWeightedRedundancy } from "../collect/weightedRedundancy.js";
 import { extractGitMetrics } from "../collect/gitMetrics.js";
-import { extractGitMetricsV2 } from "../collect/gitMetricsV2.js";
+import { extractGitHistoryBundle } from "../collect/gitMetricsV2.js";
 import { detectFramework } from "../collect/frameworkDetection.js";
 import { parseTypeScript } from "../parsing/tsParser.js";
 import { countFunctions } from "../extract/functionCount.js";
@@ -213,7 +213,9 @@ export async function analyzeRepo(
     reactComponentCount,
   };
   const git = await extractGitMetrics(repoPath);
-  const gitMetricsV2 = await extractGitMetricsV2(repoPath);
+  const gitBundle = await extractGitHistoryBundle(repoPath);
+  const gitMetricsV2 = gitBundle?.gitMetricsV2 ?? null;
+  const contributors = gitBundle?.contributors;
   const framework = await detectFramework(repoPath);
 
   let analyzer_version: string | undefined;
@@ -252,6 +254,7 @@ export async function analyzeRepo(
     duplication,
     git,
     gitMetricsV2,
+    ...(contributors && contributors.length > 0 ? { contributors } : {}),
     framework,
     perFile,
     reactMetrics,

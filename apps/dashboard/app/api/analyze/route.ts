@@ -12,12 +12,22 @@ import { randomUUID } from "node:crypto";
 import {
   getSupabase,
   isSupabaseConfigured,
-  useDevReportMemoryFallback,
+  isDevReportMemoryFallback,
 } from "@/lib/supabase/server";
+import {
+  createUserSupabaseServerClient,
+  isUserSupabaseConfigured,
+} from "@/lib/supabase/server-user";
+import { getDecryptedGitHubTokenForUser } from "@/lib/userGitHubToken";
 import { devStoreReport } from "@/lib/devReportStore";
 import { analyzeFromGitHubUrl } from "@repo-metrics/engine";
 
 export const runtime = "nodejs";
+
+/** Ensure report is JSON-serializable for PostgREST jsonb (strips non-JSON values). */
+function reportAsJsonObject(report: unknown): object {
+  return JSON.parse(JSON.stringify(report)) as object;
+}
 
 function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   const trimmed = url.trim();
@@ -41,6 +51,27 @@ function isValidGitHubUrl(input: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    let userId: string | null = null;
+    let githubToken: string | undefined;
+
+    if (isUserSupabaseConfigured()) {
+      try {
+        const userSb = await createUserSupabaseServerClient();
+        const {
+          data: { user },
+        } = await userSb.auth.getUser();
+        if (user) {
+          userId = user.id;
+          if (isSupabaseConfigured()) {
+            const tok = await getDecryptedGitHubTokenForUser(user.id);
+            if (tok) githubToken = tok;
+          }
+        }
+      } catch (err) {
+        console.warn("[analyze] Could not read auth session:", err);
+      }
+    }
+
     const body = await request.json();
     const url = (body?.url ?? "").toString().trim();
 
@@ -67,10 +98,16 @@ export async function POST(request: NextRequest) {
 
     // Always clone under the OS temp dir — using process.cwd() (e.g. apps/dashboard) reused a
     // stale .cache/ts-repo-metrics/* tree from an older repo layout (0 .tsx files) and broke profiles.
-    const cacheDir = path.join(os.tmpdir(), "repo-metrics-git-cache");
+    const baseCache = path.join(os.tmpdir(), "repo-metrics-git-cache");
+    const cacheDir =
+      userId && githubToken
+        ? path.join(baseCache, "u", userId)
+        : baseCache;
+
     const report = await analyzeFromGitHubUrl(normalizedUrl, {
       useCache: true,
       cacheDir,
+      githubToken,
     });
 
     const parsed = parseGitHubUrl(normalizedUrl);
@@ -87,14 +124,17 @@ export async function POST(request: NextRequest) {
       resultId = randomUUID();
     }
 
-    console.log("[analyze] Generated resultId:", resultId, "commitSha:", commitSha);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[analyze] Generated resultId:", resultId, "commitSha:", commitSha);
+    }
 
     if (isSupabaseConfigured()) {
       const row = {
         result_id: resultId,
         repo_url: normalizedUrl,
         commit_sha: commitSha,
-        report_json: report as object,
+        report_json: reportAsJsonObject(report),
+        user_id: userId,
       };
 
       const { error } = await getSupabase()
@@ -103,12 +143,28 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error("Supabase upsert failed:", error);
-        return NextResponse.json(
-          { error: "Failed to save result.", status: "failed" },
-          { status: 500 }
-        );
+        const body: Record<string, unknown> = {
+          error: "Failed to save result.",
+          status: "failed",
+        };
+        if (process.env.NODE_ENV === "development") {
+          body.debug = {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          };
+          if (
+            error.code === "PGRST204" &&
+            String(error.message).includes("user_id")
+          ) {
+            body.hint =
+              "Remote DB is missing column analyses.user_id. Run supabase/migrations in order or paste supabase/run_in_dashboard_sql_editor.sql into the Supabase SQL Editor.";
+          }
+        }
+        return NextResponse.json(body, { status: 500 });
       }
-    } else if (useDevReportMemoryFallback()) {
+    } else if (isDevReportMemoryFallback()) {
       devStoreReport(resultId, report);
       console.warn(
         "[analyze] Supabase not configured; result kept in server memory (dev only)."
@@ -130,10 +186,17 @@ export async function POST(request: NextRequest) {
       report,
     });
   } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[analyze]", err);
+    }
     const message =
       err instanceof Error ? err.message : "Analysis failed.";
+    const clientMessage =
+      process.env.NODE_ENV === "production"
+        ? "Analysis failed."
+        : message;
     return NextResponse.json(
-      { error: message, status: "failed" },
+      { error: clientMessage, status: "failed" },
       { status: 500 }
     );
   }

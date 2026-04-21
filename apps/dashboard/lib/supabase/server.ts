@@ -20,7 +20,8 @@ export function isSupabaseConfigured(): boolean {
  * Use in-memory report storage instead of Supabase (only in development).
  * Production must set Supabase env vars for persistence.
  */
-export function useDevReportMemoryFallback(): boolean {
+/** True when dev runs without Supabase — reports stored in process memory only. */
+export function isDevReportMemoryFallback(): boolean {
   return process.env.NODE_ENV === "development" && !isSupabaseConfigured();
 }
 

@@ -3,7 +3,15 @@
  * Used by the results page to avoid HTTP fetch issues.
  */
 
-import { getSupabase, useDevReportMemoryFallback } from "@/lib/supabase/server";
+import {
+  getSupabase,
+  isDevReportMemoryFallback,
+  isSupabaseConfigured,
+} from "@/lib/supabase/server";
+import {
+  createUserSupabaseServerClient,
+  isUserSupabaseConfigured,
+} from "@/lib/supabase/server-user";
 import { devGetReport } from "@/lib/devReportStore";
 import type { RepoReport } from "@/lib/reportTypes";
 
@@ -17,13 +25,17 @@ export async function getReportById(id: string): Promise<{
   const trimmedId = id.trim();
 
   try {
-    if (useDevReportMemoryFallback()) {
+    if (isDevReportMemoryFallback()) {
       const mem = devGetReport(trimmedId);
       if (mem) return { data: mem, error: null };
       return { data: null, error: "Result not found" };
     }
 
-    const supabase = getSupabase();
+    const useRlsClient =
+      isSupabaseConfigured() && isUserSupabaseConfigured();
+    const supabase = useRlsClient
+      ? await createUserSupabaseServerClient()
+      : getSupabase();
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       const { data, error } = await supabase
