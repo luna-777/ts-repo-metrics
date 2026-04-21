@@ -19,6 +19,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Phase2ThresholdLegend } from "./Phase2ThresholdLegend";
 import { phase2TrafficCellClass } from "@/lib/phase2Traffic";
+import { hasReactUiScope } from "@/lib/hasReactUiScope";
 
 interface Phase2ComplexityTabProps {
   report: RepoReport;
@@ -39,6 +40,8 @@ function hasPhase2Block(
 }
 
 export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
+  const showReact = hasReactUiScope(report);
+
   const rows = useMemo(() => {
     const out: { file: string; fn: FunctionDetail }[] = [];
     for (const pf of report.perFile ?? []) {
@@ -100,7 +103,7 @@ export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
   return (
     <div className="space-y-6">
       <RQFramingHeader rq="RQ3" />
-      <Phase2MethodologyCard />
+      <Phase2MethodologyCard includeReactLens={showReact} />
 
       {summary && (
         <section className="space-y-3">
@@ -112,7 +115,9 @@ export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
               Across {rows.length} function{rows.length === 1 ? "" : "s"} with Phase 2 metrics
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div
+            className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${showReact ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
+          >
             <Card className="gap-0 py-4 shadow-sm">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-2 pt-0">
                 <CardTitle className="text-muted-foreground text-sm font-medium leading-snug">
@@ -165,22 +170,24 @@ export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
               </CardContent>
             </Card>
 
-            <Card className="gap-0 py-4 shadow-sm">
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-2 pt-0">
-                <CardTitle className="text-muted-foreground text-sm font-medium leading-snug">
-                  React component share
-                </CardTitle>
-                <MetricHelpButton metricId="reactShare" label="" align="right" className="shrink-0" />
-              </CardHeader>
-              <CardContent className="px-5 pt-0">
-                <p className="text-foreground text-3xl font-semibold tabular-nums tracking-tight">
-                  {(summary.reactShare * 100).toFixed(1)}%
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs leading-snug">
-                  UI-layer density vs logic · domain filter for RQ3
-                </p>
-              </CardContent>
-            </Card>
+            {showReact ? (
+              <Card className="gap-0 py-4 shadow-sm">
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-2 pt-0">
+                  <CardTitle className="text-muted-foreground text-sm font-medium leading-snug">
+                    React component share
+                  </CardTitle>
+                  <MetricHelpButton metricId="reactShare" label="" align="right" className="shrink-0" />
+                </CardHeader>
+                <CardContent className="px-5 pt-0">
+                  <p className="text-foreground text-3xl font-semibold tabular-nums tracking-tight">
+                    {(summary.reactShare * 100).toFixed(1)}%
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs leading-snug">
+                    UI-layer density vs logic · domain filter for RQ3
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
         </section>
       )}
@@ -206,9 +213,11 @@ export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
                 <MetricHelpButton metricId="mi" label="MI_norm" align="right" />
               </TableHead>
               <TableHead className="text-right text-muted-foreground">MI_raw</TableHead>
-              <TableHead>
-                <MetricHelpButton metricId="reactShare" label="React?" align="left" />
-              </TableHead>
+              {showReact ? (
+                <TableHead>
+                  <MetricHelpButton metricId="reactShare" label="React?" align="left" />
+                </TableHead>
+              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -233,7 +242,9 @@ export function Phase2ComplexityTab({ report }: Phase2ComplexityTabProps) {
                 <TableCell className="text-right tabular-nums text-muted-foreground">
                   {fn.maintainabilityIndexGradAiRaw?.toFixed(1) ?? "—"}
                 </TableCell>
-                <TableCell>{fn.isReactComponent ? "yes" : "no"}</TableCell>
+                {showReact ? (
+                  <TableCell>{fn.isReactComponent ? "yes" : "no"}</TableCell>
+                ) : null}
               </TableRow>
             ))}
           </TableBody>

@@ -13,6 +13,7 @@ import { Phase2ComplexityTab } from "./rq/Phase2ComplexityTab";
 import { Phase3PathologyTab } from "./rq/Phase3PathologyTab";
 import { DatasetTab } from "./dataset/DatasetTab";
 import { CrossRQInsightPanel } from "./CrossRQInsightPanel";
+import { hasReactUiScope } from "@/lib/hasReactUiScope";
 import type { RepoReport } from "@/lib/reportTypes";
 
 interface ResultsDashboardProps {
@@ -21,6 +22,7 @@ interface ResultsDashboardProps {
 }
 
 export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
+  const showReact = hasReactUiScope(report);
   const commit = report?.source?.commit?.slice(0, 7) ?? "—";
   const exportFilename = `repo-metrics-${resultId}-${commit}.json`;
 
@@ -81,13 +83,15 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
             >
               Quality
             </TabsTrigger>
-            <TabsTrigger
-              className="shrink-0 px-2.5 sm:px-3"
-              value="rq3-react"
-              title="React & TSX — hooks, JSX depth, cohesion heuristics"
-            >
-              React &amp; TSX
-            </TabsTrigger>
+            {showReact ? (
+              <TabsTrigger
+                className="shrink-0 px-2.5 sm:px-3"
+                value="rq3-react"
+                title="React & TSX — hooks, JSX depth, cohesion heuristics"
+              >
+                React &amp; TSX
+              </TabsTrigger>
+            ) : null}
             <TabsTrigger
               className="shrink-0 px-2.5 sm:px-3"
               value="phase2-complexity"
@@ -125,12 +129,14 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
             <CrossRQInsightPanel report={report} />
           </div>
         </TabsContent>
-        <TabsContent value="rq3-react">
-          <div className="space-y-8">
-            <RQ3ReactTab report={report} />
-            <CrossRQInsightPanel report={report} />
-          </div>
-        </TabsContent>
+        {showReact ? (
+          <TabsContent value="rq3-react">
+            <div className="space-y-8">
+              <RQ3ReactTab report={report} />
+              <CrossRQInsightPanel report={report} />
+            </div>
+          </TabsContent>
+        ) : null}
         <TabsContent value="phase2-complexity">
           <div className="space-y-8">
             <Phase2ComplexityTab report={report} />

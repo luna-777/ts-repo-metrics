@@ -246,7 +246,21 @@ function MetricBodySections({
   );
 }
 
-export function Phase2MethodologyCard({ className }: { className?: string }) {
+export function Phase2MethodologyCard({
+  className,
+  includeReactLens = true,
+}: {
+  className?: string;
+  /** When false, React component share is omitted (no .tsx in analyzed repo). */
+  includeReactLens?: boolean;
+}) {
+  const lensRows = includeReactLens
+    ? LENS_ROWS
+    : LENS_ROWS.filter((row) => row.lens !== "Structural (UI)");
+  const methodologyIds = includeReactLens
+    ? METHODOLOGY_DEEP_DIVES
+    : METHODOLOGY_DEEP_DIVES.filter((id) => id !== "reactShare");
+
   return (
     <Card className={cn("border-muted-foreground/20", className)}>
       <CardHeader className="pb-2">
@@ -270,7 +284,7 @@ export function Phase2MethodologyCard({ className }: { className?: string }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {LENS_ROWS.map((row) => (
+              {lensRows.map((row) => (
                 <TableRow key={row.lens}>
                   <TableCell className="font-medium">{row.lens}</TableCell>
                   <TableCell>{row.metric}</TableCell>
@@ -293,7 +307,7 @@ export function Phase2MethodologyCard({ className }: { className?: string }) {
             <span className="text-muted-foreground hidden text-xs font-normal group-open:inline">Collapse</span>
           </summary>
           <div className="mt-4 space-y-8 border-t border-border pt-4">
-            {METHODOLOGY_DEEP_DIVES.map((id) => {
+            {methodologyIds.map((id) => {
               const body = metricBody(id);
               if (!body) return null;
               return (
@@ -334,11 +348,13 @@ export function Phase2MethodologyCard({ className }: { className?: string }) {
               <strong className="text-foreground">MI_norm</strong> (0–100) summarizes maintainability under the GRAD-AI
               formula; red or low bands deserve narrative justification, not automatic blame.
             </li>
-            <li>
-              <strong className="text-foreground">React component share</strong> is a structural density / domain filter:
-              compare it to where flagged rows cluster to see if decay is UI-heavy vs repo-wide (see glossary for the
-              heuristic).
-            </li>
+            {includeReactLens ? (
+              <li>
+                <strong className="text-foreground">React component share</strong> is a structural density / domain
+                filter: compare it to where flagged rows cluster to see if decay is UI-heavy vs repo-wide (see glossary
+                for the heuristic).
+              </li>
+            ) : null}
           </ul>
         </details>
       </CardContent>

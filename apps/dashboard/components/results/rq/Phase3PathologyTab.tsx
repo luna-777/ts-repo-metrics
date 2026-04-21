@@ -24,6 +24,7 @@ import {
 import { MathBlock } from "@/components/research/MathBlock";
 import { cn } from "@/lib/utils";
 import { RQFramingHeader } from "./RQFramingHeader";
+import { hasReactUiScope } from "@/lib/hasReactUiScope";
 
 interface Phase3PathologyTabProps {
   report: RepoReport;
@@ -42,6 +43,7 @@ const METHODOLOGY_SPEC_VERSION = "MATH_SPECS_V1.2";
 
 export function Phase3PathologyTab({ report }: Phase3PathologyTabProps) {
   const p3 = report.phase3;
+  const showReact = hasReactUiScope(report);
   const [formulasOpen, setFormulasOpen] = useState(false);
   const [methodologyOpen, setMethodologyOpen] = useState(false);
 
@@ -70,7 +72,8 @@ export function Phase3PathologyTab({ report }: Phase3PathologyTabProps) {
         <span className="font-medium text-foreground">Phase 3 — AI smell &amp; bloat.</span> KPIs are
         framed as <strong className="text-foreground">integrity</strong>,{" "}
         <strong className="text-foreground">modularity</strong>, and{" "}
-        <strong className="text-foreground">abstraction</strong> risks (SFD, MCR, SRS). Open{" "}
+        <strong className="text-foreground">abstraction</strong> risks (
+        {showReact ? "SFD, MCR, SRS" : "SFD, SRS"}). Open{" "}
         <CircleHelp className="inline size-3.5 align-text-bottom text-muted-foreground" aria-hidden />{" "}
         on each card for the full methodology; the{" "}
         <strong className="text-foreground">Formal methodology</strong> section matches{" "}
@@ -87,7 +90,9 @@ export function Phase3PathologyTab({ report }: Phase3PathologyTabProps) {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div
+        className={`grid grid-cols-1 gap-4 ${showReact ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+      >
         <Phase3KpiCard
           riskLabel="Integrity risk"
           metricLabel="Silent Failure Density"
@@ -120,39 +125,41 @@ export function Phase3PathologyTab({ report }: Phase3PathologyTabProps) {
           </div>
         </Phase3KpiCard>
 
-        <Phase3KpiCard
-          riskLabel="Modularity risk"
-          metricLabel="Monolithic Rate"
-          abbrev="MCR"
-          tagline="Share of React components exceeding the 50-line maintainability threshold."
-          value={
-            p3 ? (p3.mcr === null ? "—" : `${(p3.mcr * 100).toFixed(1)}%`) : "—"
-          }
-          footer={
-            p3
-              ? `${p3.monolithicComponentCount} / ${p3.reactComponentCount} components`
-              : "—"
-          }
-          helpTitle="Monolithic Component Rate (MCR)"
-          citation="Source: Bollu, P. (2024)."
-          formula={String.raw`\mathrm{MCR} = \frac{\#\{\,C \mid \mathrm{SLOC}(C) > 50\,\}}{\#\{\,\mathrm{Components}\,\}}`}
-        >
-          <p>
-            Measures <strong className="text-foreground">architectural atrophy</strong> where
-            features are repeatedly prompted into a single file instead of being refactored into
-            smaller units.
-          </p>
-          <div className="space-y-1.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Why it matters
-            </p>
+        {showReact ? (
+          <Phase3KpiCard
+            riskLabel="Modularity risk"
+            metricLabel="Monolithic Rate"
+            abbrev="MCR"
+            tagline="Share of React components exceeding the 50-line maintainability threshold."
+            value={
+              p3 ? (p3.mcr === null ? "—" : `${(p3.mcr * 100).toFixed(1)}%`) : "—"
+            }
+            footer={
+              p3
+                ? `${p3.monolithicComponentCount} / ${p3.reactComponentCount} components`
+                : "—"
+            }
+            helpTitle="Monolithic Component Rate (MCR)"
+            citation="Source: Bollu, P. (2024)."
+            formula={String.raw`\mathrm{MCR} = \frac{\#\{\,C \mid \mathrm{SLOC}(C) > 50\,\}}{\#\{\,\mathrm{Components}\,\}}`}
+          >
             <p>
-              Tampere/Bollu-line research associates very large React components with higher defect
-              density; high MCR flags &ldquo;giant component&rdquo; debt often amplified by
-              AI-assisted churn.
+              Measures <strong className="text-foreground">architectural atrophy</strong> where
+              features are repeatedly prompted into a single file instead of being refactored into
+              smaller units.
             </p>
-          </div>
-        </Phase3KpiCard>
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Why it matters
+              </p>
+              <p>
+                Tampere/Bollu-line research associates very large React components with higher defect
+                density; high MCR flags &ldquo;giant component&rdquo; debt often amplified by
+                AI-assisted churn.
+              </p>
+            </div>
+          </Phase3KpiCard>
+        ) : null}
 
         <Phase3KpiCard
           riskLabel="Abstraction risk"
@@ -272,43 +279,45 @@ export function Phase3PathologyTab({ report }: Phase3PathologyTabProps) {
                 </p>
               </section>
 
-              <section className="space-y-3">
-                <h4 className="text-base font-semibold text-foreground">
-                  2. Monolithic Component Rate (MCR)
-                </h4>
-                <p className="text-muted-foreground">
-                  Measures architectural atrophy where developers repeatedly &ldquo;prompt&rdquo; for
-                  features into a single file rather than refactoring.
-                </p>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Calculation formula
-                </p>
-                <div className="rounded-lg border border-sky-200/80 bg-sky-50/90 px-3 py-2 dark:border-sky-900/60 dark:bg-sky-950/40">
-                  <div className="text-sky-950 [&>div]:my-0 [&_.katex]:text-sky-950 dark:text-sky-100 dark:[&_.katex]:text-sky-100">
-                    <MathBlock displayMode>
-                      {String.raw`\mathrm{MCR} = \frac{\mathrm{Count}(\mathrm{Components} > 50\ \mathrm{SLOC})}{\mathrm{Total\ Components}}`}
-                    </MathBlock>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Why it matters
-                  </p>
+              {showReact ? (
+                <section className="space-y-3">
+                  <h4 className="text-base font-semibold text-foreground">
+                    2. Monolithic Component Rate (MCR)
+                  </h4>
                   <p className="text-muted-foreground">
-                    Tampere-line research reports substantially higher bug density in very large
-                    React components; high MCR suggests AI is enabling &ldquo;giant component&rdquo;
-                    debt.
+                    Measures architectural atrophy where developers repeatedly &ldquo;prompt&rdquo; for
+                    features into a single file rather than refactoring.
                   </p>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Source: </span>
-                  Bollu, P. (2024).
-                </p>
-              </section>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Calculation formula
+                  </p>
+                  <div className="rounded-lg border border-sky-200/80 bg-sky-50/90 px-3 py-2 dark:border-sky-900/60 dark:bg-sky-950/40">
+                    <div className="text-sky-950 [&>div]:my-0 [&_.katex]:text-sky-950 dark:text-sky-100 dark:[&_.katex]:text-sky-100">
+                      <MathBlock displayMode>
+                        {String.raw`\mathrm{MCR} = \frac{\mathrm{Count}(\mathrm{Components} > 50\ \mathrm{SLOC})}{\mathrm{Total\ Components}}`}
+                      </MathBlock>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Why it matters
+                    </p>
+                    <p className="text-muted-foreground">
+                      Tampere-line research reports substantially higher bug density in very large
+                      React components; high MCR suggests AI is enabling &ldquo;giant component&rdquo;
+                      debt.
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Source: </span>
+                    Bollu, P. (2024).
+                  </p>
+                </section>
+              ) : null}
 
               <section className="space-y-3">
                 <h4 className="text-base font-semibold text-foreground">
-                  3. Structural Redundancy Score (SRS)
+                  {showReact ? "3." : "2."} Structural Redundancy Score (SRS)
                 </h4>
                 <p className="text-muted-foreground">
                   Weighted jscpd clone mass per Source KLOC: exact vs. near duplicates (see KPI help
@@ -335,7 +344,7 @@ export function Phase3PathologyTab({ report }: Phase3PathologyTabProps) {
       </Card>
 
       {/* Monolithic components */}
-      {p3 ? (
+      {p3 && showReact ? (
         <div className="space-y-3">
           <div>
             <h3 className="text-lg font-semibold tracking-tight">
@@ -420,11 +429,13 @@ export function Phase3PathologyTab({ report }: Phase3PathologyTabProps) {
             title="Debt Behind the AI Boom: A Large-Scale Empirical Study of AI-Generated Code."
             role="Benchmarking silent failure patterns (SFD)."
           />
-          <CitationRow
-            head="Bollu, P. (2024)"
-            title="Ensuring Maintainability in React Web Applications (Tampere University)."
-            role="Threshold for monolithic components (50 SLOC) (MCR)."
-          />
+          {showReact ? (
+            <CitationRow
+              head="Bollu, P. (2024)"
+              title="Ensuring Maintainability in React Web Applications (Tampere University)."
+              role="Threshold for monolithic components (50 SLOC) (MCR)."
+            />
+          ) : null}
           <CitationRow
             head="Ferreira et al. (2023)"
             title="React Code Smells: A Catalog and Tooling."
