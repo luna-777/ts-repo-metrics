@@ -135,3 +135,12 @@
   );
   background-size: 24px 24px;
 }
+
+.dark .bg-dot-grid {
+  background-color: oklch(0.145 0 0);
+  background-image: radial-gradient(
+    oklch(1 0 0 / 0.08) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}

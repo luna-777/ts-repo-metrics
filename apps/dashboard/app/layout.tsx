@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,15 +28,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        <Header />
-        <main className="flex-1 flex flex-col items-center justify-start py-12 px-4 sm:px-6 bg-dot-grid min-h-[calc(100vh-3.5rem)]">
-          <TooltipProvider>{children}</TooltipProvider>
-        </main>
-        <Toaster richColors position="top-center" />
+        <ThemeProvider>
+          <Header />
+          <main className="flex-1 flex flex-col items-center justify-start py-12 px-4 sm:px-6 bg-dot-grid min-h-[calc(100vh-3.5rem)]">
+            <TooltipProvider>{children}</TooltipProvider>
+          </main>
+          <Toaster richColors position="top-center" />
+        </ThemeProvider>
       </body>
     </html>
   );

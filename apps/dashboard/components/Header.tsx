@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { Github } from "lucide-react";
 import { HeaderGitHubAuth } from "@/components/auth/HeaderGitHubAuth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   createUserSupabaseServerClient,
   isUserSupabaseConfigured,
@@ -67,6 +68,7 @@ export async function Header() {
             <Github className="size-4 shrink-0" aria-hidden />
             <span className="hidden sm:inline">GitHub</span>
           </Link>
+          <ThemeToggle />
           <HeaderGitHubAuth />
         </nav>
       </div>
