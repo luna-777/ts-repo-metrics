@@ -18,6 +18,7 @@ import { hasReactUiScope } from "@/lib/hasReactUiScope";
 import type { RepoReport } from "@/lib/reportTypes";
 import { createUserSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { isBrowserSupabaseConfigured } from "@/lib/supabase/browserConfigured";
+import { RepoChat } from "@/components/chat/RepoChat";
 
 interface ResultsDashboardProps {
   report: RepoReport;
@@ -186,6 +187,8 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
           <DatasetTab report={report} resultId={resultId} />
         </TabsContent>
       </Tabs>
+
+      <RepoChat report={report} />
     </div>
   );
 }
