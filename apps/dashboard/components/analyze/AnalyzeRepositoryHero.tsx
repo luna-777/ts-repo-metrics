@@ -80,7 +80,9 @@ export function AnalyzeRepositoryHero({ compact }: AnalyzeRepositoryHeroProps) {
 
       <div className="space-y-4 text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          Analyze your repository
+          <span className="bg-gradient-to-r from-primary via-orange-400 to-amber-400 bg-clip-text text-transparent">
+            Analyze your repository
+          </span>
         </h1>
         <p className="mx-auto max-w-xl text-lg text-muted-foreground">
           Enter a GitHub URL for complexity, maintainability, duplication, and git

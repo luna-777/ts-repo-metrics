@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { buildReportSummary } from "@/lib/buildReportSummary";
 import type { RepoReport } from "@/lib/reportTypes";
 
@@ -24,6 +24,7 @@ interface RepoChatProps {
 
 export function RepoChat({ report }: RepoChatProps) {
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -145,26 +146,48 @@ export function RepoChat({ report }: RepoChatProps) {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 flex w-[22rem] max-w-[calc(100vw-3rem)] flex-col rounded-2xl border border-border bg-background shadow-2xl sm:w-96">
+        <div
+          className={[
+            "fixed z-50 flex flex-col rounded-2xl border border-border bg-background shadow-2xl transition-all duration-300",
+            expanded
+              ? "bottom-6 right-6 w-[min(720px,calc(100vw-3rem))] max-h-[calc(100vh-5rem)]"
+              : "bottom-24 right-6 w-[22rem] max-w-[calc(100vw-3rem)] sm:w-96",
+          ].join(" ")}
+        >
           {/* Header */}
           <div className="flex items-center gap-3 rounded-t-2xl border-b border-border bg-muted/60 px-4 py-3">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
               <Bot className="size-4" aria-hidden />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">Repo Coach</p>
               <p className="truncate text-xs text-muted-foreground">{repoName}</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-label={expanded ? "Collapse chat" : "Expand chat"}
+              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              {expanded ? (
+                <Minimize2 className="size-4" aria-hidden />
+              ) : (
+                <Maximize2 className="size-4" aria-hidden />
+              )}
+            </button>
           </div>
 
           {/* Messages */}
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4" style={{ maxHeight: "22rem" }}>
+          <div
+            className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4"
+            style={{ maxHeight: expanded ? "calc(100vh - 14rem)" : "22rem" }}
+          >
             {messages.length === 0 ? (
               <div className="space-y-3">
                 <p className="text-center text-sm text-muted-foreground">
                   Ask me anything about your repo analysis.
                 </p>
-                <div className="flex flex-col gap-2">
+                <div className={`grid gap-2 ${expanded ? "grid-cols-2" : "grid-cols-1"}`}>
                   {STARTER_PROMPTS.map((prompt) => (
                     <button
                       key={prompt}
@@ -191,7 +214,9 @@ export function RepoChat({ report }: RepoChatProps) {
                     )}
                   </div>
                   <div
-                    className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                    className={`rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                      expanded ? "max-w-[70%]" : "max-w-[80%]"
+                    } ${
                       msg.role === "user"
                         ? "rounded-tr-sm bg-primary text-primary-foreground"
                         : "rounded-tl-sm bg-muted text-foreground"
@@ -215,7 +240,7 @@ export function RepoChat({ report }: RepoChatProps) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask about your repo…"
-              rows={1}
+              rows={expanded ? 2 : 1}
               disabled={streaming}
               className="flex-1 resize-none rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
               style={{ maxHeight: "7rem", overflowY: "auto" }}
