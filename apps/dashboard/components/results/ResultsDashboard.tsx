@@ -11,6 +11,7 @@ import { RQ3Tab } from "./rq/RQ3Tab";
 import { RQ3ReactTab } from "./rq/RQ3ReactTab";
 import { Phase2ComplexityTab } from "./rq/Phase2ComplexityTab";
 import { Phase3PathologyTab } from "./rq/Phase3PathologyTab";
+import { AIMaturityTab } from "./rq/AIMaturityTab";
 import { DatasetTab } from "./dataset/DatasetTab";
 import { CrossRQInsightPanel } from "./CrossRQInsightPanel";
 import { GitHubRepositoryPanel } from "./GitHubRepositoryPanel";
@@ -140,6 +141,13 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
             >
               AI smells
             </TabsTrigger>
+            <TabsTrigger
+              className="shrink-0 px-2.5 sm:px-3"
+              value="ai-maturity"
+              title="AI Usage Maturity — how well you use AI across the SDLC"
+            >
+              AI Maturity
+            </TabsTrigger>
             <TabsTrigger className="shrink-0 px-2.5 sm:px-3" value="dataset" title="Dataset export">
               Dataset
             </TabsTrigger>
@@ -182,6 +190,9 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
             <Phase3PathologyTab report={report} />
             <CrossRQInsightPanel report={report} />
           </div>
+        </TabsContent>
+        <TabsContent value="ai-maturity">
+          <AIMaturityTab />
         </TabsContent>
         <TabsContent value="dataset">
           <DatasetTab report={report} resultId={resultId} />
