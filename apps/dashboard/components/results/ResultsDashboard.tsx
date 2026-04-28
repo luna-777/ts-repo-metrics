@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Download, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import type { RepoReport } from "@/lib/reportTypes";
 import { createUserSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { isBrowserSupabaseConfigured } from "@/lib/supabase/browserConfigured";
 import { RepoChat } from "@/components/chat/RepoChat";
+import { CoachExplainProvider } from "@/lib/repoCoachContext";
 
 interface ResultsDashboardProps {
   report: RepoReport;
@@ -66,7 +67,13 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
     URL.revokeObjectURL(url);
   }, [report, exportFilename]);
 
+  const coachSendRef = useRef<((message: string) => void) | null>(null);
+  const coachExplain = useCallback((message: string) => {
+    coachSendRef.current?.(message);
+  }, []);
+
   return (
+    <CoachExplainProvider value={coachExplain}>
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -100,16 +107,16 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
             <TabsTrigger
               className="shrink-0 px-2.5 sm:px-3"
               value="rq1"
-              title="Behavioral shift — git workflow and churn"
+              title="How often you commit, commit size, bursts, and churn—git habits for your team"
             >
-              Behavioral
+              How we work
             </TabsTrigger>
             <TabsTrigger
               className="shrink-0 px-2.5 sm:px-3"
               value="rq2"
-              title="Verification — tests, coupling, risk vs verification"
+              title="Tests, test-heavy commits, and rough structural risk—not scores"
             >
-              Verification
+              Tests and risk
             </TabsTrigger>
             <TabsTrigger
               className="shrink-0 px-2.5 sm:px-3"
@@ -199,7 +206,13 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
         </TabsContent>
       </Tabs>
 
-      <RepoChat report={report} />
+      <RepoChat
+        report={report}
+        onRegisterCoachSend={(fn) => {
+          coachSendRef.current = fn;
+        }}
+      />
     </div>
+    </CoachExplainProvider>
   );
 }

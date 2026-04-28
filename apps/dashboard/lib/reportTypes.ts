@@ -108,6 +108,14 @@ export interface ContributorActivity {
   commitCount: number;
   linesAdded: number;
   linesDeleted: number;
+  /** Git numstat Σ(add+del) on test paths in this author's commits (not snapshot LOC). */
+  testLineChurn: number;
+  /** Σ(add+del) on non-test paths. */
+  sourceLineChurn: number;
+  /** Distinct test paths touched. */
+  testFilesTouched: number;
+  /** Distinct non-test paths touched. */
+  sourceFilesTouched: number;
   commitStats: {
     medianCommitSize: number;
     p90CommitSize: number;
@@ -121,6 +129,18 @@ export interface ContributorActivity {
     pctCommitsTouchingTests: number;
     testToFeatureCommitRatio: number;
   };
+}
+
+/** Per-symbol row for complexity vs test-proximity (engine heuristic, not Istanbul). */
+export interface SymbolVerificationRisk {
+  file: string;
+  name: string;
+  startLine: number;
+  cyclomaticComplexity: number;
+  verificationScore: number;
+  evidence: "referenced_in_test" | "paired_file_only" | "none";
+  pairedTestPath?: string;
+  riskScore: number;
 }
 
 export interface RepoReport {
@@ -169,6 +189,8 @@ export interface RepoReport {
     avgLinesPerCommit: number;
     largeCommitRatio: number;
     commitsPerWeek: number;
+    /** When set by the engine: local clone vs GitHub API vs unavailable. */
+    mode?: "local" | "api" | "none";
   } | null;
   gitMetricsV2?: {
     commitStats: { medianCommitSize: number; p90CommitSize: number; pctOver500Loc: number; pctOver1000Loc: number };
@@ -186,6 +208,8 @@ export interface RepoReport {
   reactMetrics?: ReactMetricsReport;
   /** Phase 3 — AI smell / pathology metrics when the engine version supports them. */
   phase3?: Phase3Metrics;
+  /** Per-symbol complexity vs test proximity; absent in older cached reports. */
+  symbolVerificationRisks?: SymbolVerificationRisk[];
 }
 
 export interface ReactHookSafetyFlags {

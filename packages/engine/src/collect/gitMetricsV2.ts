@@ -293,10 +293,22 @@ export function buildContributorActivityFromParsedCommits(
     const email = (group[0]!.authorEmail ?? "").trim();
     let linesAdded = 0;
     let linesDeleted = 0;
+    let testLineChurn = 0;
+    let sourceLineChurn = 0;
+    const testPathsDistinct = new Set<string>();
+    const sourcePathsDistinct = new Set<string>();
     for (const c of group) {
       for (const f of c.files) {
         linesAdded += f.add;
         linesDeleted += f.del;
+        const churn = f.add + f.del;
+        if (TEST_FILE_RE.test(f.path)) {
+          testLineChurn += churn;
+          testPathsDistinct.add(f.path);
+        } else {
+          sourceLineChurn += churn;
+          sourcePathsDistinct.add(f.path);
+        }
       }
     }
     out.push({
@@ -306,6 +318,10 @@ export function buildContributorActivityFromParsedCommits(
       commitCount: group.length,
       linesAdded,
       linesDeleted,
+      testLineChurn,
+      sourceLineChurn,
+      testFilesTouched: testPathsDistinct.size,
+      sourceFilesTouched: sourcePathsDistinct.size,
       commitStats: computeCommitStats(group),
       burstStats: computeBurstStats(group),
       entropy: computeEntropyStats(group),

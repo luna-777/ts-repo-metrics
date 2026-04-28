@@ -12,6 +12,34 @@ export interface RQConfig {
   operationalization: string;
 }
 
+/** Student-facing copy for the Behavioral (RQ1) tab — learning-only; no research header. */
+export const BEHAVIORAL_LEARNING_FRAMING = {
+  title: "How your team works",
+  lead:
+    "This tab turns your repository’s git history into a snapshot of collaboration: how often you commit, how big those changes tend to be, whether work lands in short bursts, and which files see the most activity.",
+  discussion:
+    "These numbers are conversation starters for your team—not scores. Use them in standups or retros to align on habits, integration, and where the code is moving most.",
+  teamVsAuthor:
+    "Repository cards below summarize combined history for everyone; the teammate table shows the same kinds of measures per author where git recorded them.",
+  /** Shown when analysis used API-only metadata (sparse line-level stats). */
+  trustApi:
+    "GitHub API mode only has commit metadata for some fields; line counts and related rates may show as zero—that usually means the data wasn’t available, not that no work happened.",
+  /** Generic trust line when mode is unknown or local. */
+  trustGeneric:
+    "If something looks off, check the metric help (?) on each card and the documentation for how each value is computed.",
+} as const;
+
+/** Student-facing copy for the Verification (RQ2) tab — learning-only; no research header. */
+export const VERIFICATION_LEARNING_FRAMING = {
+  title: "Checking your work",
+  lead:
+    "This tab connects how much automated checking you have around the code (tests, test-heavy commits) with rough signals of structural risk (complexity, long functions) and hygiene (empty catches, stray console calls).",
+  discussion:
+    "These metrics do not judge your grade—they help your team decide where verification is thin and where logic is hardest to review.",
+  scopeNote:
+    "Repository-wide totals (LOC, complexity, catches) describe the codebase as scanned; git-based shares can be narrowed to one author below when contributors are known.",
+} as const;
+
 export const RQ_CONFIGS: Record<RQId, RQConfig> = {
   RQ1: {
     id: "RQ1",

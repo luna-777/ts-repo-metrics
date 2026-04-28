@@ -213,6 +213,7 @@ repo-metrics/
 - [Full JSON schema reference](docs/SCHEMA.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Sprint planning](docs/planning/) — roadmap and epic specifications
+- [AI session log analyzer (planned)](docs/planning/AI_SESSION_LOG_ANALYZER.md) — JSONL metrics, enrichment bridge table, join model
 - [RQ3 React/TSX implementation (Phase 1)](docs/planning/RQ3_REACT_METRICS_IMPLEMENTATION.md)
 - [Metrics concepts & citations (Phase 2)](docs/METRICS_CONCEPTS.md)
 

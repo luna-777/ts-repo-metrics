@@ -19,6 +19,8 @@ export type {
   ComplexitySummary,
   SmellCounts,
   PerFileEntry,
+  SymbolVerificationRisk,
+  VerificationEvidence,
   ReactHookSafetyFlags,
   ReactComponentMetrics,
   ReactMetricsSummary,

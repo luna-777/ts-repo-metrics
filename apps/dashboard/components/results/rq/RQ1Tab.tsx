@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { MetricCard } from "../MetricCard";
-import { RQFramingHeader } from "./RQFramingHeader";
+import { BehavioralLearningFooter } from "./BehavioralLearningFooter";
+import { BehavioralLearningIntro } from "./BehavioralLearningIntro";
+import { BehavioralTakeaways } from "./BehavioralTakeaways";
 import {
   Table,
   TableBody,
@@ -10,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getRq1MetricValues, RQ1_SCOPE_TEAM, type Rq1ScopeId } from "@/lib/rq1ScopeMetrics";
 import type { RepoReport } from "@/lib/reportTypes";
 import {
   RQ1AvgLinesPerCommitBody,
@@ -31,19 +35,16 @@ function formatNumber(n: number): string {
 }
 
 export function RQ1Tab({ report }: RQ1TabProps) {
-  const git = report.git;
-  const gv2 = report.gitMetricsV2;
+  const contributors = useMemo(() => report.contributors ?? [], [report.contributors]);
+  const [scopeId, setScopeId] = useState<Rq1ScopeId>(RQ1_SCOPE_TEAM);
 
-  const totalCommits = git?.totalCommits ?? 0;
-  const commitsPerWeek = git?.commitsPerWeek ?? 0;
-  const medianCommitSize = gv2?.commitStats?.medianCommitSize ?? git?.medianCommitSize ?? 0;
-  const avgLinesPerCommit = git?.avgLinesPerCommit ?? 0;
-  const largeCommitRatio = gv2?.commitStats?.pctOver500Loc ?? git?.largeCommitRatio ?? 0;
-  /** Engine stores this as 0–100 (e.g. 60 = 60%). */
-  const burstRatio = gv2?.burstStats?.burstRatio ?? 0;
-  const entropy = gv2?.entropy?.stdDevTimeBetweenCommits ?? 0;
-  const duplication = (report.duplication?.percentage ?? 0);
-  const framework = report.framework?.type ?? "—";
+  useEffect(() => {
+    setScopeId(RQ1_SCOPE_TEAM);
+  }, [report.analysis_timestamp, report.source?.commit]);
+
+  const mv = useMemo(() => getRq1MetricValues(report, scopeId), [report, scopeId]);
+
+  const gv2 = report.gitMetricsV2;
 
   const churnMods = (gv2?.churn?.topByModifications ?? []) as Array<{
     file: string;
@@ -56,32 +57,82 @@ export function RQ1Tab({ report }: RQ1TabProps) {
     linesChanged: number;
   }>;
 
+  const cardProps = { rq: "RQ1" as const, hideResearchBadge: true };
+  const teamOnly = mv.mode === "team";
+
+  const commitsPerWeekTooltip =
+    mv.mode === "contributor"
+      ? "Calculated only for the whole repository (recent 13-week window ÷ 13), not per author."
+      : "Recent commits in the last 13 weeks ÷ 13.";
+
+  const dupeFrameworkNoteTeam =
+    "Metrics below use the full repository history. Duplication % and framework apply to the codebase as a whole, not per person.";
+  const dupeFrameworkNoteContributor =
+    "Git-derived numbers above reflect this author's commits where git could attribute them. Duplication % and framework still describe the entire repository together—they are not per-person scores.";
+
+  const sectionTitle =
+    mv.mode === "team"
+      ? "Repository (whole team)"
+      : `Contributor: ${mv.contributorDisplayName ?? "—"}`;
+
+  const sectionLead = mv.mode === "team" ? dupeFrameworkNoteTeam : dupeFrameworkNoteContributor;
+
   return (
     <div className="space-y-8">
-      <RQFramingHeader rq="RQ1" />
+      <BehavioralLearningIntro report={report} />
+      {teamOnly ? <BehavioralTakeaways report={report} /> : null}
+
+      {contributors.length > 0 ? (
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="rq1-scope" className="text-sm font-medium text-foreground">
+              View metrics for
+            </label>
+            <select
+              id="rq1-scope"
+              value={scopeId}
+              onChange={(e) => setScopeId(e.target.value)}
+              className="min-w-[220px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value={RQ1_SCOPE_TEAM}>Whole repository (team)</option>
+              {contributors.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.displayName || c.authorEmail || c.id}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      ) : null}
+
       <section>
-        <h2 className="text-lg font-semibold mb-4">Development Workflow Profile</h2>
+        <h2 className="text-lg font-semibold mb-4">{sectionTitle}</h2>
+        <p className="text-sm text-muted-foreground mb-4 max-w-3xl">{sectionLead}</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <MetricCard
+            {...cardProps}
             label="Total commits"
-            value={totalCommits}
-            rq="RQ1"
-            tooltip="All commits parsed from git history for this run"
+            value={mv.totalCommits}
+            tooltip={
+              mv.mode === "contributor"
+                ? "Commits attributed to this author in parsed git history."
+                : "All commits parsed from git history for this run"
+            }
           />
           <MetricCard
+            {...cardProps}
             label="Commits per week"
-            value={formatNumber(commitsPerWeek)}
-            rq="RQ1"
-            tooltip="Recent commits in the last 13 weeks ÷ 13."
+            value={mv.commitsPerWeek == null ? "—" : formatNumber(mv.commitsPerWeek)}
+            tooltip={commitsPerWeekTooltip}
             metricHelp={{
               title: "Commits per week",
               children: <RQ1CommitsPerWeekBody />,
             }}
           />
           <MetricCard
+            {...cardProps}
             label="Median commit size"
-            value={formatNumber(medianCommitSize)}
-            rq="RQ1"
+            value={formatNumber(mv.medianCommitSize)}
             tooltip="Median total lines changed (add + delete) per commit."
             metricHelp={{
               title: "Median commit size",
@@ -89,9 +140,9 @@ export function RQ1Tab({ report }: RQ1TabProps) {
             }}
           />
           <MetricCard
+            {...cardProps}
             label="Avg lines per commit"
-            value={formatNumber(avgLinesPerCommit)}
-            rq="RQ1"
+            value={formatNumber(mv.avgLinesPerCommit)}
             tooltip="Mean total lines changed per commit."
             metricHelp={{
               title: "Average lines per commit",
@@ -99,9 +150,9 @@ export function RQ1Tab({ report }: RQ1TabProps) {
             }}
           />
           <MetricCard
+            {...cardProps}
             label="Large commit ratio (>500 LOC)"
-            value={`${formatNumber(largeCommitRatio)}%`}
-            rq="RQ1"
+            value={`${formatNumber(mv.largeCommitRatio)}%`}
             tooltip="Share of commits with total churn &gt; 500 lines."
             metricHelp={{
               title: "Large commit ratio (&gt;500 LOC)",
@@ -109,9 +160,9 @@ export function RQ1Tab({ report }: RQ1TabProps) {
             }}
           />
           <MetricCard
+            {...cardProps}
             label="Burst ratio"
-            value={`${formatNumber(burstRatio)}%`}
-            rq="RQ1"
+            value={`${formatNumber(mv.burstRatio)}%`}
             tooltip="Share of commits that fall inside a burst cluster (≥3 commits within 30 min)."
             metricHelp={{
               title: "Burst ratio",
@@ -119,9 +170,9 @@ export function RQ1Tab({ report }: RQ1TabProps) {
             }}
           />
           <MetricCard
+            {...cardProps}
             label="Commit entropy (std dev ms)"
-            value={formatNumber(entropy)}
-            rq="RQ1"
+            value={formatNumber(mv.entropy)}
             tooltip="Standard deviation of gaps between consecutive commits (milliseconds)."
             metricHelp={{
               title: "Commit timing variability",
@@ -129,83 +180,41 @@ export function RQ1Tab({ report }: RQ1TabProps) {
             }}
           />
           <MetricCard
+            {...cardProps}
             label="Duplication %"
-            value={`${formatNumber(duplication)}%`}
-            rq="RQ1"
-            tooltip="Same jscpd duplication % as RQ3 (cross-tab proxy)."
+            value={`${formatNumber(mv.duplication)}%`}
+            tooltip="Repository-wide duplicate-line share from jscpd (same scan as elsewhere in this app)."
             metricHelp={{
               title: "Duplication percentage",
               children: <RQ1DuplicationPercentBody />,
             }}
           />
           <MetricCard
+            {...cardProps}
             label="Framework detected"
-            value={framework}
-            rq="RQ1"
+            value={mv.framework}
             tooltip="Primary framework signal from the analyzer"
           />
         </div>
+        <p className="text-xs text-muted-foreground mt-3 max-w-3xl">
+          Duplication % and framework describe the entire codebase together—they are not separate
+          scores per teammate.
+        </p>
       </section>
-      {report.contributors && report.contributors.length > 0 ? (
-        <section>
-          <h2 className="text-lg font-semibold mb-2">Contributors (git activity)</h2>
-          <p className="text-muted-foreground text-sm mb-4 max-w-3xl">
-            Metrics grouped by commit author (email when present). Line counts come from{" "}
-            <code className="rounded bg-muted px-1 text-xs">git log --numstat</code> where available;
-            GitHub API mode has commit metadata only, so lines and some rates may be zero.
-          </p>
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Contributor</TableHead>
-                  <TableHead className="text-right">Commits</TableHead>
-                  <TableHead className="text-right">+Lines</TableHead>
-                  <TableHead className="text-right">−Lines</TableHead>
-                  <TableHead className="text-right">Median Δ / commit</TableHead>
-                  <TableHead className="text-right">Burst %</TableHead>
-                  <TableHead className="text-right">Test-touch %</TableHead>
-                  <TableHead className="text-right">Refactor %</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.contributors.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell>
-                      <div className="font-medium">{c.displayName}</div>
-                      <div className="text-muted-foreground text-xs font-mono truncate max-w-[220px]">
-                        {c.authorEmail}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{c.commitCount}</TableCell>
-                    <TableCell className="text-right tabular-nums">{c.linesAdded}</TableCell>
-                    <TableCell className="text-right tabular-nums">{c.linesDeleted}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(c.commitStats.medianCommitSize)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(c.burstStats.burstRatio)}%
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(c.testCoupling.pctCommitsTouchingTests)}%
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(c.refactorBehavior.refactorCommitRatio)}%
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
-      ) : null}
+
       <section>
-        <h2 className="text-lg font-semibold mb-4">Churn Concentration</h2>
+        <h2 className="text-lg font-semibold mb-4">Where changes cluster</h2>
+        {!teamOnly ? (
+          <p className="text-sm text-muted-foreground mb-2 max-w-3xl">
+            Hotspots reflect <strong>full-repository</strong> history across all authors, not this
+            person alone.
+          </p>
+        ) : null}
         <p className="text-sm text-muted-foreground mb-4">
-          Top files by modification count and lines changed.{" "}
-          <strong>Modifications</strong> is how often a file appears in commit file lists;{" "}
-          <strong>lines changed</strong> is the sum of added + deleted lines across those commits.
-          Concentrated churn may indicate integration style or hotspots.
+          Files that show up most in recent history. <strong>Modifications</strong> counts how often a
+          file appears in commit file lists; <strong>lines changed</strong> is add + delete summed
+          across commits. Clustered activity often marks integration hotspots worth coordinating on as
+          a team.
         </p>
         <div className="grid gap-6 md:grid-cols-2">
           <div className="rounded-md border">
@@ -270,16 +279,7 @@ export function RQ1Tab({ report }: RQ1TabProps) {
           </div>
         </div>
       </section>
-      <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 text-sm">
-        <p className="text-blue-900 dark:text-blue-100">
-          These metrics capture observable workflow behaviors that may shift
-          under AI-assisted development (e.g., bursty integration, larger
-          deltas, concentrated churn).
-        </p>
-        <p className="mt-2 text-blue-800 dark:text-blue-200 font-medium">
-          RQ Mapping: RQ1
-        </p>
-      </div>
+      <BehavioralLearningFooter />
     </div>
   );
 }

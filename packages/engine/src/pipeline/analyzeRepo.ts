@@ -29,6 +29,7 @@ import {
   mergeReactMetricsReports,
 } from "../extract/react/extractReactMetrics.js";
 import { extractSilentFailures } from "../extract/silentFailures.js";
+import { computeSymbolVerificationRisks } from "../extract/symbolVerificationRisk.js";
 import { LONG_FUNCTION_THRESHOLD } from "../utils/constants.js";
 import { median } from "../utils/math.js";
 import { getSourceMetadata } from "../collect/repoMetadata.js";
@@ -234,6 +235,8 @@ export async function analyzeRepo(
       ? mergeReactMetricsReports(reactMetricsByFile, tsxFilesAnalyzed)
       : undefined;
 
+  const symbolVerificationRisks = await computeSymbolVerificationRisks(repoPath, perFile);
+
   return {
     repoPath,
     source,
@@ -259,5 +262,6 @@ export async function analyzeRepo(
     perFile,
     reactMetrics,
     phase3,
+    symbolVerificationRisks,
   };
 }

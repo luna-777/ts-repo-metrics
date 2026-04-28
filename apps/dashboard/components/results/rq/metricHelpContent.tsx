@@ -459,12 +459,17 @@ export function RQ1DuplicationPercentBody() {
     <>
       <HelpSection title="What it measures">
         <p>
-          Same duplication percentage as RQ3 (jscpd). Shown under RQ1 as a <strong>workflow / change
-          quality</strong> proxy alongside git stats.
+          The fraction of duplicated lines found by <strong>jscpd</strong> clone detection across this
+          repository. One number describes the codebase as a whole—use it alongside git habits to spot
+          change quality or repetition.
         </p>
       </HelpSection>
       <HelpSection title="How it is calculated">
-        <p>See &quot;Duplication %&quot; on RQ3 — jscpd aggregate duplicated-line percentage.</p>
+        <p>
+          Aggregate duplicated-line percentage from jscpd (same methodology as elsewhere in this
+          dashboard). Not derived from git author identity; it stays a <strong>repository-level</strong>{" "}
+          snapshot.
+        </p>
       </HelpSection>
     </>
   );

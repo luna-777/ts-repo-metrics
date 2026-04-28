@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
   Upload,
   BookOpen,
@@ -12,10 +13,28 @@ import {
   Lightbulb,
   BarChart3,
   Wrench,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  analyzeSessionLogFile,
+  DEMO_SESSION_LOG_REPORT,
+  type SessionLogReport,
+} from "@/lib/aiSessionLogAnalyzer";
+import { useCoachExplain } from "@/lib/repoCoachContext";
+import {
+  buildAiMaturityAggregateCoachPrompt,
+  buildAiMaturityFullTabCoachPrompt,
+  buildAiMaturityPlaybookCoachPrompt,
+  buildAiMaturitySessionCoachPrompt,
+} from "@/lib/aiMaturityExplainPrompts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -256,6 +275,119 @@ const DEMO_DATA: AUMData = {
     { name: "Bash", count: 107, pct: 12, color: "bg-foreground/20", meaning: "Operational — AI running commands, tests, builds" },
   ],
 };
+
+function buildAumBriefForCoach(data: AUMData): Record<string, unknown> {
+  return {
+    totalPrompts: data.totalPrompts,
+    totalSessions: data.totalSessions,
+    totalToolCalls: data.totalToolCalls,
+    avgIterationsPerPrompt: data.avgIterationsPerPrompt,
+    writeRatio: data.writeRatio,
+    sessionConcentration: data.sessionConcentration,
+    isDemoData: data.isDemoData,
+    stages: data.stageScores.map((s) => ({
+      stage: s.stage,
+      aumScore: s.aumScore,
+      auSessions: s.auSessions,
+      iterationsPerPrompt: s.iterationsPerPrompt,
+      verificationRatio: s.verificationRatio,
+      noData: !!s.noData,
+    })),
+    toolMix: data.toolMix.map((t) => ({ name: t.name, pct: t.pct, count: t.count })),
+  };
+}
+
+/** Opens Repo Coach with a dynamic prompt — same UX idea as CoachExplainButton + RQ2. */
+function CoachAiActionButton({
+  prompt,
+  send,
+  children,
+  tooltip,
+}: {
+  prompt: string;
+  send: ((message: string) => void) | null;
+  children: ReactNode;
+  tooltip: string;
+}) {
+  const disabled = !send;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          className="gap-2 shrink-0"
+          aria-label={tooltip}
+          onClick={() => send?.(prompt)}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-sm text-xs">
+        {disabled
+          ? "Repo Coach is unavailable until the assistant panel loads on this results page."
+          : tooltip}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function SessionCoachTipSnapshot({ report }: { report: SessionLogReport }) {
+  const dr = report.metrics.discoveryRatio;
+  const shellTest = report.metrics.verificationTestCommandRatio;
+  const raw = report.metrics.readAfterWriteRate;
+  const loops = report.metrics.stuck.totalLoops;
+  const discoveryPct = dr != null ? Math.round(dr * 100) : null;
+  const shellPct = shellTest != null ? Math.round(shellTest * 100) : null;
+  const rawPct = raw != null ? Math.round(raw * 100) : null;
+
+  return (
+    <div className="rounded-lg border border-dashed border-primary/50 bg-primary/5 px-4 py-3 text-sm">
+      <p className="font-semibold text-foreground flex items-center gap-2">
+        <Lightbulb className="size-4 shrink-0" aria-hidden />
+        Coach&apos;s tip (plain English)
+      </p>
+      <p className="text-muted-foreground mt-2 leading-relaxed">
+        {discoveryPct != null ? (
+          <>
+            Your discovery share of labeled discovery+action calls is about{" "}
+            <strong>{discoveryPct}%</strong>.{" "}
+            {discoveryPct < 25
+              ? "That leans write-heavy — try one targeted grep or read of the interface before large edits. "
+              : "That suggests you often ground the model before big changes. "}
+          </>
+        ) : null}
+        {rawPct != null ? (
+          <>
+            Read-after-write on Write/Edit→Read pairs is about <strong>{rawPct}%</strong> of those
+            sequences in this export (a proxy, not perfection).{" "}
+          </>
+        ) : null}
+        {shellPct != null ? (
+          <>
+            Shell invocations that look test-like are about <strong>{shellPct}%</strong> of shell tool
+            calls.{" "}
+          </>
+        ) : null}
+        {loops >= 2 ? (
+          <>
+            Similar tool+path repeats flagged <strong>{loops}</strong> loop(s) — pause, shrink the task, or
+            simplify the hot path before another attempt.{" "}
+          </>
+        ) : (
+          "Loop signal is low this run — still watch for friction on the top file if errors cluster there. "
+        )}
+      </p>
+      <p className="text-xs text-muted-foreground mt-2 italic border-l-2 border-muted-foreground/30 pl-3">
+        Example phrasing for teammates: &quot;If discovery sits around 40% of labeled calls, you&apos;re
+        often asking for edits before search — paste one grep hit first; it usually cuts hallucination
+        rework.&quot;
+      </p>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // CSV parser (fully computes all AUM metrics from logs)
@@ -564,7 +696,11 @@ function AUMStageBar({ stage }: { stage: AUMStageScore }) {
   );
 }
 
-function UploadZone({ onUpload }: { onUpload: (data: Partial<AUMData>) => void }) {
+function UploadZone({
+  onParsed,
+}: {
+  onParsed: (sessionLogReport: SessionLogReport | null, aumPartial: Partial<AUMData>) => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -572,7 +708,21 @@ function UploadZone({ onUpload }: { onUpload: (data: Partial<AUMData>) => void }
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      onUpload(parseCSV(text));
+      const name = file.name.toLowerCase();
+      const looksJson =
+        name.endsWith(".json") ||
+        name.endsWith(".jsonl") ||
+        /^\s*[\[{]/.test(text);
+      let sessionLogReport: SessionLogReport | null = null;
+      let aumPartial: Partial<AUMData>;
+      if (looksJson) {
+        const result = analyzeSessionLogFile(text);
+        sessionLogReport = result.report;
+        aumPartial = parseCSV(result.csvText);
+      } else {
+        aumPartial = parseCSV(text);
+      }
+      onParsed(sessionLogReport, aumPartial);
     };
     reader.readAsText(file);
   };
@@ -595,18 +745,24 @@ function UploadZone({ onUpload }: { onUpload: (data: Partial<AUMData>) => void }
       <input
         ref={inputRef}
         type="file"
-        accept=".csv"
+        accept=".csv,.json,.jsonl,text/csv,application/json"
         className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
       />
       <Upload className="mx-auto size-8 text-muted-foreground mb-3" />
       <p className="font-semibold text-sm mb-1">Upload your AI usage trace</p>
-      <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-        Run{" "}
-        <code className="rounded bg-muted px-1 py-0.5 text-xs">
-          ./ai_usage_stats.py --student you@email.com --filter your-repo-name
-        </code>{" "}
-        then drag the <code className="rounded bg-muted px-1 py-0.5 text-xs">ai_usage_trace.csv</code> here.
+      <p className="text-xs text-muted-foreground max-w-lg mx-auto space-y-1">
+        <span className="block">
+          <strong>CSV:</strong> run{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            ./ai_usage_stats.py --student you@email.com --filter your-repo-name
+          </code>
+          {" "}→ <code className="rounded bg-muted px-1 py-0.5 text-xs">ai_usage_trace.csv</code>
+        </span>
+        <span className="block">
+          <strong>JSON / JSONL:</strong> session exports with tool blocks (and optional <code className="rounded bg-muted px-1 py-0.5 text-xs">usage</code>). See {" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs break-all">docs/planning/AI_SESSION_LOG_ANALYZER.md</code>.
+        </span>
       </p>
     </div>
   );
@@ -618,8 +774,17 @@ function UploadZone({ onUpload }: { onUpload: (data: Partial<AUMData>) => void }
 
 export function AIMaturityTab() {
   const [data, setData] = useState<AUMData>(DEMO_DATA);
+  const [sessionLogReport, setSessionLogReport] = useState<SessionLogReport | null>(
+    DEMO_SESSION_LOG_REPORT
+  );
 
-  const handleUpload = (parsed: Partial<AUMData>) => {
+  const coachExplain = useCoachExplain();
+
+  const mergeParsed = (
+    sessionLog: SessionLogReport | null,
+    parsed: Partial<AUMData>,
+  ) => {
+    setSessionLogReport(sessionLog);
     setData((prev) => ({
       ...prev,
       ...parsed,
@@ -642,24 +807,124 @@ export function AIMaturityTab() {
   return (
     <div className="space-y-8">
       {/* ── Framing header ── */}
-      <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <Badge variant="default">AUM</Badge>
-          <span className="font-semibold">AI Usage Maturity</span>
-          <Badge variant="outline" className="text-xs gap-1">
-            <BookOpen className="size-3" />
-            Research-grounded
-          </Badge>
+      <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Badge variant="default">AUM</Badge>
+            <span className="font-semibold">AI Usage Maturity</span>
+            <Badge variant="outline" className="text-xs gap-1">
+              <BookOpen className="size-3" />
+              Research-grounded
+            </Badge>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <CoachAiActionButton
+              send={coachExplain}
+              tooltip="Sends AUM + session analyzer snapshot to Repo Coach for personalized recommendations."
+              prompt={buildAiMaturityFullTabCoachPrompt(
+                buildAumBriefForCoach(data),
+                sessionLogReport,
+                data.isDemoData,
+              )}
+            >
+              <Sparkles className="size-4" aria-hidden />
+              Ask AI Coach
+            </CoachAiActionButton>
+            <CoachAiActionButton
+              send={coachExplain}
+              tooltip="Explains the coach's playbook below in plain language with next steps."
+              prompt={buildAiMaturityPlaybookCoachPrompt()}
+            >
+              <Lightbulb className="size-4" aria-hidden />
+              Playbook → AI
+            </CoachAiActionButton>
+          </div>
         </div>
         <p className="text-sm font-medium">
           Not <em>how much</em> you use AI — but <em>how well</em>.
         </p>
-        <p className="text-sm text-muted-foreground">
-          Based on empirical research across 85 students (SIGCSE 2026). AUM measures four
-          practices: iterative prompting, output verification, problem decomposition, and
-          contextual alignment. Students who use AI frequently but without these practices
-          score high on AU and low on AUM — and their code quality suffers for it.
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          This dashboard is framed as{" "}
+          <span className="font-medium text-foreground">high‑performance coaching</span>, not
+          surveillance. It is meant to mirror your habits early — before small AI shortcuts harden into
+          technical debt — similar to spotting code smells in review. Metrics here are hypotheses you can
+          argue with or improve.
         </p>
+        <p className="text-sm text-muted-foreground">
+          Based on empirical research across 85 students (SIGCSE 2026). AUM measures four practices:
+          iterative prompting, output verification, problem decomposition, and contextual alignment — then
+          the session analyzer (when you upload structured logs) adds archetype‑style proxies from real tool traces.
+        </p>
+
+        <details className="group rounded-lg border bg-background/60 px-3 py-2 text-sm">
+          <summary className="cursor-pointer font-medium text-foreground select-none list-none flex items-center gap-2">
+            <ChevronRight className="size-4 transition-transform group-open:rotate-90 shrink-0" aria-hidden />
+            Coach&apos;s playbook — how to read these five ideas
+          </summary>
+          <div className="mt-3 space-y-4 text-muted-foreground pl-1 border-l-2 border-primary/30 pl-4">
+            <section>
+              <h3 className="text-foreground font-semibold text-sm">1. The &quot;Orchestrator&quot; archetype</h3>
+              <p className="mt-1">
+                <strong className="text-foreground">Pitch:</strong> Are you the pilot or the passenger? This
+                is not about coding speed — it is about how well you steer the model. A{" "}
+                <strong className="text-foreground">Senior Orchestrator</strong> treats AI like a strong
+                intern: context first, check the work, guide the next step. A junior pattern is
+                &quot;fix it again&quot; loops until something breaks.
+              </p>
+              <p className="mt-1 text-xs">
+                <strong className="text-foreground">Why it matters:</strong> Good orchestration tracks with
+                maintainable changes; pure firefighting tends toward muddy, hard‑to‑review diffs.
+              </p>
+            </section>
+            <section>
+              <h3 className="text-foreground font-semibold text-sm">2. Discovery‑to‑action ratio</h3>
+              <p className="mt-1">
+                <strong className="text-foreground">Pitch:</strong> Look before you leap. We compare
+                discovery‑style tool use (search, read, grep, glob) against action tools (edit, write, shell)
+                when the log allows. A low share of discovery often means the model is guessing layout.
+              </p>
+              <p className="mt-1 text-xs">
+                <strong className="text-foreground">Why it matters:</strong> Guesses feed hallucinations;
+                grounded search first usually matches your architecture.
+              </p>
+            </section>
+            <section>
+              <h3 className="text-foreground font-semibold text-sm">3. Stuck score / friction</h3>
+              <p className="mt-1">
+                <strong className="text-foreground">Pitch:</strong> Don&apos;t fight the machine. Repeated
+                similar tool calls or error loops are a signal to pause — split the task, narrow the file, or
+                refactor the confusing area so the model (and humans) can reason about it.
+              </p>
+              <p className="mt-1 text-xs">
+                <strong className="text-foreground">Why it matters:</strong> When stuck metrics rise, you are
+                often past the point where more retries help without a design change.
+              </p>
+            </section>
+            <section>
+              <h3 className="text-foreground font-semibold text-sm">4. Verification frequency</h3>
+              <p className="mt-1">
+                <strong className="text-foreground">Pitch:</strong> Trust, but verify. We look for test‑like
+                shell runs plus read‑after‑write habits next to edits when logs expose them.
+              </p>
+              <p className="mt-1 text-xs">
+                <strong className="text-foreground">Why it matters:</strong> Generating faster than you
+                validate is how main‑branch risk creeps in — these metrics reward disciplined check‑in.
+              </p>
+            </section>
+            <section>
+              <h3 className="text-foreground font-semibold text-sm">5. Token load &amp; reasoning overhead</h3>
+              <p className="mt-1">
+                <strong className="text-foreground">Pitch:</strong> Computational efficiency of intent. When
+                usage metadata exists, very large input or reasoning deltas vs tiny edits can mean noisy
+                prompts or overloaded context — Token ROI vs LOC still needs git enrichment across commits.
+              </p>
+              <p className="mt-1 text-xs">
+                <strong className="text-foreground">Why it matters:</strong> Helps you tighten prompts instead
+                of brute‑forcing tokens.
+              </p>
+            </section>
+          </div>
+        </details>
       </div>
 
       {/* ── Demo banner or success banner ── */}
@@ -670,11 +935,14 @@ export function AIMaturityTab() {
             <div className="text-sm">
               <span className="font-semibold">Demo data shown.</span>
               <span className="text-muted-foreground ml-1">
-                Upload your <code className="rounded bg-muted px-1 text-xs">ai_usage_trace.csv</code> below to see your actual AI usage maturity.
+                Upload your{" "}
+                <code className="rounded bg-muted px-1 text-xs">csv</code>,{" "}
+                <code className="rounded bg-muted px-1 text-xs">json</code>, or{" "}
+                <code className="rounded bg-muted px-1 text-xs">jsonl</code> trace below — AUM charts plus session analyzer when the file is structured logs.
               </span>
             </div>
           </div>
-          <UploadZone onUpload={handleUpload} />
+          <UploadZone onParsed={mergeParsed} />
         </div>
       ) : (
         <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
@@ -685,15 +953,246 @@ export function AIMaturityTab() {
               {data.totalSessions} sessions · {data.totalPrompts} prompts · {data.totalToolCalls} tool calls
             </span>
           </div>
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => setData(DEMO_DATA)}>
+          <Button variant="ghost" size="sm" className="text-xs" onClick={() => {
+            setSessionLogReport(DEMO_SESSION_LOG_REPORT);
+            setData(DEMO_DATA);
+          }}>
             Reset to demo
           </Button>
         </div>
       )}
 
+      {sessionLogReport && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Sparkles className="size-4 text-muted-foreground" aria-hidden />
+              <h2 className="text-lg font-semibold">Session log analyzer</h2>
+              <Badge variant="outline" className="text-xs font-mono">
+                v{sessionLogReport.logAnalyzerVersion}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {sessionLogReport.input.sessionCount} session(s) ·{" "}
+                {sessionLogReport.input.lineCount} events · {sessionLogReport.input.format}
+              </span>
+              {data.isDemoData && (
+                <Badge variant="secondary" className="text-xs">
+                  Sample session report
+                </Badge>
+              )}
+            </div>
+            <CoachAiActionButton
+              send={coachExplain}
+              tooltip="Opens Repo Coach with this session analyzer JSON and asks for sharper coaching bullets."
+              prompt={buildAiMaturitySessionCoachPrompt(sessionLogReport)}
+            >
+              <Sparkles className="size-4" aria-hidden />
+              Session → AI
+            </CoachAiActionButton>
+          </div>
+          <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed border-l-2 border-primary/40 pl-3">
+            <span className="font-medium text-foreground">Readout + recommendations.</span> The cards and
+            percentages below <em>describe</em> what happened in your exported log (tools, tokens, loops,
+            verification habits). The{" "}
+            <span className="text-foreground font-medium">explanations &amp; recommendations</span> block
+            farther down does not stop at definitions — it turns those signals into concrete next steps you
+            can try in the next session (same idea as <span className="text-foreground">Coaching Priorities</span>{" "}
+            below for AUM).
+          </p>
+          <SessionCoachTipSnapshot report={sessionLogReport} />
+          {sessionLogReport.warnings.length > 0 && (
+            <div className="rounded-lg border border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/30 px-4 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <strong>Parse warnings:</strong>{" "}
+              <ul className="list-disc pl-5 mt-1 text-xs space-y-0.5">
+                {sessionLogReport.warnings.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-2 sm:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Archetype</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xl font-semibold">{sessionLogReport.archetype}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Rule-based label from discovery ratio, verification proxies, and iteration density.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Efficiency</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{Math.round(sessionLogReport.scorecard.efficiency * 100)}%</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Safety / compliance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{Math.round(sessionLogReport.scorecard.safety_compliance * 100)}%</p>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Discovery depth</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold">{sessionLogReport.scorecard.discovery_depth}</p>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  Tokens
+                  {!sessionLogReport.tokens.hasUsageData && (
+                    <Badge variant="secondary" className="text-[10px]">Not found in export</Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-6 text-sm">
+                <div>
+                  <span className="text-muted-foreground block text-xs">Input</span>
+                  <span className="font-mono">{sessionLogReport.tokens.hasUsageData ? sessionLogReport.tokens.input.toLocaleString() : "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Output</span>
+                  <span className="font-mono">{sessionLogReport.tokens.hasUsageData ? sessionLogReport.tokens.output.toLocaleString() : "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Reasoning (if exported)</span>
+                  <span className="font-mono">
+                    {sessionLogReport.tokens.reasoning !== null ? sessionLogReport.tokens.reasoning.toLocaleString() : "—"}
+                  </span>
+                </div>
+                {sessionLogReport.tokens.maxInputInSingleRecord != null && sessionLogReport.tokens.hasUsageData && (
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Max input / turn record</span>
+                    <span className="font-mono">{sessionLogReport.tokens.maxInputInSingleRecord.toLocaleString()}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <KpiCard
+              label="Discovery ratio"
+              value={
+                sessionLogReport.metrics.discoveryRatio != null
+                  ? `${Math.round(sessionLogReport.metrics.discoveryRatio * 100)}%`
+                  : "N/A"
+              }
+              sub="Discovery vs action taxonomy (tools in log)"
+              icon={BarChart3}
+            />
+            <KpiCard
+              label="Test cmds / shell cmds"
+              value={
+                sessionLogReport.metrics.verificationTestCommandRatio != null
+                  ? `${Math.round(sessionLogReport.metrics.verificationTestCommandRatio * 100)}%`
+                  : "N/A"
+              }
+              sub="Shell invocations matched as likely tests"
+              icon={Wrench}
+            />
+            <KpiCard
+              label="Read-after-write"
+              value={
+                sessionLogReport.metrics.readAfterWriteRate != null
+                  ? `${Math.round(sessionLogReport.metrics.readAfterWriteRate * 100)}%`
+                  : "N/A"
+              }
+              sub="Reads immediately following Write/Edit (tool-call level)"
+              icon={BookOpen}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Patterns</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {sessionLogReport.top_patterns.map((p) => (
+                  <div key={p.pattern} className="flex items-center justify-between gap-4 text-sm">
+                    <span className="font-medium">{p.pattern}</span>
+                    <Badge variant={p.status === "Healthy" ? "default" : "secondary"}>
+                      {p.frequency} · {p.status}
+                    </Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Stuck / friction</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-2">
+                <p>
+                  <span className="text-muted-foreground">Loops detected: </span>
+                  <span className="font-medium">{sessionLogReport.metrics.stuck.totalLoops}</span>
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Avg loop depth: </span>
+                  <span className="font-medium">{sessionLogReport.metrics.stuck.averageLoopDepth}</span>
+                </p>
+                <p className="break-all">
+                  <span className="text-muted-foreground">Top friction file: </span>
+                  <span className="font-mono">{sessionLogReport.metrics.stuck.topFrictionFile ?? "—"}</span>
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <Lightbulb className="size-4 text-muted-foreground mt-0.5 shrink-0" aria-hidden />
+              <div>
+                <p className="text-sm font-medium">Explanations &amp; recommendations</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Each bullet names a finding from your metrics and proposes an action—not a generic definition.
+                  For metrics without enough data you may see sparse tips until the export includes usage,
+                  fuller tool traces, or (later) git enrichment for ROI-style KPIs.
+                </p>
+              </div>
+            </div>
+            <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1.5 marker:text-foreground">
+              {sessionLogReport.ai_coaching_tips.map((t) => (
+                <li key={t} className="leading-snug">{t}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-lg border border-dashed px-4 py-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">Enrichment unavailable in-browser (by design)</p>
+            <p>Token ROI: {sessionLogReport.metrics.enrichmentUnavailable.tokenRoi}</p>
+            <p>Manual intervention: {sessionLogReport.metrics.enrichmentUnavailable.manualIntervention}</p>
+            <p>Prompt-to-commit: {sessionLogReport.metrics.enrichmentUnavailable.promptToCommit}</p>
+          </div>
+        </section>
+      )}
+
       {/* ── Overall AUM score ── */}
       <section>
-        <h2 className="text-lg font-semibold mb-4">Your AI Maturity Profile</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Your AI Maturity Profile</h2>
+          <CoachAiActionButton
+            send={coachExplain}
+            tooltip="Opens Repo Coach focused on AUM aggregates and SDLC-stage bars."
+            prompt={buildAiMaturityAggregateCoachPrompt(buildAumBriefForCoach(data))}
+          >
+            <Sparkles className="size-4" aria-hidden />
+            AUM → AI
+          </CoachAiActionButton>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="col-span-full sm:col-span-2 lg:col-span-1 border-2">
             <CardHeader className="pb-2">

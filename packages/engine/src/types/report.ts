@@ -90,6 +90,24 @@ export interface ComplexitySummary {
   highComplexityFunctions: number;
 }
 
+/** How we inferred test proximity for a symbol (static heuristic, not line coverage). */
+export type VerificationEvidence = "referenced_in_test" | "paired_file_only" | "none";
+
+/** One function-level row for complexity vs test-proximity views. */
+export interface SymbolVerificationRisk {
+  file: string;
+  name: string;
+  startLine: number;
+  cyclomaticComplexity: number;
+  /** 0–1: strength of static evidence the symbol is linked to tests (not Istanbul coverage). */
+  verificationScore: number;
+  evidence: VerificationEvidence;
+  /** Matched test file path when a conventional pair exists. */
+  pairedTestPath?: string;
+  /** `min(cyclomaticComplexity, 50) * (1 - verificationScore)` for sorting and heat maps. */
+  riskScore: number;
+}
+
 /** Detected framework and runtime classification. */
 export interface FrameworkInfo {
   type: string;
@@ -178,6 +196,14 @@ export interface ContributorActivity {
   commitCount: number;
   linesAdded: number;
   linesDeleted: number;
+  /** Git numstat Σ(add+del) on paths matching the test convention (historical churn, not snapshot LOC). */
+  testLineChurn: number;
+  /** Σ(add+del) on non-test paths in this author's commits. */
+  sourceLineChurn: number;
+  /** Distinct test paths touched (`*.test|spec.tsx?`). */
+  testFilesTouched: number;
+  /** Distinct non-test paths touched in commits (any path bucketed as production/source side). */
+  sourceFilesTouched: number;
   commitStats: CommitStats;
   burstStats: BurstStats;
   entropy: EntropyStats;
@@ -375,4 +401,9 @@ export interface RepoReport {
   reactMetrics?: ReactMetricsReport;
   /** Phase 3 — silent failures, monolithic rate, weighted jscpd redundancy. */
   phase3?: Phase3Metrics;
+  /**
+   * Per-symbol complexity vs test-proximity (filename pairing + name match in paired test).
+   * Omitted in older cached reports.
+   */
+  symbolVerificationRisks?: SymbolVerificationRisk[];
 }

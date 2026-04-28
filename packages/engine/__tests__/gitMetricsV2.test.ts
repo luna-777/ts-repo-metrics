@@ -184,5 +184,36 @@ three
     expect(bob?.linesAdded).toBe(100);
     expect(alice?.displayName).toBe("Alice");
     expect(bob?.displayName).toBe("Bob");
+    expect(alice?.testLineChurn).toBe(0);
+    expect(alice?.sourceLineChurn).toBe(15);
+    expect(alice?.testFilesTouched).toBe(0);
+    expect(alice?.sourceFilesTouched).toBe(2);
+    expect(bob?.testLineChurn).toBe(0);
+    expect(bob?.sourceLineChurn).toBe(100);
+    expect(bob?.sourceFilesTouched).toBe(1);
+  });
+
+  it("classifies test vs source churn paths", async () => {
+    const t0 = 1700000000;
+    const fixture = [
+      `COMMIT_END
+c1
+${t0}
+a@example.com
+A
+m
+10	5	src/x.ts
+3	7	src/y.test.ts`,
+    ].join("\n");
+    mockRaw.mockResolvedValue(fixture);
+
+    const bundle = await extractGitHistoryBundle("/tmp/repo");
+    expect(bundle).not.toBeNull();
+    expect(bundle!.contributors).toHaveLength(1);
+    const a = bundle!.contributors[0]!;
+    expect(a.testLineChurn).toBe(10);
+    expect(a.sourceLineChurn).toBe(15);
+    expect(a.testFilesTouched).toBe(1);
+    expect(a.sourceFilesTouched).toBe(1);
   });
 });

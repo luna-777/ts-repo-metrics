@@ -20,9 +20,11 @@ const STARTER_PROMPTS = [
 
 interface RepoChatProps {
   report: RepoReport;
+  /** Called with a function that opens the panel and sends one user message (Repo Coach explainer). */
+  onRegisterCoachSend?: (send: (userMessage: string) => void) => void;
 }
 
-export function RepoChat({ report }: RepoChatProps) {
+export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -115,6 +117,20 @@ export function RepoChat({ report }: RepoChatProps) {
     },
     [messages, streaming],
   );
+
+  const coachSendFromExplainer = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || streaming) return;
+      setOpen(true);
+      void sendMessage(trimmed);
+    },
+    [sendMessage, streaming],
+  );
+
+  useEffect(() => {
+    onRegisterCoachSend?.(coachSendFromExplainer);
+  }, [onRegisterCoachSend, coachSendFromExplainer]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {

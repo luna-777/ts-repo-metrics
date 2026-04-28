@@ -28,6 +28,8 @@ interface MetricCardProps {
   label: string;
   value: string | number;
   rq: RQId;
+  /** When true, hide the RQ1/RQ2/RQ3 badge (e.g. student-facing How we work tab). */
+  hideResearchBadge?: boolean;
   /** Short hover hint when no metricHelp; or one-line lead-in at the top of the dialog when metricHelp is set. */
   tooltip?: string;
   /** Rich explanation in a dialog (same pattern as Phase 3 KPI cards). */
@@ -41,6 +43,7 @@ export function MetricCard({
   label,
   value,
   rq,
+  hideResearchBadge = false,
   tooltip,
   metricHelp,
 }: MetricCardProps) {
@@ -49,9 +52,11 @@ export function MetricCard({
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{label}</CardTitle>
         <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs">
-            {rq}
-          </Badge>
+          {hideResearchBadge ? null : (
+            <Badge variant="secondary" className="text-xs">
+              {rq}
+            </Badge>
+          )}
           {metricHelp ? (
             <Dialog>
               <DialogTrigger asChild>
