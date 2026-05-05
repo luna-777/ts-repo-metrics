@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+/** Width / height of overview tiles in design reference (~258×324). */
+export const OVERVIEW_CARD_ASPECT_CLASS = "aspect-[258/324]";
+
 export interface OverviewCardItem {
   id: string;
   title: string;
@@ -20,6 +23,8 @@ export interface OverviewCardItem {
   description: string;
   detailsLabel?: string;
   detailsHref?: string;
+  /** When set, activate this results tab before following `detailsHref` (hash scroll). */
+  detailsTab?: string;
 }
 
 const tierPositive = {
@@ -55,14 +60,15 @@ interface OverviewCardProps {
   item: OverviewCardItem;
   selected?: boolean;
   className?: string;
+  onRequestTab?: (tab: string) => void;
 }
 
-export function OverviewCard({ item, selected = false, className }: OverviewCardProps) {
+export function OverviewCard({ item, selected = false, className, onRequestTab }: OverviewCardProps) {
   const tier = tierMeta[item.tier];
   const detailsLabel = item.detailsLabel ?? "View details →";
 
   return (
-    <div className={cn("relative pt-3", className)}>
+    <div className={cn("relative w-full pt-3", className)}>
       {selected ? (
         <div
           className="pointer-events-none absolute left-1/2 top-1 z-10 -translate-x-1/2 -translate-y-1/2"
@@ -76,7 +82,8 @@ export function OverviewCard({ item, selected = false, className }: OverviewCard
 
       <Card
         className={cn(
-          "group/card relative min-h-[18rem] w-[min(100%,17rem)] shrink-0 gap-3 overflow-visible border py-4 shadow-sm transition-all duration-200 ease-out sm:min-h-[19rem] sm:w-auto sm:min-w-0",
+          OVERVIEW_CARD_ASPECT_CLASS,
+          "group/card flex min-h-0 w-full flex-col gap-0 overflow-visible rounded-xl border py-0 shadow-sm transition-all duration-200 ease-out",
           selected
             ? "border-red-400 shadow-[0_0_0_1px_rgb(248_113_113/0.45)]"
             : [
@@ -87,7 +94,7 @@ export function OverviewCard({ item, selected = false, className }: OverviewCard
             "hover:-translate-y-0 hover:border-red-400 hover:shadow-[0_0_0_1px_rgb(248_113_113/0.55)]",
         )}
       >
-        <CardHeader className="gap-2 px-4 pb-0 pt-0">
+        <CardHeader className="gap-2 space-y-0 px-5 pb-3 pt-5">
           <CardTitle className="text-sm font-semibold leading-snug tracking-tight text-card-foreground">
             {item.title}
           </CardTitle>
@@ -95,27 +102,45 @@ export function OverviewCard({ item, selected = false, className }: OverviewCard
             {tier.label}
           </Badge>
         </CardHeader>
-        <CardContent className="flex flex-1 flex-col gap-3 px-4 pb-0 pt-0">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-2 px-5 pb-3 pt-0">
           {item.score !== null ? (
             <p
               className={cn(
-                "text-4xl font-bold tabular-nums tracking-tight transition-colors duration-200",
+                "text-[2rem] font-bold leading-none tabular-nums tracking-tight transition-colors duration-200 sm:text-4xl",
                 tier.scoreClassName,
               )}
             >
               {item.score}
             </p>
           ) : (
-            <p className="text-4xl font-bold tabular-nums text-neutral-400 dark:text-neutral-500">
+            <p className="text-[2rem] font-bold tabular-nums leading-none text-neutral-400 sm:text-4xl dark:text-neutral-500">
               —
             </p>
           )}
-          <p className="text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm leading-snug text-neutral-500 dark:text-neutral-400">
             {item.description}
           </p>
         </CardContent>
-        <CardFooter className="mt-auto px-4 pb-0 pt-2">
-          {item.detailsHref ? (
+        <CardFooter className="mt-auto px-5 pb-5 pt-0">
+          {item.detailsHref && item.detailsTab && onRequestTab ? (
+            <Button
+              type="button"
+              variant="link"
+              className={cn("h-auto p-0 text-sm font-medium", detailsLinkClass)}
+              onClick={() => {
+                onRequestTab(item.detailsTab!);
+                const id = item.detailsHref!.replace(/^#/, "");
+                if (!id) return;
+                window.requestAnimationFrame(() => {
+                  window.setTimeout(() => {
+                    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 50);
+                });
+              }}
+            >
+              {detailsLabel}
+            </Button>
+          ) : item.detailsHref ? (
             <Button variant="link" className={cn("h-auto p-0 text-sm font-medium", detailsLinkClass)} asChild>
               <Link href={item.detailsHref}>{detailsLabel}</Link>
             </Button>

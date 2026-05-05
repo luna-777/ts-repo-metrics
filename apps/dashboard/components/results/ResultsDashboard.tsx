@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Download, ArrowLeft } from "lucide-react";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RQ1Tab } from "./rq/RQ1Tab";
@@ -13,8 +13,14 @@ import { Phase2ComplexityTab } from "./rq/Phase2ComplexityTab";
 import { Phase3PathologyTab } from "./rq/Phase3PathologyTab";
 import { AIMaturityTab } from "./rq/AIMaturityTab";
 import { DatasetTab } from "./dataset/DatasetTab";
+import { CoachSaysPanel } from "./coach";
 import { CrossRQInsightPanel } from "./CrossRQInsightPanel";
 import { GitHubRepositoryPanel } from "./GitHubRepositoryPanel";
+import {
+  MOCK_OVERVIEW_CARDS,
+  MOCK_OVERVIEW_SELECTED_ID,
+} from "./overviewCardMocks";
+import { OverviewCardsStrip } from "./OverviewCardsStrip";
 import { hasReactUiScope } from "@/lib/hasReactUiScope";
 import type { RepoReport } from "@/lib/reportTypes";
 import { createUserSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -37,6 +43,7 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
   const commit = report?.source?.commit?.slice(0, 7) ?? "—";
   const exportFilename = `repo-metrics-${resultId}-${commit}.json`;
   const [newAnalysisHref, setNewAnalysisHref] = useState("/");
+  const [resultsTab, setResultsTab] = useState("rq1");
 
   useEffect(() => {
     if (!isBrowserSupabaseConfigured()) return;
@@ -54,6 +61,16 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    setResultsTab("rq1");
+  }, [resultId, report.analysis_timestamp, report.source?.commit]);
+
+  useEffect(() => {
+    if (!showReact && resultsTab === "rq3-react") {
+      setResultsTab("rq1");
+    }
+  }, [showReact, resultsTab]);
 
   const handleExport = useCallback(() => {
     const blob = new Blob([JSON.stringify(report, null, 2)], {
@@ -80,16 +97,20 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
           <h1 className="text-2xl font-bold">Analysis Results</h1>
           <p className="text-muted-foreground text-sm">Commit: {commit}</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={handleExport} variant="outline" className="gap-2">
-            <Download className="size-4" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={handleExport}
+            variant="ghost"
+            className="h-9 gap-2 rounded-lg px-3 font-medium text-muted-foreground hover:text-foreground"
+          >
+            <Upload className="size-4 shrink-0" aria-hidden />
             Export JSON
           </Button>
-          <Button asChild variant="outline">
-            <Link href={newAnalysisHref} className="gap-2">
-              <ArrowLeft className="size-4" />
-              New Analysis
-            </Link>
+          <Button
+            asChild
+            className="h-9 rounded-lg border-0 bg-gradient-to-r from-primary to-[#8b5cf6] font-medium text-primary-foreground shadow-none hover:opacity-90"
+          >
+            <Link href={newAnalysisHref}>Run New Analysis</Link>
           </Button>
         </div>
       </div>
@@ -98,10 +119,61 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
         <GitHubRepositoryPanel
           meta={report.github ?? null}
           repoUrl={report.source?.url}
+          totalCommits={report.git?.totalCommits ?? null}
         />
       ) : null}
 
-      <Tabs defaultValue="rq1">
+      <CoachSaysPanel
+        positive={{
+          title: "What you're doing well",
+          body: (
+            <>
+              Your commit cadence is strong — 65 commits with consistent frequency puts you ahead of most
+              teams this quarter. Your codebase also has zero silent failures detected, which shows real
+              engineering discipline. These are habits worth protecting.
+            </>
+          ),
+        }}
+        concern={{
+          title: "Your biggest opportunity",
+          body: (
+            <>
+              Right now 0% of your commits include test files. As your codebase grows more complex this
+              puts your work at increasing risk. Testing is where you can make the highest-impact
+              improvement this quarter — and your existing commit discipline makes it completely
+              achievable.
+            </>
+          ),
+        }}
+        pointer={
+          <>
+            → Your highest-impact improvement this quarter is Testing. Head to the Tests and risk tab
+            below to see exactly what to do and how to improve your score.
+          </>
+        }
+        footerLink={{
+          href: "#rq2",
+          label: "→ See full Testing breakdown",
+          onNavigate: () => {
+            setResultsTab("rq2");
+            window.requestAnimationFrame(() => {
+              window.setTimeout(() => {
+                document.getElementById("rq2")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 50);
+            });
+          },
+        }}
+      />
+
+      <section aria-label="Score overview">
+        <OverviewCardsStrip
+          items={MOCK_OVERVIEW_CARDS}
+          selectedId={MOCK_OVERVIEW_SELECTED_ID}
+          onRequestTab={setResultsTab}
+        />
+      </section>
+
+      <Tabs value={resultsTab} onValueChange={setResultsTab}>
         <div className="w-full max-w-full overflow-x-auto rounded-lg border border-border/80 bg-muted/80 p-1 shadow-sm [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
           <TabsList className="flex h-auto min-h-10 w-max min-w-full flex-nowrap justify-start gap-0.5 bg-transparent p-0 sm:gap-1">
             <TabsTrigger
@@ -167,7 +239,7 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
           </div>
         </TabsContent>
         <TabsContent value="rq2">
-          <div className="space-y-8">
+          <div id="rq2" className="scroll-mt-8 space-y-8">
             <RQ2Tab report={report} />
             <CrossRQInsightPanel report={report} />
           </div>

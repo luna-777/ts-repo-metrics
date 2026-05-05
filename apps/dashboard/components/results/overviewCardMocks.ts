@@ -37,6 +37,7 @@ export const MOCK_OVERVIEW_CARDS: OverviewCardItem[] = [
     score: 12,
     description: "0% of commits touch test files",
     detailsHref: "#rq2-safety-nets",
+    detailsTab: "rq2",
   },
 ];
 

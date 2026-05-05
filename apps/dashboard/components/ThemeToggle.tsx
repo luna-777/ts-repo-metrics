@@ -4,6 +4,8 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Sun, Moon, Monitor } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 /** Cycles: system → light → dark → system */
 const CYCLE: Array<"system" | "light" | "dark"> = ["system", "light", "dark"];
 
@@ -19,7 +21,12 @@ function useIsMounted() {
   );
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({
+  variant = "default",
+}: {
+  /** Dark chrome used in the top nav (Figma). */
+  variant?: "default" | "nav";
+}) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const mounted = useIsMounted();
 
@@ -31,7 +38,12 @@ export function ThemeToggle() {
   }, [mounted, theme, resolvedTheme]);
 
   if (!mounted) {
-    return <span className="size-[1.625rem]" aria-hidden />;
+    return (
+      <span
+        className={cn("size-[1.625rem]", variant === "nav" && "size-9")}
+        aria-hidden
+      />
+    );
   }
 
   function handleClick() {
@@ -53,7 +65,13 @@ export function ThemeToggle() {
       onClick={handleClick}
       title={label}
       aria-label={label}
-      className="inline-flex items-center justify-center rounded-md border border-border bg-muted/40 p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      className={cn(
+        "inline-flex items-center justify-center rounded-md border p-1.5 transition-colors",
+        variant === "default" &&
+          "border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground",
+        variant === "nav" &&
+          "border-[#262626] bg-[rgba(38,38,38,0.3)] text-[#a1a1a1] hover:bg-primary/15 hover:text-primary",
+      )}
     >
       <Icon className="size-3.5 shrink-0" aria-hidden />
     </button>

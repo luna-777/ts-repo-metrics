@@ -38,7 +38,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <Header />
-          <main className="flex-1 flex flex-col items-center justify-start py-12 px-4 sm:px-6 bg-dot-grid min-h-[calc(100vh-3.5rem)]">
+          <main className="flex-1 flex flex-col items-center justify-start py-12 px-4 sm:px-6 bg-dot-grid min-h-[calc(100vh-4rem)]">
             <TooltipProvider>{children}</TooltipProvider>
           </main>
           <Toaster richColors position="top-center" />

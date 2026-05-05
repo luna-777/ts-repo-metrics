@@ -9,12 +9,14 @@ interface OverviewCardsStripProps {
   items: OverviewCardItem[];
   selectedId?: string | null;
   className?: string;
+  onRequestTab?: (tab: string) => void;
 }
 
 export function OverviewCardsStrip({
   items,
   selectedId = null,
   className,
+  onRequestTab,
 }: OverviewCardsStripProps) {
   const hasSelection = selectedId != null && selectedId !== "";
 
@@ -27,12 +29,16 @@ export function OverviewCardsStrip({
       )}
     >
       <div
-        className="flex w-max min-w-full gap-4 px-1 sm:grid sm:w-full sm:grid-cols-5 sm:gap-4"
+        className="flex w-max min-w-full gap-x-4 gap-y-4 px-1 sm:grid sm:w-full sm:grid-cols-5 sm:items-stretch sm:gap-4"
         role="list"
       >
         {items.map((item) => (
-          <div key={item.id} className="sm:min-w-0" role="listitem">
-            <OverviewCard item={item} selected={item.id === selectedId} />
+          <div
+            key={item.id}
+            className="min-w-[258px] max-w-[272px] shrink-0 sm:min-w-0 sm:max-w-none sm:w-full"
+            role="listitem"
+          >
+            <OverviewCard item={item} selected={item.id === selectedId} onRequestTab={onRequestTab} />
           </div>
         ))}
       </div>

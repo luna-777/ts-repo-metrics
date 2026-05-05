@@ -26,12 +26,6 @@ import { buildScatterPoints } from "@/lib/symbolRiskViz";
 import { CoachExplainButton } from "@/components/chat/CoachExplainButton";
 import { useCoachExplain } from "@/lib/repoCoachContext";
 import { RQ2_EXPLAIN_PROXIMITY, RQ2_EXPLAIN_SAFETY_NETS } from "@/lib/rq2ExplainPrompts";
-import { OverviewCardsStrip } from "../OverviewCardsStrip";
-import {
-  MOCK_OVERVIEW_CARDS,
-  MOCK_OVERVIEW_SELECTED_ID,
-} from "../overviewCardMocks";
-
 interface RQ2TabProps {
   report: RepoReport;
 }
@@ -210,16 +204,6 @@ export function RQ2Tab({ report }: RQ2TabProps) {
           </>
         )
       ) : null}
-
-      <section aria-label="Overview cards" className="space-y-2">
-        <p className="text-xs text-muted-foreground">
-          Overview preview — scores and copy use mock data until wired to live metrics.
-        </p>
-        <OverviewCardsStrip
-          items={MOCK_OVERVIEW_CARDS}
-          selectedId={MOCK_OVERVIEW_SELECTED_ID}
-        />
-      </section>
 
       <section id="rq2-safety-nets">
         <div className="mb-4 flex flex-wrap items-center gap-2">
