@@ -318,6 +318,76 @@ export function RQ2PctCommitsTouchingTestsBody() {
   );
 }
 
+export function RQ2TestToFeatureCommitRatioBody() {
+  return (
+    <>
+      <HelpSection title="What it measures">
+        <p>
+          Compares commits that touch a test file to commits that touch <strong>only</strong> non-test
+          paths—another coupling angle than the simple percentage above.
+        </p>
+      </HelpSection>
+      <HelpSection title="How it is calculated">
+        <FormulaBox>ratio = (commits touching tests) ÷ (commits with no test file in the diff)</FormulaBox>
+        <p className="text-muted-foreground text-xs">
+          If there are no &quot;feature-only&quot; commits, the ratio is shown as 0. Same test-file
+          pattern as <strong>% commits touching tests</strong>.
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function RQ2TestCoverageProxyBody() {
+  return (
+    <>
+      <HelpSection title="What it measures">
+        <p>
+          A <strong>static</strong> label for how much test code sits next to production code in the
+          current tree—not line coverage from running tests.
+        </p>
+      </HelpSection>
+      <HelpSection title="How it is calculated">
+        <FormulaBox>ratio = test LOC ÷ source LOC</FormulaBox>
+        <p className="text-muted-foreground text-xs pt-2">
+          <strong>low:</strong> ratio &lt; 0.1 · <strong>moderate:</strong> 0.1–0.3 ·{" "}
+          <strong>high:</strong> &gt; 0.3. Always uses the full-repository snapshot (does not follow the
+          per-author churn dropdown).
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function RQ2SymbolProximityScanBody() {
+  return (
+    <>
+      <HelpSection title="What it measures">
+        <p>
+          Summary of the symbol-level scan below: how many functions have{" "}
+          <strong>any</strong> static evidence linking them to tests versus none.
+        </p>
+      </HelpSection>
+      <HelpSection title="Bands">
+        <ul className="list-disc space-y-1 pl-4">
+          <li>
+            <strong>Referenced in test</strong> — function name appears in the paired test file.
+          </li>
+          <li>
+            <strong>Paired file only</strong> — conventional test sibling exists, no name hit yet.
+          </li>
+          <li>
+            <strong>No static link</strong> — no paired convention-style test file for this symbol row.
+          </li>
+        </ul>
+        <p className="text-muted-foreground text-xs pt-2">
+          This is not Istanbul-style coverage; it complements complexity-vs-proximity scatter/table.
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
 export function RQ2RefactorCommitRatioBody() {
   return (
     <>

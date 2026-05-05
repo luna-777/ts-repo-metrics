@@ -18,6 +18,8 @@ export interface Rq2MetricValues {
   /** Contributor + git churn only; distinct non-test paths this author touched. */
   sourceFilesTouched: number | null;
   pctCommitsTouchingTests: number;
+  /** Commits touching tests ÷ commits touching only non-test paths (git history). */
+  testToFeatureCommitRatio: number;
   refactorCommitRatio: number;
   emptyCatchBlocks: number;
   consoleLogCount: number;
@@ -41,6 +43,7 @@ export function getRq2MetricValues(report: RepoReport, scopeId: Rq2ScopeId): Rq2
     testFiles: profile?.testFiles ?? 0,
     sourceFilesTouched: null,
     pctCommitsTouchingTests: gv2?.testCoupling?.pctCommitsTouchingTests ?? 0,
+    testToFeatureCommitRatio: gv2?.testCoupling?.testToFeatureCommitRatio ?? 0,
     refactorCommitRatio: gv2?.refactorBehavior?.refactorCommitRatio ?? 0,
     emptyCatchBlocks: smells?.emptyCatchBlocks ?? 0,
     consoleLogCount: smells?.consoleLogs ?? 0,
@@ -88,6 +91,7 @@ export function getRq2MetricValues(report: RepoReport, scopeId: Rq2ScopeId): Rq2
       ...rb,
       locSource: "profile",
       pctCommitsTouchingTests: c.testCoupling.pctCommitsTouchingTests,
+      testToFeatureCommitRatio: c.testCoupling.testToFeatureCommitRatio,
       refactorCommitRatio: c.refactorBehavior.refactorCommitRatio,
     };
   }
@@ -103,6 +107,7 @@ export function getRq2MetricValues(report: RepoReport, scopeId: Rq2ScopeId): Rq2
     testFiles: c.testFilesTouched ?? 0,
     sourceFilesTouched: c.sourceFilesTouched ?? 0,
     pctCommitsTouchingTests: c.testCoupling.pctCommitsTouchingTests,
+    testToFeatureCommitRatio: c.testCoupling.testToFeatureCommitRatio,
     refactorCommitRatio: c.refactorBehavior.refactorCommitRatio,
   };
 }

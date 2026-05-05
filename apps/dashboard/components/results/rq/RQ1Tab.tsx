@@ -202,6 +202,60 @@ export function RQ1Tab({ report }: RQ1TabProps) {
         </p>
       </section>
 
+      {contributors.length > 0 ? (
+        <section>
+          <h2 className="text-lg font-semibold mb-2">Contributors (git activity)</h2>
+          <p className="text-muted-foreground text-sm mb-4 max-w-3xl">
+            One row per commit author in parsed history. Line deltas come from git numstat where the
+            analyzer had full history (local clone). Zipball / GitHub API modes may leave churn columns at
+            zero while commit counts still reflect metadata.
+          </p>
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contributor</TableHead>
+                  <TableHead className="text-right">Commits</TableHead>
+                  <TableHead className="text-right">+Lines</TableHead>
+                  <TableHead className="text-right">−Lines</TableHead>
+                  <TableHead className="text-right">Median Δ / commit</TableHead>
+                  <TableHead className="text-right">Burst %</TableHead>
+                  <TableHead className="text-right">Test-touch %</TableHead>
+                  <TableHead className="text-right">Refactor %</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contributors.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <div className="font-medium">{c.displayName || c.authorEmail || c.id}</div>
+                      <div className="text-muted-foreground text-xs font-mono truncate max-w-[220px]">
+                        {c.authorEmail || "—"}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{c.commitCount}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.linesAdded}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.linesDeleted}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatNumber(c.commitStats.medianCommitSize)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatNumber(c.burstStats.burstRatio)}%
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatNumber(c.testCoupling.pctCommitsTouchingTests)}%
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatNumber(c.refactorBehavior.refactorCommitRatio)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+      ) : null}
+
       <section>
         <h2 className="text-lg font-semibold mb-4">Where changes cluster</h2>
         {!teamOnly ? (

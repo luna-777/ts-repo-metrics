@@ -14,7 +14,10 @@ import { RQ1_SCOPE_TEAM, type Rq1ScopeId } from "@/lib/rq1ScopeMetrics";
 import {
   RQ2PctCommitsTouchingTestsBody,
   RQ2RefactorCommitRatioBody,
+  RQ2SymbolProximityScanBody,
+  RQ2TestCoverageProxyBody,
   RQ2TestLocRatioBody,
+  RQ2TestToFeatureCommitRatioBody,
   RQ3CyclomaticMaxBody,
   RQ3HighComplexityCountBody,
   RQ3LongFunctionCountBody,
@@ -23,6 +26,11 @@ import { buildScatterPoints } from "@/lib/symbolRiskViz";
 import { CoachExplainButton } from "@/components/chat/CoachExplainButton";
 import { useCoachExplain } from "@/lib/repoCoachContext";
 import { RQ2_EXPLAIN_PROXIMITY, RQ2_EXPLAIN_SAFETY_NETS } from "@/lib/rq2ExplainPrompts";
+import { OverviewCardsStrip } from "../OverviewCardsStrip";
+import {
+  MOCK_OVERVIEW_CARDS,
+  MOCK_OVERVIEW_SELECTED_ID,
+} from "../overviewCardMocks";
 
 interface RQ2TabProps {
   report: RepoReport;
@@ -36,6 +44,11 @@ function formatNumber(n: number): string {
 function formatRatio(n: number): string {
   if (!Number.isFinite(n)) return "—";
   return formatNumber(n);
+}
+
+function capitalizeWord(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export function RQ2Tab({ report }: RQ2TabProps) {
@@ -59,6 +72,21 @@ export function RQ2Tab({ report }: RQ2TabProps) {
     if (!symbolRiskRows?.length) return 10;
     return Math.max(10, ...symbolRiskRows.map((r) => r.cyclomaticComplexity));
   }, [symbolRiskRows]);
+
+  const symbolProximitySummary = useMemo(() => {
+    const rows = report.symbolVerificationRisks;
+    if (!rows?.length) return null;
+    let referencedInTest = 0;
+    let pairedFileOnly = 0;
+    let none = 0;
+    for (const r of rows) {
+      if (r.evidence === "referenced_in_test") referencedInTest++;
+      else if (r.evidence === "paired_file_only") pairedFileOnly++;
+      else none++;
+    }
+    const withSignal = referencedInTest + pairedFileOnly;
+    return { total: rows.length, referencedInTest, pairedFileOnly, none, withSignal };
+  }, [report.symbolVerificationRisks]);
 
   const complexity = report.complexity;
   const smells = report.smells;
@@ -89,6 +117,10 @@ export function RQ2Tab({ report }: RQ2TabProps) {
     mv.mode === "contributor"
       ? "Among this author's commits, the fraction that touches at least one path detected as a test file."
       : "Commits where any changed path is a test file.";
+  const testToFeatureTooltip =
+    mv.mode === "contributor"
+      ? "Among this author's commits: (commits that touch a test file) ÷ (commits whose diff has no test path). Shown as a decimal ratio; 0 when there were no feature-only commits (nothing to divide by)."
+      : "(Commits touching tests) ÷ (commits with only non-test paths). Decimal ratio from git history; 0 when there were no feature-only commits or every commit touched a test.";
   const refactorTooltip =
     mv.mode === "contributor"
       ? "Among this author's commits, the fraction whose subjects match refactor-style keywords."
@@ -110,11 +142,11 @@ export function RQ2Tab({ report }: RQ2TabProps) {
 
   const sectionTitles =
     mv.mode === "team"
-      ? { a: "Tests and safety nets", b: "Harder-to-review spots", c: "Risk vs tests at a glance" }
+      ? { a: "Tests and safety nets", b: "Harder-to-review spots", c: "Your risk profile" }
       : {
           a: `Tests and safety nets (${mv.contributorDisplayName ?? "contributor"})`,
           b: "Harder-to-review spots (whole repository)",
-          c: "Risk vs tests at a glance (whole repository)",
+          c: "Your risk profile (whole repository)",
         };
 
   return (
@@ -154,7 +186,8 @@ export function RQ2Tab({ report }: RQ2TabProps) {
               describe the whole repository scan.
             </p>
             <p className="text-sm font-medium text-foreground max-w-3xl">
-              Note: <strong>% commits touching tests</strong> and{" "}
+              Note: <strong>% commits touching tests</strong>,{" "}
+              <strong>Test-to-feature commit ratio</strong>, and{" "}
               <strong>Refactor commit ratio</strong> are also computed for the selected author; empty catch
               and console counts stay repo-wide.
             </p>
@@ -168,7 +201,8 @@ export function RQ2Tab({ report }: RQ2TabProps) {
               for one person.
             </p>
             <p className="text-sm font-medium text-foreground max-w-3xl">
-              Note: <strong>% commits touching tests</strong> and{" "}
+              Note: <strong>% commits touching tests</strong>,{" "}
+              <strong>Test-to-feature commit ratio</strong>, and{" "}
               <strong>Refactor commit ratio</strong> still reflect the selected teammate on this analysis.
               <strong> Empty catch blocks</strong> and <strong>console log counts</strong> are always from the
               full repository scan—we do not split them by author.
@@ -177,7 +211,17 @@ export function RQ2Tab({ report }: RQ2TabProps) {
         )
       ) : null}
 
-      <section>
+      <section aria-label="Overview cards" className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          Overview preview — scores and copy use mock data until wired to live metrics.
+        </p>
+        <OverviewCardsStrip
+          items={MOCK_OVERVIEW_CARDS}
+          selectedId={MOCK_OVERVIEW_SELECTED_ID}
+        />
+      </section>
+
+      <section id="rq2-safety-nets">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold flex-1 min-w-0">{sectionTitles.a}</h2>
           <CoachExplainButton prompt={RQ2_EXPLAIN_SAFETY_NETS} send={coachExplain} />
@@ -263,6 +307,40 @@ export function RQ2Tab({ report }: RQ2TabProps) {
               children: <RQ2PctCommitsTouchingTestsBody />,
             }}
           />
+          <MetricCard
+            {...cardProps}
+            label="Test-to-feature commit ratio"
+            value={formatRatio(mv.testToFeatureCommitRatio)}
+            tooltip={testToFeatureTooltip}
+            metricHelp={{
+              title: "Test-to-feature commit ratio",
+              children: <RQ2TestToFeatureCommitRatioBody />,
+            }}
+          />
+          {report.testCoverageProxy ? (
+            <MetricCard
+              {...cardProps}
+              label="Test coverage proxy (snapshot)"
+              value={`${formatNumber(report.testCoverageProxy.ratio * 100)}% · ${capitalizeWord(report.testCoverageProxy.classification)}`}
+              tooltip={`Static test LOC ÷ source LOC on the full tree, bucketed low (&lt;10%), moderate (10–30%), high (&gt;30%). Same snapshot for every scope—not author churn. ${locSnapshotTooltip}`}
+              metricHelp={{
+                title: "Test coverage proxy",
+                children: <RQ2TestCoverageProxyBody />,
+              }}
+            />
+          ) : null}
+          {symbolProximitySummary ? (
+            <MetricCard
+              {...cardProps}
+              label="Functions with static test link"
+              value={`${symbolProximitySummary.withSignal} / ${symbolProximitySummary.total}`}
+              tooltip={`Whole-repository symbol scan (same rows as the scatter/table below). Referenced in paired test: ${symbolProximitySummary.referencedInTest}. Paired file only: ${symbolProximitySummary.pairedFileOnly}. No static link: ${symbolProximitySummary.none}.`}
+              metricHelp={{
+                title: "Static test linkage (summary)",
+                children: <RQ2SymbolProximityScanBody />,
+              }}
+            />
+          ) : null}
           <MetricCard
             {...cardProps}
             label={
@@ -360,16 +438,12 @@ export function RQ2Tab({ report }: RQ2TabProps) {
 
       <section>
         <h2 className="text-lg font-semibold mb-4">{sectionTitles.c}</h2>
-        {!teamOnly ? (
-          <p className="text-sm text-muted-foreground mb-3 max-w-3xl">
-            Indices below combine repository-wide LOC and structural scan—all authors together.
-          </p>
-        ) : null}
         <RQ2Quadrant
           riskIndex={riskIndex}
           verificationIndex={verificationIndex}
           riskLabel={riskLabel}
           verificationLabel={verificationLabel}
+          wholeRepositoryNote={!teamOnly}
         />
       </section>
 
