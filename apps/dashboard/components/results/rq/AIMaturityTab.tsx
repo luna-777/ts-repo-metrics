@@ -14,6 +14,7 @@ import {
   BarChart3,
   Wrench,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,13 +29,16 @@ import {
   DEMO_SESSION_LOG_REPORT,
   type SessionLogReport,
 } from "@/lib/aiSessionLogAnalyzer";
+import { CoachInsightTone } from "@/components/results/coach/CoachInsightTone";
+import { cn } from "@/lib/utils";
 import { useCoachExplain } from "@/lib/repoCoachContext";
 import {
   buildAiMaturityAggregateCoachPrompt,
-  buildAiMaturityFullTabCoachPrompt,
-  buildAiMaturityPlaybookCoachPrompt,
   buildAiMaturitySessionCoachPrompt,
 } from "@/lib/aiMaturityExplainPrompts";
+
+/** Left-accent callouts aligned with other results tabs (e.g. React insights). */
+const aiTraceInsightSurface = "bg-card shadow-sm ring-1 ring-border/40";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -181,7 +185,7 @@ function classifyStageByTimestamp(ts: number, start: number, end: number): SDLCS
 }
 
 // ---------------------------------------------------------------------------
-// AUM score formula
+// Per-stage score from iterations + verification proxy
 // ---------------------------------------------------------------------------
 
 function computeAUMScore(avgIter: number, avgVerif: number, sessionCount: number): number {
@@ -206,41 +210,48 @@ const STAGE_CONFIG: Array<{
     stage: "Planning",
     label: "Planning & Design",
     coupled: true,
-    matureInsight: "Strong planning habits detected. The paper shows Planning AUM predicts whole-lifecycle behavior (r = 0.80).",
-    opportunisticInsight: "Low verification in planning suggests vague, exploratory AI use. Structured pre-coding prompts can fix this.",
+    matureInsight:
+      "Strong planning habits detected — grounded prompts here tend to carry through the rest of the workflow.",
+    opportunisticInsight:
+      "Low verification in planning suggests exploratory AI use without constraints. Add goals and acceptance criteria before coding.",
   },
   {
     stage: "Implementation",
     label: "Implementation",
     coupled: true,
-    matureInsight: "Healthy iterative prompting. Watch the Write ratio — unreviewed generated files lower maturity.",
-    opportunisticInsight: "High iterations during implementation suggest prompts are too broad. Break problems into smaller, specified asks.",
+    matureInsight: "Healthy iterative prompting. Watch the Write ratio — unreviewed generated files add review risk.",
+    opportunisticInsight:
+      "High iterations during implementation often mean prompts are too broad. Break work into smaller, specified asks.",
   },
   {
     stage: "Testing",
     label: "Testing",
     coupled: false,
-    matureInsight: "Unusually disciplined AI use in testing. Most students lose structure here — maintain it.",
-    opportunisticInsight: "High iterations suggest vague test-generation prompts. The paper shows this is where most students lose discipline.",
+    matureInsight: "Disciplined AI use in testing — keep specifying failure cases and running checks before commit.",
+    opportunisticInsight:
+      "High iterations suggest vague test prompts. Name the behavior under test and the failure you expect.",
   },
   {
     stage: "Deployment",
     label: "Deployment",
     coupled: false,
-    matureInsight: "Good verification of AI-suggested config changes. This is the hardest stage to stay disciplined.",
-    opportunisticInsight: "Low verification ratio means AI-suggested config changes aren't being validated before use.",
+    matureInsight: "Good verification of AI-suggested config changes — this stage is easy to rush.",
+    opportunisticInsight:
+      "Low verification ratio means AI-suggested config changes may not be validated before use — dry-run or review in staging.",
   },
   {
     stage: "Maintenance",
     label: "Maintenance",
     coupled: false,
-    matureInsight: "Structured AI use in maintenance. Rare — this usually becomes opportunistic under deadline pressure.",
-    opportunisticInsight: "Lowest maturity stage. Usage here is purely opportunistic with no structured verification loop.",
+    matureInsight:
+      "Structured AI use in maintenance — chores often slip into copy-paste mode under deadlines; you are avoiding that pattern.",
+    opportunisticInsight:
+      "Usage looks opportunistic — add a quick check (read-back, lint, small test) after AI edits in configs and scripts.",
   },
 ];
 
 // ---------------------------------------------------------------------------
-// Demo data (mirrors paper findings: high AUM early, low AUM late)
+// Demo sample trace (illustrates mixed stage scores)
 // ---------------------------------------------------------------------------
 
 const DEMO_DATA: AUMData = {
@@ -276,7 +287,7 @@ const DEMO_DATA: AUMData = {
   ],
 };
 
-function buildAumBriefForCoach(data: AUMData): Record<string, unknown> {
+function buildAiUsageProfileBrief(data: AUMData): Record<string, unknown> {
   return {
     totalPrompts: data.totalPrompts,
     totalSessions: data.totalSessions,
@@ -287,8 +298,8 @@ function buildAumBriefForCoach(data: AUMData): Record<string, unknown> {
     isDemoData: data.isDemoData,
     stages: data.stageScores.map((s) => ({
       stage: s.stage,
-      aumScore: s.aumScore,
-      auSessions: s.auSessions,
+      stageScore: s.aumScore,
+      sessionsInStage: s.auSessions,
       iterationsPerPrompt: s.iterationsPerPrompt,
       verificationRatio: s.verificationRatio,
       noData: !!s.noData,
@@ -334,7 +345,7 @@ function CoachAiActionButton({
   );
 }
 
-function SessionCoachTipSnapshot({ report }: { report: SessionLogReport }) {
+function SessionLogSummaryInsight({ report }: { report: SessionLogReport }) {
   const dr = report.metrics.discoveryRatio;
   const shellTest = report.metrics.verificationTestCommandRatio;
   const raw = report.metrics.readAfterWriteRate;
@@ -344,53 +355,54 @@ function SessionCoachTipSnapshot({ report }: { report: SessionLogReport }) {
   const rawPct = raw != null ? Math.round(raw * 100) : null;
 
   return (
-    <div className="rounded-lg border border-dashed border-primary/50 bg-primary/5 px-4 py-3 text-sm">
-      <p className="font-semibold text-foreground flex items-center gap-2">
-        <Lightbulb className="size-4 shrink-0" aria-hidden />
-        Coach&apos;s tip (plain English)
-      </p>
-      <p className="text-muted-foreground mt-2 leading-relaxed">
+    <CoachInsightTone
+      tone="informational"
+      title="What this log suggests"
+      className={aiTraceInsightSurface}
+      bodyClassName="text-foreground/90 font-normal space-y-3"
+      aria-label="Summary from session log metrics"
+    >
+      <p>
         {discoveryPct != null ? (
           <>
-            Your discovery share of labeled discovery+action calls is about{" "}
-            <strong>{discoveryPct}%</strong>.{" "}
+            Discovery-style calls are about <strong className="text-foreground">{discoveryPct}%</strong> of
+            labeled discovery-and-action tool calls.{" "}
             {discoveryPct < 25
-              ? "That leans write-heavy — try one targeted grep or read of the interface before large edits. "
-              : "That suggests you often ground the model before big changes. "}
+              ? "That leans write-heavy — try a targeted read or search before large edits."
+              : "That suggests you often ground the assistant before big changes."}{" "}
           </>
         ) : null}
         {rawPct != null ? (
           <>
-            Read-after-write on Write/Edit→Read pairs is about <strong>{rawPct}%</strong> of those
-            sequences in this export (a proxy, not perfection).{" "}
+            Read-after-write on Write/Edit→Read sequences is about{" "}
+            <strong className="text-foreground">{rawPct}%</strong> in this export.{" "}
           </>
         ) : null}
         {shellPct != null ? (
           <>
-            Shell invocations that look test-like are about <strong>{shellPct}%</strong> of shell tool
-            calls.{" "}
+            Shell calls classified as test-like are about{" "}
+            <strong className="text-foreground">{shellPct}%</strong> of shell tool invocations.{" "}
           </>
         ) : null}
         {loops >= 2 ? (
           <>
-            Similar tool+path repeats flagged <strong>{loops}</strong> loop(s) — pause, shrink the task, or
-            simplify the hot path before another attempt.{" "}
+            Repeated similar tool calls flagged <strong className="text-foreground">{loops}</strong> loop(s)
+            — pause, shrink the task, or simplify the hot path before retrying.
           </>
         ) : (
-          "Loop signal is low this run — still watch for friction on the top file if errors cluster there. "
+          <>Few repeated-call loops in this run — still watch the friction file if errors cluster.</>
         )}
       </p>
-      <p className="text-xs text-muted-foreground mt-2 italic border-l-2 border-muted-foreground/30 pl-3">
-        Example phrasing for teammates: &quot;If discovery sits around 40% of labeled calls, you&apos;re
-        often asking for edits before search — paste one grep hit first; it usually cuts hallucination
-        rework.&quot;
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Talking it through with a teammate? Try grounding edits with one concrete search or file reference
+        before asking for a large change — it usually reduces rework.
       </p>
-    </div>
+    </CoachInsightTone>
   );
 }
 
 // ---------------------------------------------------------------------------
-// CSV parser (fully computes all AUM metrics from logs)
+// CSV trace parser (aggregates tool stream into profile metrics)
 // ---------------------------------------------------------------------------
 
 interface SessionAccum {
@@ -570,7 +582,7 @@ function parseCSV(text: string): Partial<AUMData> {
     stageSessionMap[stage].push(sa);
   }
 
-  // ── Per-stage AUM scores ──
+  // ── Per-stage scores ──
   const stageScores: AUMStageScore[] = STAGE_CONFIG.map(({ stage, label, coupled, matureInsight, opportunisticInsight }) => {
     const sessions = stageSessionMap[stage];
     if (sessions.length === 0) {
@@ -656,43 +668,53 @@ function KpiCard({
 function AUMStageBar({ stage }: { stage: AUMStageScore }) {
   if (stage.noData) {
     return (
-      <div className="rounded-lg border border-dashed p-4 space-y-2 bg-muted/20">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm text-muted-foreground">{stage.label}</span>
-          <Badge variant="outline" className="text-xs">No data</Badge>
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">{stage.insight}</p>
-      </div>
+      <CoachInsightTone
+        tone="informational"
+        title={stage.label}
+        className={aiTraceInsightSurface}
+        bodyClassName="text-foreground/90 font-normal space-y-2 text-sm"
+      >
+        <Badge variant="outline" className="text-xs w-fit">
+          No data
+        </Badge>
+        <p className="text-muted-foreground leading-relaxed text-xs">{stage.insight}</p>
+      </CoachInsightTone>
     );
   }
-  const { bar, text, label, icon: Icon } = aumColor(stage.aumScore);
+  const { bar, label, icon: Icon } = aumColor(stage.aumScore);
   return (
-    <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Icon className="size-4 text-muted-foreground" />
-          <span className="font-semibold text-sm">{stage.label}</span>
-          {!stage.coupled && (
-            <Badge variant="outline" className="text-xs">
-              AU ≠ AUM
-            </Badge>
-          )}
-        </div>
-        <span className="text-sm font-medium text-muted-foreground">{label} · {stage.aumScore}/100</span>
+    <CoachInsightTone
+      tone="informational"
+      title={stage.label}
+      className={aiTraceInsightSurface}
+      bodyClassName="text-foreground/90 font-normal space-y-3 text-sm"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <Icon className="size-4 text-muted-foreground shrink-0" aria-hidden />
+        <span className="text-sm font-medium text-muted-foreground tabular-nums">
+          {label} · {stage.aumScore}/100
+        </span>
       </div>
       <div className="w-full bg-muted/60 rounded-full h-2.5">
         <div className={`${bar} h-2.5 rounded-full transition-all`} style={{ width: `${stage.aumScore}%` }} />
       </div>
       <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-        <div><span className="font-medium text-foreground">{stage.auSessions}</span> sessions</div>
-        <div><span className="font-medium text-foreground">{stage.iterationsPerPrompt}×</span> avg iterations</div>
-        <div><span className="font-medium text-foreground">{Math.round(stage.verificationRatio * 100)}%</span> verification ratio</div>
+        <div>
+          <span className="font-semibold text-foreground">{stage.auSessions}</span> sessions
+        </div>
+        <div>
+          <span className="font-semibold text-foreground">{stage.iterationsPerPrompt}×</span> avg iterations
+        </div>
+        <div>
+          <span className="font-semibold text-foreground">{Math.round(stage.verificationRatio * 100)}%</span>{" "}
+          verification ratio
+        </div>
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/40 pt-2">
         <Lightbulb className="inline size-3 mr-1 text-muted-foreground" aria-hidden />
         {stage.insight}
       </p>
-    </div>
+    </CoachInsightTone>
   );
 }
 
@@ -768,6 +790,70 @@ function UploadZone({
   );
 }
 
+const AGENT_STATS_REPO_URL = "https://github.com/masc-ucsc/agent_stats";
+
+function AgentStatsExportInsight() {
+  return (
+    <div className="space-y-3">
+      <CoachInsightTone
+        tone="informational"
+        title="Get a CSV from your AI coding logs"
+        className={aiTraceInsightSurface}
+        bodyClassName="text-foreground/90 font-normal space-y-3 text-sm leading-relaxed"
+        aria-label="How to export AI coding logs with agent_stats"
+      >
+        <p className="flex flex-wrap items-center gap-2">
+          <Wrench className="size-4 text-muted-foreground shrink-0" aria-hidden />
+          <Badge variant="outline" className="text-xs font-normal">
+            Optional · runs on your laptop
+          </Badge>
+        </p>
+        <p className="text-muted-foreground">
+          This tab charts tool traces from{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">ai_usage_trace.csv</code>. The{" "}
+          <a
+            href={AGENT_STATS_REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            masc-ucsc/agent_stats
+          </a>{" "}
+          repo (public) scans local Claude Code, Codex CLI, and Gemini CLI session logs — nothing is uploaded from that
+          step until you choose a file here.
+        </p>
+        <ol className="list-decimal space-y-2 pl-5 marker:text-foreground/80 text-muted-foreground">
+          <li>
+            Clone the repository (Code → HTTPS or SSH on GitHub), then open a terminal in that folder.
+          </li>
+          <li>
+            Run{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs break-all text-foreground">
+              ./ai_usage_stats.py --student your@email.edu --filter your-repo-slug
+            </code>
+            . Use <code className="rounded bg-muted px-1 text-xs text-foreground">--filter</code> with a substring or regex
+            that matches <strong className="text-foreground">this course project</strong> so other folders are excluded (see
+            the repo README).
+          </li>
+          <li>
+            By default the script writes{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">ai_usage_trace.csv</code> — drag it into
+            the upload zone below (or use{" "}
+            <code className="rounded bg-muted px-1 text-xs text-foreground">--csv path/to/file.csv</code> if you prefer another
+            path).
+          </li>
+        </ol>
+      </CoachInsightTone>
+      <Button asChild variant="secondary" size="sm" className="gap-2">
+        <a href={AGENT_STATS_REPO_URL} target="_blank" rel="noopener noreferrer">
+          <ExternalLink className="size-4 shrink-0" aria-hidden />
+          Open agent_stats on GitHub
+        </a>
+      </Button>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main tab
 // ---------------------------------------------------------------------------
@@ -806,157 +892,54 @@ export function AIMaturityTab() {
 
   return (
     <div className="space-y-8">
-      {/* ── Framing header ── */}
-      <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Badge variant="default">AUM</Badge>
-            <span className="font-semibold">AI Usage Maturity</span>
-            <Badge variant="outline" className="text-xs gap-1">
-              <BookOpen className="size-3" />
-              Research-grounded
-            </Badge>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <CoachAiActionButton
-              send={coachExplain}
-              tooltip="Sends AUM + session analyzer snapshot to Repo Coach for personalized recommendations."
-              prompt={buildAiMaturityFullTabCoachPrompt(
-                buildAumBriefForCoach(data),
-                sessionLogReport,
-                data.isDemoData,
-              )}
-            >
-              <Sparkles className="size-4" aria-hidden />
-              Ask AI Coach
-            </CoachAiActionButton>
-            <CoachAiActionButton
-              send={coachExplain}
-              tooltip="Explains the coach's playbook below in plain language with next steps."
-              prompt={buildAiMaturityPlaybookCoachPrompt()}
-            >
-              <Lightbulb className="size-4" aria-hidden />
-              Playbook → AI
-            </CoachAiActionButton>
-          </div>
-        </div>
-        <p className="text-sm font-medium">
-          Not <em>how much</em> you use AI — but <em>how well</em>.
-        </p>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          This dashboard is framed as{" "}
-          <span className="font-medium text-foreground">high‑performance coaching</span>, not
-          surveillance. It is meant to mirror your habits early — before small AI shortcuts harden into
-          technical debt — similar to spotting code smells in review. Metrics here are hypotheses you can
-          argue with or improve.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Based on empirical research across 85 students (SIGCSE 2026). AUM measures four practices:
-          iterative prompting, output verification, problem decomposition, and contextual alignment — then
-          the session analyzer (when you upload structured logs) adds archetype‑style proxies from real tool traces.
-        </p>
-
-        <details className="group rounded-lg border bg-background/60 px-3 py-2 text-sm">
-          <summary className="cursor-pointer font-medium text-foreground select-none list-none flex items-center gap-2">
-            <ChevronRight className="size-4 transition-transform group-open:rotate-90 shrink-0" aria-hidden />
-            Coach&apos;s playbook — how to read these five ideas
-          </summary>
-          <div className="mt-3 space-y-4 text-muted-foreground pl-1 border-l-2 border-primary/30 pl-4">
-            <section>
-              <h3 className="text-foreground font-semibold text-sm">1. The &quot;Orchestrator&quot; archetype</h3>
-              <p className="mt-1">
-                <strong className="text-foreground">Pitch:</strong> Are you the pilot or the passenger? This
-                is not about coding speed — it is about how well you steer the model. A{" "}
-                <strong className="text-foreground">Senior Orchestrator</strong> treats AI like a strong
-                intern: context first, check the work, guide the next step. A junior pattern is
-                &quot;fix it again&quot; loops until something breaks.
-              </p>
-              <p className="mt-1 text-xs">
-                <strong className="text-foreground">Why it matters:</strong> Good orchestration tracks with
-                maintainable changes; pure firefighting tends toward muddy, hard‑to‑review diffs.
-              </p>
-            </section>
-            <section>
-              <h3 className="text-foreground font-semibold text-sm">2. Discovery‑to‑action ratio</h3>
-              <p className="mt-1">
-                <strong className="text-foreground">Pitch:</strong> Look before you leap. We compare
-                discovery‑style tool use (search, read, grep, glob) against action tools (edit, write, shell)
-                when the log allows. A low share of discovery often means the model is guessing layout.
-              </p>
-              <p className="mt-1 text-xs">
-                <strong className="text-foreground">Why it matters:</strong> Guesses feed hallucinations;
-                grounded search first usually matches your architecture.
-              </p>
-            </section>
-            <section>
-              <h3 className="text-foreground font-semibold text-sm">3. Stuck score / friction</h3>
-              <p className="mt-1">
-                <strong className="text-foreground">Pitch:</strong> Don&apos;t fight the machine. Repeated
-                similar tool calls or error loops are a signal to pause — split the task, narrow the file, or
-                refactor the confusing area so the model (and humans) can reason about it.
-              </p>
-              <p className="mt-1 text-xs">
-                <strong className="text-foreground">Why it matters:</strong> When stuck metrics rise, you are
-                often past the point where more retries help without a design change.
-              </p>
-            </section>
-            <section>
-              <h3 className="text-foreground font-semibold text-sm">4. Verification frequency</h3>
-              <p className="mt-1">
-                <strong className="text-foreground">Pitch:</strong> Trust, but verify. We look for test‑like
-                shell runs plus read‑after‑write habits next to edits when logs expose them.
-              </p>
-              <p className="mt-1 text-xs">
-                <strong className="text-foreground">Why it matters:</strong> Generating faster than you
-                validate is how main‑branch risk creeps in — these metrics reward disciplined check‑in.
-              </p>
-            </section>
-            <section>
-              <h3 className="text-foreground font-semibold text-sm">5. Token load &amp; reasoning overhead</h3>
-              <p className="mt-1">
-                <strong className="text-foreground">Pitch:</strong> Computational efficiency of intent. When
-                usage metadata exists, very large input or reasoning deltas vs tiny edits can mean noisy
-                prompts or overloaded context — Token ROI vs LOC still needs git enrichment across commits.
-              </p>
-              <p className="mt-1 text-xs">
-                <strong className="text-foreground">Why it matters:</strong> Helps you tighten prompts instead
-                of brute‑forcing tokens.
-              </p>
-            </section>
-          </div>
-        </details>
-      </div>
+      <AgentStatsExportInsight />
 
       {/* ── Demo banner or success banner ── */}
       {data.isDemoData ? (
         <div className="space-y-4">
-          <div className="rounded-lg border bg-muted/30 px-4 py-3 flex items-start gap-3">
-            <AlertCircle className="size-4 text-muted-foreground mt-0.5 shrink-0" />
-            <div className="text-sm">
-              <span className="font-semibold">Demo data shown.</span>
-              <span className="text-muted-foreground ml-1">
+          <CoachInsightTone
+            tone="informational"
+            title="Demo data shown"
+            className={aiTraceInsightSurface}
+            bodyClassName="text-foreground/90 font-normal text-sm"
+          >
+            <p className="flex flex-wrap items-center gap-2">
+              <AlertCircle className="size-4 text-muted-foreground shrink-0" aria-hidden />
+              <span>
                 Upload your{" "}
                 <code className="rounded bg-muted px-1 text-xs">csv</code>,{" "}
                 <code className="rounded bg-muted px-1 text-xs">json</code>, or{" "}
-                <code className="rounded bg-muted px-1 text-xs">jsonl</code> trace below — AUM charts plus session analyzer when the file is structured logs.
+                <code className="rounded bg-muted px-1 text-xs">jsonl</code> trace below — stage charts plus session
+                analyzer when the file is structured logs.
               </span>
-            </div>
-          </div>
+            </p>
+          </CoachInsightTone>
           <UploadZone onParsed={mergeParsed} />
         </div>
       ) : (
-        <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="size-4 text-muted-foreground" />
-            <span className="font-semibold">Your data loaded.</span>
-            <span className="text-muted-foreground">
-              {data.totalSessions} sessions · {data.totalPrompts} prompts · {data.totalToolCalls} tool calls
-            </span>
-          </div>
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => {
-            setSessionLogReport(DEMO_SESSION_LOG_REPORT);
-            setData(DEMO_DATA);
-          }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <CoachInsightTone
+            tone="positive"
+            title="Your data loaded"
+            className={cn("min-w-0 flex-1", aiTraceInsightSurface)}
+            bodyClassName="text-foreground/90 font-normal text-sm"
+          >
+            <p className="flex flex-wrap items-center gap-2">
+              <CheckCircle2 className="size-4 text-muted-foreground shrink-0" aria-hidden />
+              <span className="text-muted-foreground">
+                {data.totalSessions} sessions · {data.totalPrompts} prompts · {data.totalToolCalls} tool calls
+              </span>
+            </p>
+          </CoachInsightTone>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs shrink-0"
+            onClick={() => {
+              setSessionLogReport(DEMO_SESSION_LOG_REPORT);
+              setData(DEMO_DATA);
+            }}
+          >
             Reset to demo
           </Button>
         </div>
@@ -990,26 +973,30 @@ export function AIMaturityTab() {
               Session → AI
             </CoachAiActionButton>
           </div>
-          <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed border-l-2 border-primary/40 pl-3">
-            <span className="font-medium text-foreground">Readout + recommendations.</span> The cards and
-            percentages below <em>describe</em> what happened in your exported log (tools, tokens, loops,
-            verification habits). The{" "}
-            <span className="text-foreground font-medium">explanations &amp; recommendations</span> block
-            farther down does not stop at definitions — it turns those signals into concrete next steps you
-            can try in the next session (same idea as <span className="text-foreground">Coaching Priorities</span>{" "}
-            below for AUM).
-          </p>
-          <SessionCoachTipSnapshot report={sessionLogReport} />
-          {sessionLogReport.warnings.length > 0 && (
-            <div className="rounded-lg border border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/30 px-4 py-2 text-sm text-amber-900 dark:text-amber-200">
-              <strong>Parse warnings:</strong>{" "}
-              <ul className="list-disc pl-5 mt-1 text-xs space-y-0.5">
+          <CoachInsightTone
+            tone="informational"
+            title="Reading your export"
+            className={aiTraceInsightSurface}
+            bodyClassName="text-foreground/90 font-normal text-sm leading-relaxed max-w-3xl"
+          >
+            The metrics below summarize what appears in your exported log: tools, tokens, loops, and verification-style
+            habits. Use them as a mirror for your next session — not a grade.
+          </CoachInsightTone>
+          <SessionLogSummaryInsight report={sessionLogReport} />
+          {sessionLogReport.warnings.length > 0 ? (
+            <CoachInsightTone
+              tone="concern"
+              title="Parse warnings"
+              className={aiTraceInsightSurface}
+              bodyClassName="text-foreground/90 font-normal text-sm"
+            >
+              <ul className="list-disc pl-5 text-xs space-y-0.5 marker:text-foreground">
                 {sessionLogReport.warnings.map((w) => (
                   <li key={w}>{w}</li>
                 ))}
               </ul>
-            </div>
-          )}
+            </CoachInsightTone>
+          ) : null}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-2 sm:col-span-2">
               <CardHeader className="pb-2">
@@ -1116,99 +1103,111 @@ export function AIMaturityTab() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Patterns</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {sessionLogReport.top_patterns.map((p) => (
-                  <div key={p.pattern} className="flex items-center justify-between gap-4 text-sm">
-                    <span className="font-medium">{p.pattern}</span>
-                    <Badge variant={p.status === "Healthy" ? "default" : "secondary"}>
-                      {p.frequency} · {p.status}
-                    </Badge>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Stuck / friction</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm space-y-2">
-                <p>
-                  <span className="text-muted-foreground">Loops detected: </span>
-                  <span className="font-medium">{sessionLogReport.metrics.stuck.totalLoops}</span>
-                </p>
-                <p>
-                  <span className="text-muted-foreground">Avg loop depth: </span>
-                  <span className="font-medium">{sessionLogReport.metrics.stuck.averageLoopDepth}</span>
-                </p>
-                <p className="break-all">
-                  <span className="text-muted-foreground">Top friction file: </span>
-                  <span className="font-mono">{sessionLogReport.metrics.stuck.topFrictionFile ?? "—"}</span>
-                </p>
-              </CardContent>
-            </Card>
+            <CoachInsightTone
+              tone="informational"
+              title="Patterns"
+              className={aiTraceInsightSurface}
+              bodyClassName="text-foreground/90 font-normal space-y-2 text-sm"
+            >
+              {sessionLogReport.top_patterns.map((p) => (
+                <div key={p.pattern} className="flex items-center justify-between gap-4">
+                  <span className="font-medium">{p.pattern}</span>
+                  <Badge variant={p.status === "Healthy" ? "default" : "secondary"} className="shrink-0">
+                    {p.frequency} · {p.status}
+                  </Badge>
+                </div>
+              ))}
+            </CoachInsightTone>
+            <CoachInsightTone
+              tone="informational"
+              title="Stuck / friction"
+              className={aiTraceInsightSurface}
+              bodyClassName="text-foreground/90 font-normal space-y-2 text-sm"
+            >
+              <p>
+                <span className="text-muted-foreground">Loops detected: </span>
+                <span className="font-semibold text-foreground">{sessionLogReport.metrics.stuck.totalLoops}</span>
+              </p>
+              <p>
+                <span className="text-muted-foreground">Avg loop depth: </span>
+                <span className="font-semibold text-foreground">{sessionLogReport.metrics.stuck.averageLoopDepth}</span>
+              </p>
+              <p className="break-all">
+                <span className="text-muted-foreground">Top friction file: </span>
+                <span className="font-mono text-foreground">{sessionLogReport.metrics.stuck.topFrictionFile ?? "—"}</span>
+              </p>
+            </CoachInsightTone>
           </div>
 
-          <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
-            <div className="flex items-start gap-2">
-              <Lightbulb className="size-4 text-muted-foreground mt-0.5 shrink-0" aria-hidden />
-              <div>
-                <p className="text-sm font-medium">Explanations &amp; recommendations</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Each bullet names a finding from your metrics and proposes an action—not a generic definition.
-                  For metrics without enough data you may see sparse tips until the export includes usage,
-                  fuller tool traces, or (later) git enrichment for ROI-style KPIs.
-                </p>
-              </div>
-            </div>
-            <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1.5 marker:text-foreground">
+          <CoachInsightTone
+            tone="informational"
+            title="Suggestions from this export"
+            className={aiTraceInsightSurface}
+            bodyClassName="text-foreground/90 font-normal space-y-3 text-sm"
+          >
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Each bullet ties a signal in your log to something you can try next time. Sparse tips usually mean the file
+              omitted usage fields, tool detail, or context this analyzer needs.
+            </p>
+            <ul className="list-disc pl-5 text-muted-foreground space-y-1.5 marker:text-foreground">
               {sessionLogReport.ai_coaching_tips.map((t) => (
-                <li key={t} className="leading-snug">{t}</li>
+                <li key={t} className="leading-snug">
+                  {t}
+                </li>
               ))}
             </ul>
-          </div>
+          </CoachInsightTone>
 
-          <div className="rounded-lg border border-dashed px-4 py-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-medium text-foreground">Enrichment unavailable in-browser (by design)</p>
-            <p>Token ROI: {sessionLogReport.metrics.enrichmentUnavailable.tokenRoi}</p>
-            <p>Manual intervention: {sessionLogReport.metrics.enrichmentUnavailable.manualIntervention}</p>
-            <p>Prompt-to-commit: {sessionLogReport.metrics.enrichmentUnavailable.promptToCommit}</p>
-          </div>
+          <CoachInsightTone
+            tone="informational"
+            title="Not computed in the browser"
+            className={aiTraceInsightSurface}
+            bodyClassName="text-foreground/90 font-normal space-y-2 text-xs leading-relaxed text-muted-foreground"
+          >
+            <p>These need linking session logs to git history; they stay informational until that wiring exists.</p>
+            <p>
+              <span className="font-medium text-foreground">Token ROI:</span>{" "}
+              {sessionLogReport.metrics.enrichmentUnavailable.tokenRoi}
+            </p>
+            <p>
+              <span className="font-medium text-foreground">Manual edits after AI:</span>{" "}
+              {sessionLogReport.metrics.enrichmentUnavailable.manualIntervention}
+            </p>
+            <p>
+              <span className="font-medium text-foreground">Prompt → commit:</span>{" "}
+              {sessionLogReport.metrics.enrichmentUnavailable.promptToCommit}
+            </p>
+          </CoachInsightTone>
         </section>
       )}
 
-      {/* ── Overall AUM score ── */}
+      {/* ── Overall profile from trace ── */}
       <section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Your AI Maturity Profile</h2>
+          <h2 className="text-lg font-semibold">Profile from your trace</h2>
           <CoachAiActionButton
             send={coachExplain}
-            tooltip="Opens Repo Coach focused on AUM aggregates and SDLC-stage bars."
-            prompt={buildAiMaturityAggregateCoachPrompt(buildAumBriefForCoach(data))}
+            tooltip="Send aggregate scores and stage breakdown to Repo Coach."
+            prompt={buildAiMaturityAggregateCoachPrompt(buildAiUsageProfileBrief(data))}
           >
             <Sparkles className="size-4" aria-hidden />
-            AUM → AI
+            Ask Coach
           </CoachAiActionButton>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="col-span-full sm:col-span-2 lg:col-span-1 border-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Brain className="size-4 text-muted-foreground" />
-                Overall AUM Score
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold">{overallAUM}</div>
-              <div className="text-sm text-muted-foreground mt-1">{overallLabel} · out of 100</div>
-              <div className="mt-3 w-full bg-muted rounded-full h-2">
-                <div className={`${aumColor(overallAUM).bar} h-2 rounded-full`} style={{ width: `${overallAUM}%` }} />
-              </div>
-            </CardContent>
-          </Card>
+          <CoachInsightTone
+            tone="informational"
+            title="Overall score"
+            className={cn("col-span-full sm:col-span-2 lg:col-span-1", aiTraceInsightSurface)}
+            bodyClassName="space-y-3 text-foreground/90 font-normal"
+          >
+            <Brain className="size-4 text-muted-foreground" aria-hidden />
+            <div className="text-4xl font-bold tabular-nums">{overallAUM}</div>
+            <div className="text-sm text-muted-foreground">{overallLabel} · out of 100</div>
+            <div className="mt-2 w-full bg-muted rounded-full h-2">
+              <div className={`${aumColor(overallAUM).bar} h-2 rounded-full`} style={{ width: `${overallAUM}%` }} />
+            </div>
+          </CoachInsightTone>
           <KpiCard
             label="Avg Iterations / Prompt"
             value={data.avgIterationsPerPrompt}
@@ -1230,19 +1229,15 @@ export function AIMaturityTab() {
         </div>
       </section>
 
-      {/* ── AUM by SDLC stage ── */}
+      {/* ── By SDLC stage ── */}
       <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Maturity by SDLC Stage</h2>
-          <Badge variant="outline" className="text-xs">
-            Research finding: AUM drops sharply at Testing
-          </Badge>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 className="text-lg font-semibold">By project phase</h2>
         </div>
-        <p className="text-sm text-muted-foreground mb-4 max-w-2xl">
-          The SIGCSE 2026 paper found a clear two-cluster structure: Planning, Design, and
-          Implementation show high AUM (M ≈ 3.8/5); Testing, Deployment, and Maintenance show
-          low AUM (M ≈ 3.2/5). The badges below flag stages where usage frequency and maturity
-          are decoupled — more AI use doesn't mean better AI use at those stages.
+        <p className="text-sm text-muted-foreground mb-4 max-w-2xl leading-relaxed">
+          Sessions are grouped by working-directory patterns (tests, CI, docs, app code, etc.). Each callout blends how
+          many tool turns happen per prompt with read-after-write style checks — higher scores usually mean clearer
+          prompts and more validation before moving on.
         </p>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {data.stageScores.map((s) => (
@@ -1261,110 +1256,98 @@ export function AIMaturityTab() {
 
       {/* ── Tool mix ── */}
       <section>
-        <h2 className="text-lg font-semibold mb-2">How You're Using AI Tools</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          The mix of tool types reveals your AI usage <em>mode</em>. Heavy Read = exploratory understanding.
-          Heavy Write = code generation (verify before committing). Heavy Edit = targeted, surgical.
-          Heavy Bash = operational automation.
-        </p>
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            <div className="flex h-5 rounded-full overflow-hidden w-full">
-              {data.toolMix.map((t) => (
-                <div key={t.name} className={`${t.color} transition-all`} style={{ width: `${t.pct}%` }} title={`${t.name}: ${t.pct}%`} />
-              ))}
-            </div>
-            <div className="space-y-2">
-              {data.toolMix.map((t) => (
-                <div key={t.name} className="flex items-center gap-3 text-sm">
-                  <div className={`size-2.5 rounded-full shrink-0 ${t.color}`} />
-                  <span className="font-medium w-16">{t.name}</span>
-                  <div className="flex-1 bg-muted rounded-full h-1.5">
-                    <div className={`${t.color} h-1.5 rounded-full`} style={{ width: `${t.pct}%` }} />
-                  </div>
-                  <span className="text-muted-foreground w-12 text-right">{t.pct}%</span>
-                  <span className="text-muted-foreground text-xs hidden sm:block">{t.meaning}</span>
+        <CoachInsightTone
+          tone="informational"
+          title="How you&apos;re using AI tools"
+          className={aiTraceInsightSurface}
+          bodyClassName="text-foreground/90 font-normal space-y-4 text-sm"
+        >
+          <p className="text-muted-foreground leading-relaxed">
+            The mix of tool types reveals your AI usage <em>mode</em>. Heavy Read = exploratory understanding. Heavy
+            Write = code generation (verify before committing). Heavy Edit = targeted, surgical. Heavy Bash =
+            operational automation.
+          </p>
+          <div className="flex h-5 rounded-full overflow-hidden w-full">
+            {data.toolMix.map((t) => (
+              <div
+                key={t.name}
+                className={`${t.color} transition-all`}
+                style={{ width: `${t.pct}%` }}
+                title={`${t.name}: ${t.pct}%`}
+              />
+            ))}
+          </div>
+          <div className="space-y-2">
+            {data.toolMix.map((t) => (
+              <div key={t.name} className="flex items-center gap-3 text-sm">
+                <div className={`size-2.5 rounded-full shrink-0 ${t.color}`} />
+                <span className="font-medium w-16">{t.name}</span>
+                <div className="flex-1 bg-muted rounded-full h-1.5">
+                  <div className={`${t.color} h-1.5 rounded-full`} style={{ width: `${t.pct}%` }} />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <span className="text-muted-foreground w-12 text-right tabular-nums">{t.pct}%</span>
+                <span className="text-muted-foreground text-xs hidden sm:block">{t.meaning}</span>
+              </div>
+            ))}
+          </div>
+        </CoachInsightTone>
       </section>
 
-      {/* ── Teaching coaching panel ── */}
+      {/* ── Coaching priorities ── */}
       <section>
-        <h2 className="text-lg font-semibold mb-2">Coaching Priorities</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          These recommendations come from the paper's four instructional priorities, applied to your data.
+        <h2 className="text-lg font-semibold mb-2">What to try next</h2>
+        <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+          Practical checks derived from your trace — adjust or ignore what does not fit your team&apos;s norms.
         </p>
         <div className="space-y-3">
           {[
             {
               priority: 1,
-              title: "Seed mature habits during Planning",
-              finding: "Planning AUM predicts your whole-lifecycle AI behavior (r = 0.80).",
-              action: "Before your next sprint: write down the structured goals and constraints you'll give to AI. Don't start a coding session with 'help me build X' — specify the architectural decisions, constraints, and acceptance criteria first.",
-              status: (data.stageScores.find((s) => s.stage === "Planning")?.aumScore ?? 0) >= 65
-                ? "good" : "warn",
+              title: "Lock scope before coding",
+              finding:
+                "Planning-stage habits tend to carry through the rest of a session — vague goals here show up as churn later.",
+              action:
+                "Before the next coding block: write constraints, acceptance criteria, and files in scope. Avoid opening with only \"build X\".",
             },
             {
               priority: 2,
-              title: "Add structure to Testing AI use",
-              finding: "Testing is where AUM collapses for most students — usage is frequent but undisciplined.",
-              action: "For every AI-generated test: specify the failure case you're targeting, document why you accepted or rejected the suggestion, and run the suite before committing.",
-              status: (data.stageScores.find((s) => s.stage === "Testing")?.aumScore ?? 0) >= 55
-                ? "good" : "bad",
+              title: "Structure testing-assistant turns",
+              finding:
+                "Testing often shows higher iteration counts — usually from underspecified failure cases or skipping the suite.",
+              action:
+                "For each AI-suggested test: name the failure mode, accept or reject with a one-line reason, and run tests before commit.",
             },
             {
               priority: 3,
               title: "Verify before you commit",
-              finding: `Your Write ratio is ${Math.round(data.writeRatio * 100)}%. Unreviewed AI-generated code is a leading source of code smells.`,
-              action: "After every AI Write: read the generated code, run the linter, and check complexity before staging. One prompt, one review.",
-              status: data.writeRatio <= 0.2 ? "good" : data.writeRatio <= 0.35 ? "warn" : "bad",
+              finding: `Your Write ratio is ${Math.round(data.writeRatio * 100)}%. Large Write shares deserve a quick read-back and lint.`,
+              action:
+                "After substantive Write/Edit bursts: skim the diff, run the linter, and run targeted tests before staging.",
             },
             {
               priority: 4,
-              title: "Spread AI use across the project timeline",
-              finding: `${data.sessionConcentration}% of your AI sessions are in the final 20% of the project — a deadline-crunch pattern.`,
-              action: "Aim for consistent AI sessions throughout development. Use AI in planning and design, not just when you're stuck at the end.",
-              status: data.sessionConcentration <= 30 ? "good" : data.sessionConcentration <= 50 ? "warn" : "bad",
+              title: "Spread assistance across the timeline",
+              finding: `${data.sessionConcentration}% of sessions fall in the final fifth of the project window — a crunch pattern.`,
+              action:
+                "Use the assistant during design and implementation, not only when deadlines pile up — smaller prompts earlier reduce thrash.",
             },
-          ].map((item) => {
-            return (
-              <div key={item.priority} className="rounded-lg border bg-muted/20 p-4">
-                <div className="flex items-start gap-3">
-                  <ChevronRight className="size-4 mt-0.5 shrink-0 text-muted-foreground" />
-                  <div className="flex-1 space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-muted-foreground">Priority {item.priority}</span>
-                      <span className="font-semibold text-sm">{item.title}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{item.finding}</p>
-                    <div className="flex items-start gap-1.5 pt-1">
-                      <ChevronRight className="size-3.5 mt-0.5 shrink-0 text-foreground/60" />
-                      <p className="text-xs text-foreground/80 leading-relaxed">{item.action}</p>
-                    </div>
-                  </div>
+          ].map((item) => (
+              <CoachInsightTone
+                key={item.priority}
+                tone="informational"
+                title={`Priority ${item.priority}: ${item.title}`}
+                className={aiTraceInsightSurface}
+                bodyClassName="text-foreground/90 font-normal space-y-2 text-sm"
+              >
+                <p className="text-xs text-muted-foreground leading-relaxed">{item.finding}</p>
+                <div className="flex items-start gap-2 pt-0.5">
+                  <ChevronRight className="size-4 mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
+                  <p className="text-xs leading-relaxed">{item.action}</p>
                 </div>
-              </div>
-            );
-          })}
+              </CoachInsightTone>
+            ))}
         </div>
       </section>
-
-      {/* ── Research footer ── */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 text-sm">
-        <p className="text-blue-900 dark:text-blue-100 font-medium mb-1">Research grounding</p>
-        <p className="text-blue-800 dark:text-blue-200 text-xs leading-relaxed">
-          AUM is operationalized along four dimensions from the paper: iterative prompting, output verification,
-          problem decomposition, and contextual alignment. Stage scores are computed from observable
-          tool-log proxies (iterations/prompt, read-after-write ratio, session distribution) rather than
-          self-reported surveys, addressing the paper's call for artifact-based validation.
-        </p>
-        <p className="mt-2 text-blue-700 dark:text-blue-300 text-xs">
-          Source: "Stage-Aware AI Usage and AI Usage Maturity in Software Engineering Education" — SIGCSE Virtual 2026
-        </p>
-      </div>
     </div>
   );
 }

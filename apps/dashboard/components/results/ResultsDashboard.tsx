@@ -235,9 +235,9 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
             <TabsTrigger
               className={resultsTabTriggerClass}
               value="ai-maturity"
-              title="AI usage maturity — how consistently AI is used across the SDLC"
+              title="AI usage — upload CSV from agent_stats or JSON/JSONL session exports from your coding agents"
             >
-              AI Maturity
+              AI Usage
             </TabsTrigger>
             <TabsTrigger
               className={resultsTabTriggerClass}
@@ -260,15 +260,24 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
           </div>
         </TabsContent>
         <TabsContent value="rq3" className="mt-6">
-          <RQ3Tab report={report} />
+          <RQ3Tab
+            report={report}
+            onOpenTestingTab={() => setResultsTab("rq2")}
+          />
         </TabsContent>
         {showReact ? (
           <TabsContent value="rq3-react" className="mt-6">
-            <RQ3ReactTab report={report} />
+            <RQ3ReactTab
+              report={report}
+              onOpenCodeQualityTab={() => setResultsTab("rq3")}
+            />
           </TabsContent>
         ) : null}
         <TabsContent value="phase2-complexity" className="mt-6">
-          <Phase2ComplexityTab report={report} />
+          <Phase2ComplexityTab
+            report={report}
+            onOpenCodeQualityTab={() => setResultsTab("rq3")}
+          />
         </TabsContent>
         <TabsContent value="phase3-pathology" className="mt-6">
           <Phase3PathologyTab report={report} />

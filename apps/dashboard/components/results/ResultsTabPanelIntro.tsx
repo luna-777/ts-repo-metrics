@@ -3,6 +3,7 @@
 import { Info } from "lucide-react";
 import { CoachInsightTone } from "@/components/results/coach/CoachInsightTone";
 import type { RepoReport } from "@/lib/reportTypes";
+import { tryGetPhase2Summary } from "@/lib/phase2Summary";
 import { cn } from "@/lib/utils";
 
 type ResultsTabId =
@@ -166,26 +167,249 @@ function CommitHabitsPanelIntro({ report, className }: { report: RepoReport; cla
   );
 }
 
+function CodeQualityPanelIntro({ report, className }: { report: RepoReport; className?: string }) {
+  const maint = report.maintainability?.score ?? 0;
+  const highCx = report.complexity?.highComplexityFunctions ?? 0;
+  const maxCx = report.complexity?.max ?? 0;
+  const dup = report.duplication?.percentage ?? 0;
+  const hasMaint = Boolean(report.maintainability);
+
+  const looksStrong =
+    (!hasMaint || maint >= 55) && highCx <= 10 && maxCx <= 25 && dup <= 10;
+
+  const needsAttention =
+    (hasMaint && maint < 40) || highCx > 25 || maxCx > 35 || dup > 20;
+
+  if (needsAttention) {
+    return (
+      <CoachInsightTone
+        tone="concern"
+        className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+        aria-label="Code quality"
+        bodyClassName="text-foreground/90 font-normal"
+      >
+        <p>
+          Structural risk is elevated in this snapshot—either maintainability is low, duplication or
+          peak complexity is high, or many functions exceed the engine&apos;s high-complexity
+          threshold. Prioritize the hotspot tables below, then re-run analysis to confirm the
+          distribution tightens.
+        </p>
+      </CoachInsightTone>
+    );
+  }
+
+  if (looksStrong) {
+    return (
+      <CoachInsightTone
+        tone="positive"
+        className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+        aria-label="Code quality"
+        bodyClassName="text-foreground/90 font-normal"
+      >
+        <p>
+          Headline complexity and duplication look manageable relative to this scan. Use Core
+          signals and additional metrics below to catch drift—complexity tends to creep in as teams
+          ship faster.
+        </p>
+      </CoachInsightTone>
+    );
+  }
+
+  return (
+    <CoachInsightTone
+      tone="informational"
+      className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+      aria-label="Code quality"
+      bodyClassName="text-foreground/90 font-normal"
+    >
+      <p>
+        This view summarizes cyclomatic complexity, maintainability heuristics, and duplication from
+        the static scan. Treat spikes as triage: simplify the worst hotspots first, then compare the
+        next analysis run.
+      </p>
+    </CoachInsightTone>
+  );
+}
+
+function ReactComponentsPanelIntro({ report, className }: { report: RepoReport; className?: string }) {
+  const rm = report.reactMetrics;
+  if (!rm) {
+    return (
+      <CoachInsightTone
+        tone="informational"
+        className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+        aria-label="React components"
+        bodyClassName="text-foreground/90 font-normal"
+      >
+        <p>
+          TSX-focused signals appear here when the analyzer emits a{" "}
+          <code className="rounded bg-muted px-1">reactMetrics</code> block for this run. Open Core
+          signals below after you re-run with the current engine if this tab looks empty.
+        </p>
+      </CoachInsightTone>
+    );
+  }
+
+  const s = rm.summary;
+  const tampere = s.tampereJsxDepthExceededCount;
+  const ferreira = s.ferreiraLackOfCohesionCount;
+  const components = s.componentsAnalyzed;
+
+  const needsAttention =
+    tampere >= 5 || ferreira >= 4 || s.totalMissingOrInvalidDepsArray >= 20;
+
+  const looksCalm =
+    tampere <= 2 && ferreira === 0 && s.totalConditionalHookCalls === 0;
+
+  if (needsAttention) {
+    return (
+      <CoachInsightTone
+        tone="concern"
+        className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+        aria-label="React components"
+        bodyClassName="text-foreground/90 font-normal"
+      >
+        <p>
+          Your React surface needs attention—about <strong className="text-foreground">{tampere}</strong>{" "}
+          component{tampere === 1 ? "" : "s"} exceed the JSX depth threshold and{" "}
+          <strong className="text-foreground">{ferreira}</strong> show lack-of-cohesion heuristics across{" "}
+          <strong className="text-foreground">{components}</strong> analyzed component
+          {components === 1 ? "" : "s"}. Focus on shrinking oversized components and tightening hooks
+          before adding new UI.
+        </p>
+      </CoachInsightTone>
+    );
+  }
+
+  if (looksCalm) {
+    return (
+      <CoachInsightTone
+        tone="positive"
+        className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+        aria-label="React components"
+        bodyClassName="text-foreground/90 font-normal"
+      >
+        <p>
+          TSX signals look relatively healthy: shallow JSX and few cohesion flags relative to{" "}
+          {components} components. Use Additional signals and the oversized table below to catch
+          regressions on the next run.
+        </p>
+      </CoachInsightTone>
+    );
+  }
+
+  return (
+    <CoachInsightTone
+      tone="informational"
+      className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+      aria-label="React components"
+      bodyClassName="text-foreground/90 font-normal"
+    >
+      <p>
+        Static TSX metrics cover cohesion, JSX depth, prop pass-through, and hook-safety heuristics.
+        Prioritize the largest components in the table below, then revisit hook dependency hygiene.
+      </p>
+    </CoachInsightTone>
+  );
+}
+
+function CodeComplexityPanelIntro({ report, className }: { report: RepoReport; className?: string }) {
+  const p2 = tryGetPhase2Summary(report);
+  const rm = report.reactMetrics?.summary;
+
+  if (!p2) {
+    return (
+      <CoachInsightTone
+        tone="informational"
+        className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+        aria-label="Code complexity"
+        bodyClassName="text-foreground/90 font-normal"
+      >
+        <p>
+          Phase 2 lexical and cognitive metrics appear here once functions include Halstead volume,
+          cognitive complexity, and GRAD-AI-style <code className="rounded bg-muted px-1">MI_norm</code>. Re-run
+          with the current <code className="rounded bg-muted px-1">@repo-metrics/engine</code> if this tab looks empty.
+        </p>
+      </CoachInsightTone>
+    );
+  }
+
+  const mi = p2.miNormMean;
+  const coc = p2.cognitiveMean;
+  const hal = p2.halsteadVolMean;
+
+  const miConcern = mi < 55;
+  const cocConcern = coc > 12;
+  const halConcern = hal > 180;
+
+  let reactSentence: string | null = null;
+  if (rm) {
+    const bits: string[] = [];
+    if (rm.tampereJsxDepthExceededCount > 0) {
+      bits.push(
+        `${rm.tampereJsxDepthExceededCount} component${rm.tampereJsxDepthExceededCount === 1 ? "" : "s"} have JSX nesting deeper than 5 levels`,
+      );
+    }
+    if (rm.ferreiraLackOfCohesionCount > 0) {
+      bits.push(
+        `${rm.ferreiraLackOfCohesionCount} component${rm.ferreiraLackOfCohesionCount === 1 ? "" : "s"} lack cohesion heuristics`,
+      );
+    }
+    if (rm.totalMissingOrInvalidDepsArray > 0) {
+      bits.push(
+        `${rm.totalMissingOrInvalidDepsArray} hook dependenc${rm.totalMissingOrInvalidDepsArray === 1 ? "y is" : "ies are"} missing or invalid`,
+      );
+    }
+    if (bits.length > 0) {
+      reactSentence = bits.join(", ") + ". ";
+    }
+    if (rm.totalConditionalHookCalls === 0) {
+      reactSentence =
+        (reactSentence ?? "") +
+        "Your hook safety is solid with zero conditional hook calls — a strong foundation to build on. ";
+    }
+  }
+
+  const concerns = [miConcern, cocConcern, halConcern].filter(Boolean).length;
+  const tone: "positive" | "concern" | "informational" =
+    concerns >= 2 ? "concern" : concerns === 0 && !reactSentence ? "positive" : "informational";
+
+  const scorePhrase =
+    mi >= 70
+      ? "healthy relative to the GRAD-AI maintainability band"
+      : mi >= 55
+        ? "above the danger zone but with room to improve"
+        : "in a range where refactors will pay off quickly";
+
+  return (
+    <CoachInsightTone
+      tone={tone}
+      className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+      aria-label="Code complexity"
+      bodyClassName="text-foreground/90 font-normal"
+    >
+      <p>
+        Your code complexity profile is <strong className="text-foreground">{scorePhrase}</strong>
+        — mean <strong className="text-foreground">MI_norm</strong>{" "}
+        <strong className="text-foreground">{mi.toFixed(1)}</strong>, mean cognitive complexity{" "}
+        <strong className="text-foreground">{coc.toFixed(2)}</strong>, mean Halstead volume{" "}
+        <strong className="text-foreground">{hal.toFixed(1)}</strong>
+        {reactSentence ? (
+          <>
+            . There are some important areas to address: {reactSentence}
+          </>
+        ) : (
+          ". "
+        )}
+        Focus on the cognitive and Halstead outliers in the table below—simplifying the largest functions will move
+        the averages fastest. Here is what the data shows:
+      </p>
+    </CoachInsightTone>
+  );
+}
+
 function tabBody(activeTab: string): { title: string; body: string } | null {
   switch (activeTab as ResultsTabId) {
-    case "rq3":
-      return {
-        title: "Code quality",
-        body:
-          "Complexity, duplication, and maintainability heuristics from the static scan. Treat spikes as triage hints: simplify the worst hotspots first, then watch whether the distribution improves on the next analysis.",
-      };
-    case "rq3-react":
-      return {
-        title: "React & UI structure",
-        body:
-          "Hooks, JSX depth, and cohesion cues for TSX in scope. The goal is to spot components that are hard to reason about or unsafe to change—pair this view with your design system and review culture.",
-      };
-    case "phase2-complexity":
-      return {
-        title: "Code complexity",
-        body:
-          "Halstead and cognitive-style metrics per function. Use this when you need function-level detail beyond the headline quality cards—especially for refactors or grading assignments.",
-      };
     case "phase3-pathology":
       return {
         title: "Code risks & smells",
@@ -194,9 +418,9 @@ function tabBody(activeTab: string): { title: string; body: string } | null {
       };
     case "ai-maturity":
       return {
-        title: "AI maturity",
+        title: "AI usage",
         body:
-          "Session-derived signals about how AI assistance shows up across the SDLC (when logs are available). This tab summarizes maturity heuristics—pair with your team’s norms, not as a stand-alone score.",
+          "Upload a CSV from agent_stats or a JSON/JSONL session export to chart tool traces, phase spread, and a compact scorecard (efficiency, verification-style proxies, patterns). Use it as a mirror for habits—not a grade.",
       };
     case "dataset":
       return {
@@ -216,6 +440,18 @@ export function ResultsTabPanelIntro({ activeTab, report, className }: ResultsTa
 
   if (activeTab === "rq1") {
     return <CommitHabitsPanelIntro report={report} className={className} />;
+  }
+
+  if (activeTab === "rq3") {
+    return <CodeQualityPanelIntro report={report} className={className} />;
+  }
+
+  if (activeTab === "rq3-react") {
+    return <ReactComponentsPanelIntro report={report} className={className} />;
+  }
+
+  if (activeTab === "phase2-complexity") {
+    return <CodeComplexityPanelIntro report={report} className={className} />;
   }
 
   const copy = tabBody(activeTab);

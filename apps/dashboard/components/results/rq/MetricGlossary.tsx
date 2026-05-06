@@ -162,6 +162,26 @@ function metricBody(id: Phase2MetricId): MetricBody | null {
   }
 }
 
+/** Body for MetricCard `metricHelp.children` — matches MetricHelpButton dialog content. */
+export function Phase2MetricHelpDialogContent({ metricId }: { metricId: Phase2MetricId }) {
+  const body = metricBody(metricId);
+  if (!body) return null;
+  return (
+    <>
+      <p className="text-muted-foreground leading-relaxed">{body.description}</p>
+      <MetricBodySections body={body} variant="dialog" />
+      <p className="text-muted-foreground mt-3 border-t pt-3 text-xs">
+        <span className="text-foreground font-medium">Citation: </span>
+        {body.citation}
+      </p>
+    </>
+  );
+}
+
+export function getPhase2MetricHelpTitle(metricId: Phase2MetricId): string {
+  return metricBody(metricId)?.title ?? metricId;
+}
+
 function MetricBodySections({
   body,
   variant,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,29 +13,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { FileDetailSheet } from "./FileDetailSheet";
 import type { RepoReport, PerFileEntry } from "@/lib/reportTypes";
+import { fileStats } from "@/lib/perFileStats";
 
 type SortKey = "file" | "functions" | "maxComplexity" | "avgComplexity" | "longestFn" | "maxNesting";
 type SortDir = "asc" | "desc";
 
-function fileStats(pf: PerFileEntry) {
-  const maxComplexity =
-    pf.complexity.length > 0
-      ? Math.max(...pf.complexity.map((c) => c.complexity))
-      : 0;
-  const avgComplexity =
-    pf.complexity.length > 0
-      ? pf.complexity.reduce((s, c) => s + c.complexity, 0) / pf.complexity.length
-      : 0;
-  const longestFn =
-    pf.functionMetrics.length > 0
-      ? Math.max(...pf.functionMetrics.map((f) => f.lines))
-      : 0;
-  const maxNesting =
-    pf.functionMetrics.length > 0
-      ? Math.max(...pf.functionMetrics.map((f) => f.maxNestingDepth))
-      : 0;
-  return { maxComplexity, avgComplexity, longestFn, maxNesting };
-}
+/** Initial visible rows; expands via “Show more” (matches Code Quality table UX). */
+const INITIAL_VISIBLE_FILES = 15;
+const VISIBLE_FILES_STEP = 15;
 
 interface FileTableProps {
   report: RepoReport;
@@ -46,8 +31,7 @@ export function FileTable({ report }: FileTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("file");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [selectedFile, setSelectedFile] = useState<PerFileEntry | null>(null);
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 50;
+  const [visibleLimit, setVisibleLimit] = useState(INITIAL_VISIBLE_FILES);
 
   const rows = useMemo(() => {
     let list = report.perFile
@@ -65,13 +49,17 @@ export function FileTable({ report }: FileTableProps) {
     return list;
   }, [report.perFile, search, sortKey, sortDir]);
 
-  const paginated = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
+  const visibleRows = rows.slice(0, visibleLimit);
+  const remaining = Math.max(0, rows.length - visibleLimit);
+
+  useEffect(() => {
+    setVisibleLimit(INITIAL_VISIBLE_FILES);
+  }, [report.analysis_timestamp, report.source?.commit]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else setSortKey(key);
-    setPage(0);
+    setVisibleLimit(INITIAL_VISIBLE_FILES);
   };
 
   const Th = ({
@@ -107,7 +95,7 @@ export function FileTable({ report }: FileTableProps) {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
-              setPage(0);
+              setVisibleLimit(INITIAL_VISIBLE_FILES);
             }}
             className="max-w-sm"
           />
@@ -123,7 +111,7 @@ export function FileTable({ report }: FileTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginated.map((row) => (
+              {visibleRows.map((row) => (
                 <TableRow
                   key={row.file}
                   className="cursor-pointer"
@@ -141,31 +129,37 @@ export function FileTable({ report }: FileTableProps) {
               ))}
             </TableBody>
           </Table>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+            {rows.length > 0 ? (
               <span>
-                Page {page + 1} of {totalPages} ({rows.length} files)
+                Showing {Math.min(visibleLimit, rows.length)} of {rows.length} files
               </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="disabled:opacity-50 hover:underline"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                  className="disabled:opacity-50 hover:underline"
-                >
-                  Next
-                </button>
+            ) : null}
+            {remaining > 0 || visibleLimit > INITIAL_VISIBLE_FILES ? (
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+                {remaining > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVisibleLimit((v) => Math.min(v + VISIBLE_FILES_STEP, rows.length))
+                    }
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Show {Math.min(VISIBLE_FILES_STEP, remaining)} more files →
+                  </button>
+                ) : null}
+                {visibleLimit > INITIAL_VISIBLE_FILES ? (
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLimit(INITIAL_VISIBLE_FILES)}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    ← Show less
+                  </button>
+                ) : null}
               </div>
-            </div>
-          )}
+            ) : null}
+          </div>
         </CardContent>
       </Card>
 

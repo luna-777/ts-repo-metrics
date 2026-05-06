@@ -727,7 +727,7 @@ export function computeSessionLogReport(
   return report;
 }
 
-/** End-to-end: parse JSONL/json + compute deterministic report + CSV for legacy AUM. */
+/** End-to-end: parse JSONL/json + compute deterministic report + CSV for legacy trace charts. */
 export function analyzeSessionLogFile(text: string): {
   report: SessionLogReport;
   csvText: string;
@@ -738,7 +738,7 @@ export function analyzeSessionLogFile(text: string): {
   return { report, csvText };
 }
 
-/** Sample session report shown in AI Maturity tab demo mode (paired with CSV demo AUM). */
+/** Sample session report for demo mode on the AI Usage tab (paired with CSV-derived aggregates). */
 export const DEMO_SESSION_LOG_REPORT: SessionLogReport = {
   logAnalyzerVersion: LOG_ANALYZER_VERSION,
   generatedAt: "1970-01-01T00:00:00.000Z",

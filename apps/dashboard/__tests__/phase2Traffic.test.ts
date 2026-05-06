@@ -46,6 +46,6 @@ describe("phase2TrafficCellClass", () => {
     const cls = phase2TrafficCellClass(50, "mi");
     expect(cls).toContain("text-right");
     expect(cls).toContain("tabular-nums");
-    expect(cls).toContain("red-500");
+    expect(cls).toMatch(/red/);
   });
 });

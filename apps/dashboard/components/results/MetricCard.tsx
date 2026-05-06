@@ -30,6 +30,8 @@ interface MetricCardProps {
   rq: RQId;
   /** When true, hide the RQ1/RQ2/RQ3 badge (e.g. student-facing How we work tab). */
   hideResearchBadge?: boolean;
+  /** One-line context shown under the value (lighter text). */
+  description?: string;
   /** Short hover hint when no metricHelp; or one-line lead-in at the top of the dialog when metricHelp is set. */
   tooltip?: string;
   /** Rich explanation in a dialog (same pattern as Phase 3 KPI cards). */
@@ -44,6 +46,7 @@ export function MetricCard({
   value,
   rq,
   hideResearchBadge = false,
+  description,
   tooltip,
   metricHelp,
 }: MetricCardProps) {
@@ -95,7 +98,10 @@ export function MetricCard({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-2xl font-bold tabular-nums">{value}</div>
+        {description ? (
+          <p className="mt-2 text-sm leading-snug text-muted-foreground">{description}</p>
+        ) : null}
       </CardContent>
     </Card>
   );

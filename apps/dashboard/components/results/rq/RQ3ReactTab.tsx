@@ -1,23 +1,31 @@
 "use client";
 
-import { RQFramingHeader } from "./RQFramingHeader";
-import { ReactMetricsSection } from "./ReactMetricsSection";
+import { useMemo } from "react";
+import { RQ3ReactAdditionalSignalsSection } from "./RQ3ReactAdditionalSignalsSection";
+import { RQ3ReactCoreSignalsSection } from "./RQ3ReactCoreSignalsSection";
+import { RQ3ReactImprovementSection } from "./RQ3ReactImprovementSection";
+import { RQ3ReactOversizedComponentsTable } from "./RQ3ReactOversizedComponentsTable";
 import type { RepoReport } from "@/lib/reportTypes";
 
 interface RQ3ReactTabProps {
   report: RepoReport;
+  onOpenCodeQualityTab?: () => void;
 }
 
-export function RQ3ReactTab({ report }: RQ3ReactTabProps) {
+export function RQ3ReactTab({ report, onOpenCodeQualityTab }: RQ3ReactTabProps) {
   const rm = report.reactMetrics;
   const tsxCount = report.profile?.tsxFiles ?? 0;
+
+  const topBySloc = useMemo(() => {
+    if (!rm?.components.length) return null;
+    return [...rm.components].sort((a, b) => b.lines - a.lines)[0] ?? null;
+  }, [rm]);
 
   if (!rm) {
     const hasTsxButNoBlock = tsxCount > 0;
     return (
-      <div className="space-y-4">
-        <RQFramingHeader rq="RQ3" />
-        <p className="text-muted-foreground text-sm max-w-2xl">
+      <div className="space-y-3">
+        <p className="max-w-2xl text-sm text-muted-foreground">
           {hasTsxButNoBlock ? (
             <>
               This report lists <strong>{tsxCount}</strong>{" "}
@@ -38,16 +46,14 @@ export function RQ3ReactTab({ report }: RQ3ReactTabProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <RQFramingHeader rq="RQ3" />
-      <p className="text-muted-foreground text-sm max-w-2xl">
-        Static signals from TSX: component cohesion (hooks + size), nested JSX depth, same-file prop pass-through, and
-        hook-usage heuristics.
-      </p>
-      <ReactMetricsSection reactMetrics={rm} />
-      <div className="rounded-lg border border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30 p-4 text-sm">
-        <p className="text-green-900 dark:text-green-100 font-medium">RQ Mapping: RQ3 (React / hooks)</p>
-      </div>
+    <div className="space-y-8">
+      <RQ3ReactCoreSignalsSection reactMetrics={rm} />
+      <RQ3ReactAdditionalSignalsSection reactMetrics={rm} />
+      <RQ3ReactOversizedComponentsTable components={rm.components} />
+      <RQ3ReactImprovementSection
+        topComponent={topBySloc}
+        onOpenCodeQualityTab={onOpenCodeQualityTab}
+      />
     </div>
   );
 }
