@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactMetricsReport } from "@/lib/reportTypes";
-import { RqSignalCard, type RqSignalTier } from "./CoreSignalsPrimitives";
+import { CoreSignalCard, type CoreSignalTier } from "./CoreSignalsPrimitives";
 
 interface RQ3ReactCoreSignalsSectionProps {
   reactMetrics: ReactMetricsReport;
@@ -12,20 +12,20 @@ function formatInt(n: number): string {
   return n.toFixed(1);
 }
 
-function tierTsxFilesAnalyzed(n: number): RqSignalTier {
+function tierTsxFilesAnalyzed(n: number): CoreSignalTier {
   if (n <= 0) return "critical";
   if (n < 8) return "good";
   return "strong";
 }
 
-function tierComponentsAnalyzed(n: number): RqSignalTier {
+function tierComponentsAnalyzed(n: number): CoreSignalTier {
   if (n <= 0) return "critical";
   if (n < 12) return "good";
   return "strong";
 }
 
 /** Fewer low-cohesion components is better (Ferreira heuristic). */
-function tierLowCohesionCount(n: number): RqSignalTier {
+function tierLowCohesionCount(n: number): CoreSignalTier {
   if (n === 0) return "strong";
   if (n <= 3) return "good";
   if (n <= 8) return "needs_work";
@@ -85,19 +85,19 @@ export function RQ3ReactCoreSignalsSection({ reactMetrics }: RQ3ReactCoreSignals
         </h2>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <RqSignalCard
+        <CoreSignalCard
           title="TSX Files Analyzed"
           tier={tTsx}
           value={formatInt(tsx)}
           description={descTsx}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="Components"
           tier={tComps}
           value={formatInt(comps)}
           description={descComps}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="Low-Cohesion Components"
           tier={tCohesion}
           value={formatInt(lowCohesion)}

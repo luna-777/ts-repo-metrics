@@ -315,7 +315,7 @@ function RQ2QuadrantInner({
             {showImproveCta ? (
               <p className="mt-4">
                 <a
-                  href="#rq2-safety-nets"
+                  href="#testing-safety-nets"
                   className="text-sm font-normal leading-5 text-[#eab308] underline-offset-4 hover:underline"
                 >
                   → Jump to safety-net metrics

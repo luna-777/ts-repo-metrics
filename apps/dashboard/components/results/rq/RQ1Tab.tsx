@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getRq1MetricValues, RQ1_SCOPE_TEAM, type Rq1ScopeId } from "@/lib/rq1ScopeMetrics";
+import {
+  getCommitHabitsMetricValues,
+  COMMIT_HABITS_SCOPE_TEAM,
+  type CommitHabitsScopeId,
+} from "@/lib/commitHabitsScopeMetrics";
 import type { RepoReport } from "@/lib/reportTypes";
 import { CommitActivityCard } from "./CommitActivityCard";
 import { RQ1ChurnHotspotCards, RQ1ContributorsTableCard } from "./RQ1GitTables";
-import { RQ1MomentumPanel } from "./RQ1MomentumPanel";
+import { CommitHabitsMomentumPanel } from "./CommitHabitsMomentumPanel";
 import {
   RQ1AdditionalSignalsSection,
   RQ1CoreSignalsSection,
-  resolveRq1SignalQuality,
+  resolveCommitHabitsSignalQuality,
 } from "./RQ1SignalSections";
 
 interface RQ1TabProps {
@@ -18,14 +22,14 @@ interface RQ1TabProps {
 
 export function RQ1Tab({ report }: RQ1TabProps) {
   const contributors = useMemo(() => report.contributors ?? [], [report.contributors]);
-  const [scopeId, setScopeId] = useState<Rq1ScopeId>(RQ1_SCOPE_TEAM);
+  const [scopeId, setScopeId] = useState<CommitHabitsScopeId>(COMMIT_HABITS_SCOPE_TEAM);
 
   useEffect(() => {
-    setScopeId(RQ1_SCOPE_TEAM);
+    setScopeId(COMMIT_HABITS_SCOPE_TEAM);
   }, [report.analysis_timestamp, report.source?.commit]);
 
-  const mv = useMemo(() => getRq1MetricValues(report, scopeId), [report, scopeId]);
-  const signalQuality = useMemo(() => resolveRq1SignalQuality(report), [report]);
+  const mv = useMemo(() => getCommitHabitsMetricValues(report, scopeId), [report, scopeId]);
+  const signalQuality = useMemo(() => resolveCommitHabitsSignalQuality(report), [report]);
 
   const gv2 = report.gitMetricsV2;
 
@@ -47,16 +51,16 @@ export function RQ1Tab({ report }: RQ1TabProps) {
       {contributors.length > 0 ? (
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <label htmlFor="rq1-scope" className="text-sm font-medium text-foreground">
+            <label htmlFor="commit-habits-scope" className="text-sm font-medium text-foreground">
               View metrics for
             </label>
             <select
-              id="rq1-scope"
+              id="commit-habits-scope"
               value={scopeId}
               onChange={(e) => setScopeId(e.target.value)}
               className="min-w-[220px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value={RQ1_SCOPE_TEAM}>Whole repository (team)</option>
+              <option value={COMMIT_HABITS_SCOPE_TEAM}>Whole repository (team)</option>
               {contributors.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.displayName || c.authorEmail || c.id}
@@ -95,7 +99,7 @@ export function RQ1Tab({ report }: RQ1TabProps) {
         <RQ1ChurnHotspotCards churnMods={churnMods} churnLines={churnLines} />
       </section>
 
-      <RQ1MomentumPanel />
+      <CommitHabitsMomentumPanel />
     </div>
   );
 }

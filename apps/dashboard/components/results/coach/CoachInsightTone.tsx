@@ -4,7 +4,10 @@ import { cn } from "@/lib/utils";
 
 const toneStyles = {
   positive: "border-l-green-500 bg-green-500/5",
+  /** Highest severity opportunity framing (matches “Critical” tier). */
   concern: "border-l-red-500 bg-red-500/5",
+  /** Needs-work opportunity framing — forward-looking, not punitive. */
+  opportunityModerate: "border-l-amber-500 bg-amber-500/5",
   informational: "border-l-primary bg-primary/5",
 } as const;
 

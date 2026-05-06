@@ -1,7 +1,7 @@
 "use client";
 
 import type { Phase2Summary } from "@/lib/phase2Summary";
-import { RqSignalCard, type RqSignalTier } from "./CoreSignalsPrimitives";
+import { CoreSignalCard, type CoreSignalTier } from "./CoreSignalsPrimitives";
 
 interface Phase2CodeComplexityCoreSignalsProps {
   summary: Phase2Summary;
@@ -20,7 +20,7 @@ function formatHalMean(m: number): string {
 }
 
 /** Repo-level mean MI_norm: ≥65 maintainable band. */
-function tierMiMeanValue(m: number): RqSignalTier {
+function tierMiMeanValue(m: number): CoreSignalTier {
   if (m >= 70) return "strong";
   if (m >= 55) return "good";
   if (m >= 45) return "needs_work";
@@ -28,7 +28,7 @@ function tierMiMeanValue(m: number): RqSignalTier {
 }
 
 /** Lower average cognitive is better. */
-function tierCognitiveMean(m: number): RqSignalTier {
+function tierCognitiveMean(m: number): CoreSignalTier {
   if (m <= 5) return "strong";
   if (m <= 10) return "good";
   if (m <= 15) return "needs_work";
@@ -36,7 +36,7 @@ function tierCognitiveMean(m: number): RqSignalTier {
 }
 
 /** Higher mean Halstead volume is harder; compare to p90 implicitly via thresholds. */
-function tierHalsteadMean(m: number): RqSignalTier {
+function tierHalsteadMean(m: number): CoreSignalTier {
   if (m <= 100) return "strong";
   if (m <= 140) return "good";
   if (m <= 220) return "needs_work";
@@ -86,19 +86,19 @@ export function Phase2CodeComplexityCoreSignals({ summary }: Phase2CodeComplexit
         </h2>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <RqSignalCard
+        <CoreSignalCard
           title="Maintainability Index"
           tier={tMi}
           value={formatMiMean(mi)}
           description={descMi}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="Cognitive Complexity"
           tier={tCog}
           value={formatCogMean(cog)}
           description={descCog}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="Halstead Volume"
           tier={tHal}
           value={formatHalMean(hal)}

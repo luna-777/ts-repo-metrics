@@ -206,6 +206,14 @@ export interface RepoReport {
       busiestWeekdayIndex: number | null;
     } | null;
   } | null;
+  /**
+   * API-only heatmap (zipball). Prefer `gitMetricsV2?.commitCalendar ?? commitCalendar`.
+   */
+  commitCalendar?: {
+    grid: number[][];
+    columnWeekStarts: string[];
+    busiestWeekdayIndex: number | null;
+  } | null;
   contributors?: ContributorActivity[];
   github?: GitHubRepositoryMeta;
   framework?: { type: string; hasReact: boolean; hasBackend: boolean } | null;

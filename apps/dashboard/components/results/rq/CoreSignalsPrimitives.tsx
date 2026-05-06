@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-/** RQ1/RQ2 shared signal quality bands + no-data placeholder (Figma Commit Habits). */
-export type RqSignalTier = "strong" | "good" | "needs_work" | "critical" | "no_data";
+/** Shared signal quality bands + no-data placeholder for results “core signals” cards. */
+export type CoreSignalTier = "strong" | "good" | "needs_work" | "critical" | "no_data";
 
-export const rqTierMeta: Record<
-  RqSignalTier,
+export const coreSignalTierMeta: Record<
+  CoreSignalTier,
   { label: string; badgeClass: string }
 > = {
   strong: {
@@ -39,18 +39,18 @@ export const rqTierMeta: Record<
   },
 };
 
-export function RqSignalCard({
+export function CoreSignalCard({
   title,
   tier,
   value,
   description,
 }: {
   title: string;
-  tier: RqSignalTier;
+  tier: CoreSignalTier;
   value: string;
   description: string;
 }) {
-  const t = rqTierMeta[tier];
+  const t = coreSignalTierMeta[tier];
   return (
     <Card className="flex flex-col overflow-hidden border-border/80 bg-card shadow-sm outline-none focus-visible:outline-none">
       <CardHeader className="space-y-2 pb-2">

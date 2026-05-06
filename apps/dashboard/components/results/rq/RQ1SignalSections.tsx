@@ -1,8 +1,8 @@
 "use client";
 
 import type { RepoReport } from "@/lib/reportTypes";
-import type { Rq1MetricValues } from "@/lib/rq1ScopeMetrics";
-import { RqSignalCard, type RqSignalTier } from "./CoreSignalsPrimitives";
+import type { CommitHabitsMetricValues } from "@/lib/commitHabitsScopeMetrics";
+import { CoreSignalCard, type CoreSignalTier } from "./CoreSignalsPrimitives";
 import {
   RQ1AvgLinesPerCommitBody,
   RQ1DuplicationPercentBody,
@@ -14,14 +14,14 @@ function formatNumber(n: number): string {
   return n.toFixed(2);
 }
 
-function tierTotalCommits(n: number): RqSignalTier {
+function tierTotalCommits(n: number): CoreSignalTier {
   if (n <= 0) return "critical";
   if (n < 8) return "needs_work";
   if (n < 40) return "good";
   return "strong";
 }
 
-function tierCommitsPerWeek(cpw: number | null): RqSignalTier {
+function tierCommitsPerWeek(cpw: number | null): CoreSignalTier {
   if (cpw == null || !Number.isFinite(cpw)) return "no_data";
   if (cpw < 0.25) return "critical";
   if (cpw < 1.5) return "needs_work";
@@ -30,14 +30,14 @@ function tierCommitsPerWeek(cpw: number | null): RqSignalTier {
 }
 
 /** Lower large-commit share is healthier. */
-function tierLargeCommitRatio(pct: number): RqSignalTier {
+function tierLargeCommitRatio(pct: number): CoreSignalTier {
   if (pct > 40) return "critical";
   if (pct > 20) return "needs_work";
   if (pct > 8) return "good";
   return "strong";
 }
 
-function tierMedianCommitSize(lines: number, hasData: boolean): RqSignalTier {
+function tierMedianCommitSize(lines: number, hasData: boolean): CoreSignalTier {
   if (!hasData) return "no_data";
   if (lines <= 80) return "strong";
   if (lines <= 200) return "good";
@@ -45,7 +45,7 @@ function tierMedianCommitSize(lines: number, hasData: boolean): RqSignalTier {
   return "critical";
 }
 
-function tierEntropy(entropy: number, hasData: boolean): RqSignalTier {
+function tierEntropy(entropy: number, hasData: boolean): CoreSignalTier {
   if (!hasData) return "no_data";
   if (entropy === 0) return "strong";
   if (entropy < 3_600_000) return "strong";
@@ -53,7 +53,7 @@ function tierEntropy(entropy: number, hasData: boolean): RqSignalTier {
   return "needs_work";
 }
 
-function tierBurst(pct: number, hasData: boolean): RqSignalTier {
+function tierBurst(pct: number, hasData: boolean): CoreSignalTier {
   if (!hasData) return "no_data";
   if (pct <= 5) return "strong";
   if (pct <= 20) return "good";
@@ -61,13 +61,13 @@ function tierBurst(pct: number, hasData: boolean): RqSignalTier {
   return "critical";
 }
 
-export interface RQ1SignalQuality {
+export interface CommitHabitsSignalQuality {
   median: boolean;
   entropy: boolean;
   burst: boolean;
 }
 
-export function resolveRq1SignalQuality(report: RepoReport): RQ1SignalQuality {
+export function resolveCommitHabitsSignalQuality(report: RepoReport): CommitHabitsSignalQuality {
   const gv2 = report.gitMetricsV2;
   const api = report.git?.mode === "api";
   return {
@@ -77,7 +77,7 @@ export function resolveRq1SignalQuality(report: RepoReport): RQ1SignalQuality {
   };
 }
 
-function describeTotalCommits(n: number, tier: RqSignalTier): string {
+function describeTotalCommits(n: number, tier: CoreSignalTier): string {
   if (tier === "critical") {
     return "Very few commits in the parsed window. Push small, frequent changes so the team gets steady integration signal.";
   }
@@ -92,7 +92,7 @@ function describeTotalCommits(n: number, tier: RqSignalTier): string {
 
 function describeCommitsPerWeek(
   cpw: number | null,
-  tier: RqSignalTier,
+  tier: CoreSignalTier,
   scopeContributor: boolean,
 ): string {
   if (tier === "no_data" && scopeContributor) {
@@ -111,7 +111,7 @@ function describeCommitsPerWeek(
   return "Cadence is very low. Even tiny incremental commits help keep CI and reviewers in sync.";
 }
 
-function describeLargeCommit(pct: number, tier: RqSignalTier): string {
+function describeLargeCommit(pct: number, tier: CoreSignalTier): string {
   if (tier === "strong") {
     return "Few commits exceed 500 lines—batches stay reviewable.";
   }
@@ -124,7 +124,7 @@ function describeLargeCommit(pct: number, tier: RqSignalTier): string {
   return "Many commits are very large. Break work into smaller, testable slices.";
 }
 
-function describeMedian(lines: number, tier: RqSignalTier, hasData: boolean): string {
+function describeMedian(lines: number, tier: CoreSignalTier, hasData: boolean): string {
   if (!hasData) {
     return "Line-level commit sizes need full git numstat history (not available in GitHub-API-only mode or when extended metrics are missing).";
   }
@@ -134,7 +134,7 @@ function describeMedian(lines: number, tier: RqSignalTier, hasData: boolean): st
   return "Median churn per commit is high. Consider smaller steps so feedback arrives earlier.";
 }
 
-function describeEntropyMs(entropy: number, tier: RqSignalTier, hasData: boolean): string {
+function describeEntropyMs(entropy: number, tier: CoreSignalTier, hasData: boolean): string {
   if (!hasData) {
     return "Timing variability needs consecutive commit timestamps from full git history.";
   }
@@ -147,7 +147,7 @@ function describeEntropyMs(entropy: number, tier: RqSignalTier, hasData: boolean
   return "Very irregular timing—either bursty work or sparse pushes. Check batch size and integration.";
 }
 
-function describeBurst(pct: number, tier: RqSignalTier, hasData: boolean): string {
+function describeBurst(pct: number, tier: CoreSignalTier, hasData: boolean): string {
   if (!hasData) {
     return "Burst detection needs clustered commit timestamps from git history.";
   }
@@ -167,7 +167,7 @@ export function RQ1CoreSignalsSection({
   mv,
 }: {
   report: RepoReport;
-  mv: Rq1MetricValues;
+  mv: CommitHabitsMetricValues;
 }) {
   const teamCpw =
     mv.mode === "team"
@@ -183,24 +183,24 @@ export function RQ1CoreSignalsSection({
       : formatNumber(teamCpw);
 
   return (
-    <section id="rq1-core-signals" aria-labelledby="rq1-core-signals-heading" className="space-y-4">
-      <h2 id="rq1-core-signals-heading" className="text-sm font-medium tracking-wide text-muted-foreground">
+    <section id="commit-habits-core-signals" aria-labelledby="commit-habits-core-signals-heading" className="space-y-4">
+      <h2 id="commit-habits-core-signals-heading" className="text-sm font-medium tracking-wide text-muted-foreground">
         Core Signals
       </h2>
       <div className="grid gap-4 md:grid-cols-3">
-        <RqSignalCard
+        <CoreSignalCard
           title="Total Commits"
           tier={totalTier}
           value={String(mv.totalCommits)}
           description={describeTotalCommits(mv.totalCommits, totalTier)}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="Commits Per Week"
           tier={cpwTier}
           value={cpwValue}
           description={describeCommitsPerWeek(teamCpw, cpwTier, mv.mode === "contributor")}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="Large Commit Ratio"
           tier={largeTier}
           value={`${formatNumber(mv.largeCommitRatio)}%`}
@@ -221,32 +221,32 @@ export function RQ1AdditionalSignalsSection({
   mv,
   quality,
 }: {
-  mv: Rq1MetricValues;
-  quality: RQ1SignalQuality;
+  mv: CommitHabitsMetricValues;
+  quality: CommitHabitsSignalQuality;
 }) {
   const medTier = tierMedianCommitSize(mv.medianCommitSize, quality.median);
   const entTier = tierEntropy(mv.entropy, quality.entropy);
   const burstTier = tierBurst(mv.burstRatio, quality.burst);
 
   return (
-    <section aria-labelledby="rq1-additional-signals-heading" className="space-y-4">
-      <h2 id="rq1-additional-signals-heading" className="text-sm font-medium tracking-wide text-muted-foreground">
+    <section aria-labelledby="commit-habits-additional-signals-heading" className="space-y-4">
+      <h2 id="commit-habits-additional-signals-heading" className="text-sm font-medium tracking-wide text-muted-foreground">
         Additional Signals
       </h2>
       <div className="grid gap-4 md:grid-cols-3">
-        <RqSignalCard
+        <CoreSignalCard
           title="Median Commit Size"
           tier={medTier}
           value={quality.median ? formatNumber(mv.medianCommitSize) : "—"}
           description={describeMedian(mv.medianCommitSize, medTier, quality.median)}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="Commit Entropy (std dev ms)"
           tier={entTier}
           value={quality.entropy ? formatNumber(mv.entropy) : "—"}
           description={describeEntropyMs(mv.entropy, entTier, quality.entropy)}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="Burst Ratio"
           tier={burstTier}
           value={quality.burst ? `${formatNumber(mv.burstRatio)}%` : "—"}

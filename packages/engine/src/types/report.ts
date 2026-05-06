@@ -403,6 +403,11 @@ export interface RepoReport {
   duplication: DuplicationMetrics | null;
   git: GitMetrics | null;
   gitMetricsV2: GitMetricsV2 | null;
+  /**
+   * Mon–Sun × week heatmap when git history came from the GitHub API only (no local `.git`).
+   * Consumers should use `gitMetricsV2?.commitCalendar ?? commitCalendar`.
+   */
+  commitCalendar?: CommitCalendar | null;
   /** Per-contributor git activity when history was analyzed (local git or API). */
   contributors?: ContributorActivity[];
   /** GitHub REST metadata (About, languages, repo contributors) for github.com targets. */

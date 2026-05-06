@@ -50,7 +50,7 @@ function isoDateUtc(tsMs: number): string {
  * Build a Mon–Sun × week columns grid (GitHub-style) for the last `weekCount` weeks ending at the
  * week that contains the latest commit.
  */
-function buildCommitCalendar(
+export function buildCommitCalendar(
   commits: ParsedCommit[],
   weekCount: number,
 ): CommitCalendar | null {

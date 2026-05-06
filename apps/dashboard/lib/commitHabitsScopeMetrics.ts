@@ -1,9 +1,9 @@
 import type { ContributorActivity, RepoReport } from "@/lib/reportTypes";
 
 /** Sentinel: aggregate metrics use full git history */
-export const RQ1_SCOPE_TEAM = "team" as const;
+export const COMMIT_HABITS_SCOPE_TEAM = "team" as const;
 
-export type Rq1ScopeId = typeof RQ1_SCOPE_TEAM | string;
+export type CommitHabitsScopeId = typeof COMMIT_HABITS_SCOPE_TEAM | string;
 
 /**
  * Finds a contributor row for the scope selector. Matches by `id` first, then normalized email
@@ -11,10 +11,10 @@ export type Rq1ScopeId = typeof RQ1_SCOPE_TEAM | string;
  */
 export function findContributorForScope(
   report: RepoReport,
-  scopeId: Rq1ScopeId
+  scopeId: CommitHabitsScopeId,
 ): ContributorActivity | undefined {
   const list = report.contributors;
-  if (!list?.length || scopeId === RQ1_SCOPE_TEAM) return undefined;
+  if (!list?.length || scopeId === COMMIT_HABITS_SCOPE_TEAM) return undefined;
   const trimmed = String(scopeId ?? "").trim();
   if (trimmed === "") return undefined;
   const want = trimmed.toLowerCase();
@@ -23,7 +23,7 @@ export function findContributorForScope(
   return list.find((x) => String(x.authorEmail ?? "").trim().toLowerCase() === want);
 }
 
-export interface Rq1MetricValues {
+export interface CommitHabitsMetricValues {
   mode: "team" | "contributor";
   contributorDisplayName: string | null;
   contributorEmail: string | null;
@@ -40,18 +40,18 @@ export interface Rq1MetricValues {
 }
 
 /**
- * Resolves KPI numbers for How we work cards from either repo-wide git stats or a contributor row.
+ * Resolves KPI numbers for Commit Habits cards from either repo-wide git stats or a contributor row.
  */
-export function getRq1MetricValues(
+export function getCommitHabitsMetricValues(
   report: RepoReport,
-  scopeId: Rq1ScopeId
-): Rq1MetricValues {
+  scopeId: CommitHabitsScopeId,
+): CommitHabitsMetricValues {
   const git = report.git;
   const gv2 = report.gitMetricsV2;
   const duplication = report.duplication?.percentage ?? 0;
   const framework = report.framework?.type ?? "—";
 
-  const fallbackTeam = (): Rq1MetricValues => ({
+  const fallbackTeam = (): CommitHabitsMetricValues => ({
     mode: "team",
     contributorDisplayName: null,
     contributorEmail: null,
@@ -67,7 +67,7 @@ export function getRq1MetricValues(
   });
 
   const trimmedScope = String(scopeId ?? "").trim();
-  if (scopeId === RQ1_SCOPE_TEAM || trimmedScope === "") {
+  if (scopeId === COMMIT_HABITS_SCOPE_TEAM || trimmedScope === "") {
     return fallbackTeam();
   }
 

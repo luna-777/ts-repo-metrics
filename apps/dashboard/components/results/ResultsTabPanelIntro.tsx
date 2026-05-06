@@ -4,17 +4,9 @@ import { Info } from "lucide-react";
 import { CoachInsightTone } from "@/components/results/coach/CoachInsightTone";
 import type { RepoReport } from "@/lib/reportTypes";
 import { tryGetPhase2Summary } from "@/lib/phase2Summary";
+import { RESULTS_TAB, type ResultsTabId } from "@/lib/resultsNavigation";
 import { cn } from "@/lib/utils";
-
-type ResultsTabId =
-  | "rq1"
-  | "rq2"
-  | "rq3"
-  | "rq3-react"
-  | "phase2-complexity"
-  | "phase3-pathology"
-  | "ai-maturity"
-  | "dataset";
+import { CommitHabitsTabInsightIntro } from "./CommitHabitsTabInsightIntro";
 
 interface ResultsTabPanelIntroProps {
   activeTab: string;
@@ -81,87 +73,6 @@ function TestingVerificationIntro({ report, className }: { report: RepoReport; c
         Testing is your most important improvement area right now. {detailSentence} The good news: your
         commit discipline is already strong — you just need to attach testing to that existing habit. Here
         is what the data shows:
-      </p>
-    </CoachInsightTone>
-  );
-}
-
-function CommitHabitsPanelIntro({ report, className }: { report: RepoReport; className?: string }) {
-  const git = report.git;
-  const tc = git?.totalCommits ?? 0;
-  const cpw = git?.commitsPerWeek ?? 0;
-  const hasV2 = Boolean(report.gitMetricsV2);
-
-  const recentWindowEmpty = tc > 0 && cpw === 0;
-
-  const cadenceStrong = tc >= 15 && cpw >= 1.2;
-  const cadenceWeak =
-    tc < 8 || (cpw > 0 && cpw < 0.35) || (tc > 0 && cpw === 0 && !hasV2);
-
-  if (recentWindowEmpty && hasV2) {
-    return (
-      <CoachInsightTone
-        tone="informational"
-        className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
-        aria-label="Commit habits"
-        bodyClassName="text-foreground/90 font-normal"
-      >
-        <p>
-          This analysis found <strong className="text-foreground">{tc}</strong> commits in history, but{" "}
-          <strong className="text-foreground">none in the recent 13-week window</strong> used for
-          weekly cadence. Activity below reflects full-history totals; integrate again to refresh signals.
-        </p>
-      </CoachInsightTone>
-    );
-  }
-
-  if (cadenceStrong) {
-    return (
-      <CoachInsightTone
-        tone="positive"
-        className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
-        aria-label="Commit habits"
-        bodyClassName="text-foreground/90 font-normal"
-      >
-        <p>
-          Commit habits look healthy in this snapshot—about{" "}
-          <strong className="text-foreground">{cpw.toFixed(1)}</strong> commits per week with{" "}
-          <strong className="text-foreground">{tc}</strong> commits in parsed history. Use Core signals
-          below to watch for drift on the next analysis.
-        </p>
-      </CoachInsightTone>
-    );
-  }
-
-  if (cadenceWeak) {
-    return (
-      <CoachInsightTone
-        tone="concern"
-        className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
-        aria-label="Commit habits"
-        bodyClassName="text-foreground/90 font-normal"
-      >
-        <p>
-          Commit volume or cadence looks thin compared with active teams. Even small, frequent pushes
-          improve integration and review. Check git mode in your export (API-only runs sometimes omit
-          line stats) and aim for steadier batches below.
-        </p>
-      </CoachInsightTone>
-    );
-  }
-
-  return (
-    <CoachInsightTone
-      tone="informational"
-      className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
-      aria-label="Commit habits"
-      bodyClassName="text-foreground/90 font-normal"
-    >
-      <p>
-        You have <strong className="text-foreground">{tc}</strong> commits in parsed history and about{" "}
-        <strong className="text-foreground">{cpw.toFixed(1)}</strong> commits per week in the recent
-        window—reasonable rhythm. Refine batch size and bursts using the signals and commit activity
-        below.
       </p>
     </CoachInsightTone>
   );
@@ -408,21 +319,33 @@ function CodeComplexityPanelIntro({ report, className }: { report: RepoReport; c
   );
 }
 
+function AiUsagePanelIntro({ className }: { className?: string }) {
+  return (
+    <CoachInsightTone
+      tone="informational"
+      title="AI usage"
+      className={cn("bg-card shadow-sm ring-1 ring-border/40", className)}
+      aria-label="AI usage"
+      bodyClassName="text-foreground/90 font-normal"
+    >
+      <p>
+        Upload a CSV from agent_stats or a JSON/JSONL session export to chart tool traces, phase spread,
+        and a compact scorecard (efficiency, verification-style proxies, patterns). Use it as a mirror for
+        habits—not a grade.
+      </p>
+    </CoachInsightTone>
+  );
+}
+
 function tabBody(activeTab: string): { title: string; body: string } | null {
   switch (activeTab as ResultsTabId) {
-    case "phase3-pathology":
+    case RESULTS_TAB.codeRisks:
       return {
         title: "Code risks & smells",
         body:
           "Patterns that often correlate with review pain or runtime risk—empty catches, repeated glue code, and other “smells” from the scan. Confirm in context before treating any single flag as definitive.",
       };
-    case "ai-maturity":
-      return {
-        title: "AI usage",
-        body:
-          "Upload a CSV from agent_stats or a JSON/JSONL session export to chart tool traces, phase spread, and a compact scorecard (efficiency, verification-style proxies, patterns). Use it as a mirror for habits—not a grade.",
-      };
-    case "dataset":
+    case RESULTS_TAB.dataset:
       return {
         title: "Dataset export",
         body:
@@ -434,24 +357,28 @@ function tabBody(activeTab: string): { title: string; body: string } | null {
 }
 
 export function ResultsTabPanelIntro({ activeTab, report, className }: ResultsTabPanelIntroProps) {
-  if (activeTab === "rq2") {
+  if (activeTab === RESULTS_TAB.testing) {
     return <TestingVerificationIntro report={report} className={className} />;
   }
 
-  if (activeTab === "rq1") {
-    return <CommitHabitsPanelIntro report={report} className={className} />;
+  if (activeTab === RESULTS_TAB.commitHabits) {
+    return <CommitHabitsTabInsightIntro report={report} className={className} />;
   }
 
-  if (activeTab === "rq3") {
+  if (activeTab === RESULTS_TAB.codeQuality) {
     return <CodeQualityPanelIntro report={report} className={className} />;
   }
 
-  if (activeTab === "rq3-react") {
+  if (activeTab === RESULTS_TAB.reactComponents) {
     return <ReactComponentsPanelIntro report={report} className={className} />;
   }
 
-  if (activeTab === "phase2-complexity") {
+  if (activeTab === RESULTS_TAB.codeComplexity) {
     return <CodeComplexityPanelIntro report={report} className={className} />;
+  }
+
+  if (activeTab === RESULTS_TAB.aiUsage) {
+    return <AiUsagePanelIntro className={className} />;
   }
 
   const copy = tabBody(activeTab);

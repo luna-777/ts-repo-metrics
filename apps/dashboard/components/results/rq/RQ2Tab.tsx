@@ -6,8 +6,11 @@ import { RQ2Quadrant } from "./RQ2Quadrant";
 import { SymbolRiskProximityFullPageDialog } from "./SymbolRiskProximityFullPageDialog";
 import { SymbolRiskScatter } from "./SymbolRiskScatter";
 import type { RepoReport } from "@/lib/reportTypes";
-import { getRq2MetricValues } from "@/lib/rq2ScopeMetrics";
-import { RQ1_SCOPE_TEAM, type Rq1ScopeId } from "@/lib/rq1ScopeMetrics";
+import {
+  COMMIT_HABITS_SCOPE_TEAM,
+  type CommitHabitsScopeId,
+} from "@/lib/commitHabitsScopeMetrics";
+import { getTestingScopeMetricValues } from "@/lib/testingScopeMetrics";
 import {
   RQ2PctCommitsTouchingTestsBody,
   RQ2RefactorCommitRatioBody,
@@ -47,13 +50,13 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
   const coachExplain = useCoachExplain();
 
   const contributors = useMemo(() => report.contributors ?? [], [report.contributors]);
-  const [scopeId, setScopeId] = useState<Rq1ScopeId>(RQ1_SCOPE_TEAM);
+  const [scopeId, setScopeId] = useState<CommitHabitsScopeId>(COMMIT_HABITS_SCOPE_TEAM);
 
   useEffect(() => {
-    setScopeId(RQ1_SCOPE_TEAM);
+    setScopeId(COMMIT_HABITS_SCOPE_TEAM);
   }, [report.analysis_timestamp, report.source?.commit]);
 
-  const mv = useMemo(() => getRq2MetricValues(report, scopeId), [report, scopeId]);
+  const mv = useMemo(() => getTestingScopeMetricValues(report, scopeId), [report, scopeId]);
 
   const symbolRiskRows = report.symbolVerificationRisks;
   const scatterPoints = useMemo(
@@ -129,16 +132,16 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
       {contributors.length > 0 ? (
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <label htmlFor="rq2-scope" className="text-sm font-medium text-foreground">
+            <label htmlFor="testing-scope" className="text-sm font-medium text-foreground">
               View metrics for
             </label>
             <select
-              id="rq2-scope"
+              id="testing-scope"
               value={scopeId}
               onChange={(e) => setScopeId(e.target.value)}
               className="min-w-[220px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value={RQ1_SCOPE_TEAM}>Whole repository (team)</option>
+              <option value={COMMIT_HABITS_SCOPE_TEAM}>Whole repository (team)</option>
               {contributors.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.displayName || c.authorEmail || c.id}
@@ -180,7 +183,7 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
 
       <RQ2CoreSignalsSection mv={mv} report={report} />
 
-      <section id="rq2-safety-nets">
+      <section id="testing-safety-nets">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold flex-1 min-w-0">{safetyNetsSectionTitle}</h2>
           <CoachExplainButton prompt={RQ2_EXPLAIN_SAFETY_NETS} send={coachExplain} />
@@ -191,7 +194,7 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
             delete lines per path). Other cards in this section still use repo-wide scan data where noted.
           </p>
         ) : null}
-        <div key={`rq2-primary-${scopeId}`} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div key={`testing-primary-metrics-${scopeId}`} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <MetricCard
             {...cardProps}
             label={mv.locSource === "gitChurn" ? "Test line churn (git)" : "Test LOC"}

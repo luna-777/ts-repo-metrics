@@ -16,8 +16,13 @@
 
 import { median } from "../utils/math.js";
 import type { ParsedGitHubUrl } from "../utils/githubUrl.js";
-import type { GitMetrics, ContributorActivity } from "../types/report.js";
+import type {
+  GitMetrics,
+  ContributorActivity,
+  CommitCalendar,
+} from "../types/report.js";
 import {
+  buildCommitCalendar,
   buildContributorActivityFromParsedCommits,
   type ParsedCommit,
 } from "./gitMetricsV2.js";
@@ -106,6 +111,7 @@ async function fetchCommits(
 export interface GitMetricsApiResult {
   metrics: GitMetrics;
   contributors: ContributorActivity[];
+  commitCalendar: CommitCalendar | null;
 }
 
 /**
@@ -137,6 +143,7 @@ export async function extractGitMetricsApi(
         largeCommitRatio: 0,
       },
       contributors: [],
+      commitCalendar: null,
     };
   }
 
@@ -185,6 +192,7 @@ export async function extractGitMetricsApi(
 
   const parsedRows = apiCommitsToParsed(commits);
   const contributors = buildContributorActivityFromParsedCommits(parsedRows);
+  const commitCalendar = buildCommitCalendar(parsedRows, 52);
 
   return {
     metrics: {
@@ -200,5 +208,6 @@ export async function extractGitMetricsApi(
       largeCommitRatio: 0,
     },
     contributors,
+    commitCalendar,
   };
 }

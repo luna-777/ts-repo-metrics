@@ -2,6 +2,7 @@
 
 import { OverviewCard, type OverviewCardItem } from "./OverviewCard";
 import { cn } from "@/lib/utils";
+import type { ResultsTabId } from "@/lib/resultsNavigation";
 
 export type { OverviewCardItem } from "./OverviewCard";
 
@@ -9,7 +10,7 @@ interface OverviewCardsStripProps {
   items: OverviewCardItem[];
   selectedId?: string | null;
   className?: string;
-  onRequestTab?: (tab: string) => void;
+  onRequestTab?: (tab: ResultsTabId) => void;
 }
 
 export function OverviewCardsStrip({

@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import type { ResultsTabId } from "@/lib/resultsNavigation";
 
 /** Width / height of overview tiles in design reference (~258×324). */
 export const OVERVIEW_CARD_ASPECT_CLASS = "aspect-[258/324]";
@@ -24,7 +25,7 @@ export interface OverviewCardItem {
   detailsLabel?: string;
   detailsHref?: string;
   /** When set, activate this results tab before following `detailsHref` (hash scroll). */
-  detailsTab?: string;
+  detailsTab?: ResultsTabId;
 }
 
 const tierPositive = {
@@ -60,7 +61,7 @@ interface OverviewCardProps {
   item: OverviewCardItem;
   selected?: boolean;
   className?: string;
-  onRequestTab?: (tab: string) => void;
+  onRequestTab?: (tab: ResultsTabId) => void;
 }
 
 export function OverviewCard({ item, selected = false, className, onRequestTab }: OverviewCardProps) {

@@ -1,7 +1,7 @@
 "use client";
 
 import type { RepoReport } from "@/lib/reportTypes";
-import { RqSignalCard, type RqSignalTier } from "./CoreSignalsPrimitives";
+import { CoreSignalCard, type CoreSignalTier } from "./CoreSignalsPrimitives";
 
 interface RQ3CoreSignalsSectionProps {
   report: RepoReport;
@@ -12,20 +12,20 @@ function formatInt(n: number): string {
   return n.toFixed(1);
 }
 
-function tierTotalFunctions(n: number): RqSignalTier {
+function tierTotalFunctions(n: number): CoreSignalTier {
   if (n <= 0) return "critical";
   if (n < 15) return "good";
   return "strong";
 }
 
-function tierHighComplexityCount(n: number): RqSignalTier {
+function tierHighComplexityCount(n: number): CoreSignalTier {
   if (n === 0) return "strong";
   if (n <= 5) return "good";
   if (n <= 20) return "needs_work";
   return "critical";
 }
 
-function tierMaxComplexity(n: number): RqSignalTier {
+function tierMaxComplexity(n: number): CoreSignalTier {
   if (n <= 10) return "strong";
   if (n <= 20) return "good";
   if (n <= 35) return "needs_work";
@@ -83,19 +83,19 @@ export function RQ3CoreSignalsSection({ report }: RQ3CoreSignalsSectionProps) {
         </h2>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <RqSignalCard
+        <CoreSignalCard
           title="Total functions"
           tier={tTotal}
           value={formatInt(total)}
           description={descTotal}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="High complexity functions"
           tier={tHigh}
           value={formatInt(highCx)}
           description={descHigh}
         />
-        <RqSignalCard
+        <CoreSignalCard
           title="Max complexity"
           tier={tMax}
           value={formatInt(maxCx)}

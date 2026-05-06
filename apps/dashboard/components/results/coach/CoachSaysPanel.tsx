@@ -19,6 +19,8 @@ export interface CoachSaysPanelProps {
   concern: {
     title?: string;
     body: React.ReactNode;
+    /** critical = red accent; needs_work (or steady weakest) = amber accent. */
+    variant?: "critical" | "moderate";
   };
   pointer?: React.ReactNode;
   footerLink?: {
@@ -43,7 +45,10 @@ export function CoachSaysPanel({
       <CoachInsightTone tone="positive" title={positive.title}>
         {positive.body}
       </CoachInsightTone>
-      <CoachInsightTone tone="concern" title={concern.title}>
+      <CoachInsightTone
+        tone={concern.variant === "critical" ? "concern" : "opportunityModerate"}
+        title={concern.title}
+      >
         {concern.body}
       </CoachInsightTone>
       {pointer ? <CoachPointerStrip>{pointer}</CoachPointerStrip> : null}

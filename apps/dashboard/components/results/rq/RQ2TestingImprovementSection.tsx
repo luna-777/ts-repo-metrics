@@ -30,8 +30,8 @@ export function RQ2TestingImprovementSection({
 
   return (
     <section
-      id="rq2-how-to-improve-testing"
-      aria-labelledby="rq2-how-to-improve-testing-heading"
+      id="testing-how-to-improve"
+      aria-labelledby="testing-how-to-improve-heading"
       className={cn(
         "rounded-xl border border-border bg-card p-5 text-card-foreground shadow-md ring-1 ring-border/60 sm:p-6",
         className,
@@ -71,7 +71,7 @@ export function RQ2TestingImprovementSection({
 
       <p className="mt-5">
         <a
-          href="#rq2-safety-nets"
+          href="#testing-safety-nets"
           className={cn("text-sm font-normal", linkButtonClass)}
         >
           → Explore all Testing metrics in detail

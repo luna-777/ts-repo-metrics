@@ -9,11 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { RepoReport } from "@/lib/reportTypes";
-import type { Rq2MetricValues } from "@/lib/rq2ScopeMetrics";
+import type { TestingScopeMetricValues } from "@/lib/testingScopeMetrics";
 import { cn } from "@/lib/utils";
 
 interface RQ2CoreSignalsSectionProps {
-  mv: Rq2MetricValues;
+  mv: TestingScopeMetricValues;
   report: RepoReport;
 }
 
@@ -114,9 +114,13 @@ export function RQ2CoreSignalsSection({ mv, report }: RQ2CoreSignalsSectionProps
   })();
 
   return (
-    <section aria-labelledby="rq2-core-signals-heading" className="space-y-4" id="rq2-core-signals">
+    <section
+      aria-labelledby="testing-core-signals-heading"
+      className="space-y-4"
+      id="testing-core-signals"
+    >
       <div>
-        <h2 id="rq2-core-signals-heading" className="text-sm font-medium tracking-wide text-muted-foreground">
+        <h2 id="testing-core-signals-heading" className="text-sm font-medium tracking-wide text-muted-foreground">
           Core Signals
         </h2>
       </div>

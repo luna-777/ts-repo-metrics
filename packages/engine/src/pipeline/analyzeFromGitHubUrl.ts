@@ -97,13 +97,14 @@ export async function analyzeFromGitHubUrl(
 
   if (usedZipball) {
     try {
-      const { metrics, contributors } = await extractGitMetricsApi(
-        parsed,
-        token,
-      );
+      const { metrics, contributors, commitCalendar } =
+        await extractGitMetricsApi(parsed, token);
       report.git = metrics;
       if (contributors.length > 0) {
         report.contributors = contributors;
+      }
+      if (commitCalendar) {
+        report.commitCalendar = commitCalendar;
       }
     } catch {
       report.git = {

@@ -1,9 +1,13 @@
 import type { RepoReport } from "@/lib/reportTypes";
-import { findContributorForScope, RQ1_SCOPE_TEAM, type Rq1ScopeId } from "@/lib/rq1ScopeMetrics";
+import {
+  findContributorForScope,
+  COMMIT_HABITS_SCOPE_TEAM,
+  type CommitHabitsScopeId,
+} from "@/lib/commitHabitsScopeMetrics";
 
-export type Rq2ScopeId = Rq1ScopeId;
+export type TestingScopeId = CommitHabitsScopeId;
 
-export interface Rq2MetricValues {
+export interface TestingScopeMetricValues {
   mode: "team" | "contributor";
   contributorDisplayName: string | null;
   /**
@@ -28,13 +32,16 @@ export interface Rq2MetricValues {
   maxComplexity: number;
 }
 
-export function getRq2MetricValues(report: RepoReport, scopeId: Rq2ScopeId): Rq2MetricValues {
+export function getTestingScopeMetricValues(
+  report: RepoReport,
+  scopeId: TestingScopeId,
+): TestingScopeMetricValues {
   const profile = report.profile;
   const gv2 = report.gitMetricsV2;
   const complexity = report.complexity;
   const smells = report.smells;
 
-  const repoBlock = (): Omit<Rq2MetricValues, "mode" | "contributorDisplayName"> => ({
+  const repoBlock = (): Omit<TestingScopeMetricValues, "mode" | "contributorDisplayName"> => ({
     locSource: "profile" as const,
     testLoc: profile?.testLOC ?? 0,
     sourceLoc: profile?.sourceLOC ?? 1,
@@ -52,14 +59,14 @@ export function getRq2MetricValues(report: RepoReport, scopeId: Rq2ScopeId): Rq2
     maxComplexity: complexity?.max ?? 0,
   });
 
-  const team = (): Rq2MetricValues => ({
+  const team = (): TestingScopeMetricValues => ({
     mode: "team",
     contributorDisplayName: null,
     ...repoBlock(),
   });
 
   const trimmed = String(scopeId ?? "").trim();
-  if (scopeId === RQ1_SCOPE_TEAM || trimmed === "") {
+  if (scopeId === COMMIT_HABITS_SCOPE_TEAM || trimmed === "") {
     return team();
   }
 
