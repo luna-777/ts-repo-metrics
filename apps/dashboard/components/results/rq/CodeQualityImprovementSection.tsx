@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-interface RQ3CodeQualityImprovementSectionProps {
+interface CodeQualityImprovementSectionProps {
   /** Switch parent results tabs to Testing (verification metrics). */
   onOpenTestingTab?: () => void;
   className?: string;
@@ -11,10 +11,10 @@ interface RQ3CodeQualityImprovementSectionProps {
 const linkButtonClass =
   "font-inherit text-primary underline-offset-4 hover:text-primary/90 hover:underline";
 
-export function RQ3CodeQualityImprovementSection({
+export function CodeQualityImprovementSection({
   onOpenTestingTab,
   className,
-}: RQ3CodeQualityImprovementSectionProps) {
+}: CodeQualityImprovementSectionProps) {
   const testingTabControl =
     onOpenTestingTab != null ? (
       <button type="button" onClick={onOpenTestingTab} className={linkButtonClass}>
@@ -26,15 +26,15 @@ export function RQ3CodeQualityImprovementSection({
 
   return (
     <section
-      id="rq3-how-to-improve-quality"
-      aria-labelledby="rq3-how-to-improve-quality-heading"
+      id="code-quality-how-to-improve-quality"
+      aria-labelledby="code-quality-how-to-improve-quality-heading"
       className={cn(
         "rounded-xl border border-border bg-card p-5 text-card-foreground shadow-md ring-1 ring-border/60 sm:p-6",
         className,
       )}
     >
       <h2
-        id="rq3-how-to-improve-quality-heading"
+        id="code-quality-how-to-improve-quality-heading"
         className="text-lg font-semibold leading-6 tracking-tight text-foreground"
       >
         How to improve your Code Quality score
@@ -74,7 +74,7 @@ export function RQ3CodeQualityImprovementSection({
       </ol>
 
       <p className="mt-5">
-        <a href="#rq3-hotspots" className={cn("text-sm font-normal", linkButtonClass)}>
+        <a href="#code-quality-hotspots" className={cn("text-sm font-normal", linkButtonClass)}>
           → Explore all Code Quality metrics in detail
         </a>
       </p>

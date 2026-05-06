@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   getCommitHabitsMetricValues,
   COMMIT_HABITS_SCOPE_TEAM,
@@ -8,26 +8,22 @@ import {
 } from "@/lib/commitHabitsScopeMetrics";
 import type { RepoReport } from "@/lib/reportTypes";
 import { CommitActivityCard } from "./CommitActivityCard";
-import { RQ1ChurnHotspotCards, RQ1ContributorsTableCard } from "./RQ1GitTables";
+import { CommitHabitsChurnHotspotCards, CommitHabitsContributorsTableCard } from "./CommitHabitsGitTables";
 import { CommitHabitsMomentumPanel } from "./CommitHabitsMomentumPanel";
 import {
-  RQ1AdditionalSignalsSection,
-  RQ1CoreSignalsSection,
+  CommitHabitsAdditionalSignalsSection,
+  CommitHabitsCoreSignalsSection,
   resolveCommitHabitsSignalQuality,
-} from "./RQ1SignalSections";
+} from "./CommitHabitsSignalSections";
 
-interface RQ1TabProps {
+interface CommitHabitsMetricsTabProps {
   report: RepoReport;
+  scopeId: CommitHabitsScopeId;
+  onScopeIdChange: (next: CommitHabitsScopeId) => void;
 }
 
-export function RQ1Tab({ report }: RQ1TabProps) {
+export function CommitHabitsMetricsTab({ report, scopeId, onScopeIdChange }: CommitHabitsMetricsTabProps) {
   const contributors = useMemo(() => report.contributors ?? [], [report.contributors]);
-  const [scopeId, setScopeId] = useState<CommitHabitsScopeId>(COMMIT_HABITS_SCOPE_TEAM);
-
-  useEffect(() => {
-    setScopeId(COMMIT_HABITS_SCOPE_TEAM);
-  }, [report.analysis_timestamp, report.source?.commit]);
-
   const mv = useMemo(() => getCommitHabitsMetricValues(report, scopeId), [report, scopeId]);
   const signalQuality = useMemo(() => resolveCommitHabitsSignalQuality(report), [report]);
 
@@ -57,7 +53,7 @@ export function RQ1Tab({ report }: RQ1TabProps) {
             <select
               id="commit-habits-scope"
               value={scopeId}
-              onChange={(e) => setScopeId(e.target.value)}
+              onChange={(e) => onScopeIdChange(e.target.value)}
               className="min-w-[220px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value={COMMIT_HABITS_SCOPE_TEAM}>Whole repository (team)</option>
@@ -71,14 +67,14 @@ export function RQ1Tab({ report }: RQ1TabProps) {
         </div>
       ) : null}
 
-      <RQ1CoreSignalsSection report={report} mv={mv} />
-      <RQ1AdditionalSignalsSection mv={mv} quality={signalQuality} />
+      <CommitHabitsCoreSignalsSection mv={mv} />
+      <CommitHabitsAdditionalSignalsSection mv={mv} quality={signalQuality} />
 
-      <CommitActivityCard report={report} />
+      <CommitActivityCard report={report} scopeId={scopeId} />
 
       {contributors.length > 0 ? (
         <section>
-          <RQ1ContributorsTableCard contributors={contributors} />
+          <CommitHabitsContributorsTableCard contributors={contributors} />
         </section>
       ) : null}
 
@@ -96,7 +92,7 @@ export function RQ1Tab({ report }: RQ1TabProps) {
           across commits. Clustered activity often marks integration hotspots worth coordinating on as
           a team.
         </p>
-        <RQ1ChurnHotspotCards churnMods={churnMods} churnLines={churnLines} />
+        <CommitHabitsChurnHotspotCards churnMods={churnMods} churnLines={churnLines} />
       </section>
 
       <CommitHabitsMomentumPanel />

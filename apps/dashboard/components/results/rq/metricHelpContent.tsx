@@ -1,4 +1,9 @@
 import type { ReactNode } from "react";
+import {
+  UI_COMPLEXITY_CRITICAL_GT,
+  UI_COMPLEXITY_HEALTHY_LT,
+  UI_COMPLEXITY_HIGH_GT,
+} from "@/lib/uiComplexityThresholds";
 
 /** Shared layout for metric help dialogs — matches Phase 3 narrative + formula box tone. */
 export function HelpSection({
@@ -27,17 +32,17 @@ export function FormulaBox({ children }: { children: ReactNode }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* RQ3 — structural / hygiene                                           */
+/* CodeQuality — structural / hygiene                                           */
 /* ------------------------------------------------------------------ */
 
-export function RQ3MaintainabilityScoreBody() {
+export function CodeQualityMaintainabilityScoreBody() {
   return (
     <>
       <HelpSection title="What it measures">
         <p>
           A single repo-level <strong>maintainability index</strong> on a 0–100 scale. Higher values
           suggest relatively easier maintenance given average complexity, size, and function length.
-          This is <strong>not</strong> the per-function GRAD-AI MI shown in Phase 2 · Lexical.
+          This is <strong>not</strong> the per-function GRAD-AI MI in the Code Complexity full function listing.
         </p>
       </HelpSection>
       <HelpSection title="How it is calculated">
@@ -66,7 +71,7 @@ export function RQ3MaintainabilityScoreBody() {
   );
 }
 
-export function RQ3MaintainabilityClassBody() {
+export function CodeQualityMaintainabilityClassBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -89,7 +94,7 @@ export function RQ3MaintainabilityClassBody() {
   );
 }
 
-export function RQ3CyclomaticAvgBody() {
+export function CodeQualityCyclomaticAvgBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -111,7 +116,7 @@ export function RQ3CyclomaticAvgBody() {
   );
 }
 
-export function RQ3CyclomaticMaxBody() {
+export function CodeQualityCyclomaticMaxBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -124,7 +129,7 @@ export function RQ3CyclomaticMaxBody() {
   );
 }
 
-export function RQ3HighComplexityCountBody() {
+export function CodeQualityHighComplexityCountBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -137,15 +142,50 @@ export function RQ3HighComplexityCountBody() {
           <code className="rounded bg-muted px-1">highComplexityFunctions</code> field.
         </p>
         <p className="text-muted-foreground text-xs">
-          Some distribution metrics elsewhere use complexity ≥ 10 for &quot;high&quot; buckets; those
-          differ slightly at exactly 10.
+          The <strong>Complexity Distribution</strong> card and hotspot <strong>Risk</strong> column use
+          wider UI bands (&gt; {UI_COMPLEXITY_HIGH_GT} high, &gt; {UI_COMPLEXITY_CRITICAL_GT} critical) so
+          you can prioritize the worst outliers separately from this engine count.
         </p>
       </HelpSection>
     </>
   );
 }
 
-export function RQ3AvgFunctionLengthBody() {
+export function CodeQualityComplexityDistributionHelpBody() {
+  return (
+    <>
+      <HelpSection title="What this card shows">
+        <p>
+          How cyclomatic complexity is spread across functions, and what share of &quot;hot&quot;
+          complexity (≥ 10) sits in the busiest files by total complexity.
+        </p>
+      </HelpSection>
+      <HelpSection title="The big percentage">
+        <p>
+          <strong>High complexity concentration</strong> is the fraction of all high-complexity
+          functions (complexity ≥ 10) that live in the top 10% of files when
+          files are ranked by summed complexity. High concentration means refactors can focus on a
+          smaller set of files.
+        </p>
+      </HelpSection>
+      <HelpSection title="Buckets in the sidebar">
+        <p>
+          <strong>Total functions</strong> counts paired function + complexity rows (same as the
+          hotspot table). <strong>High (&gt; {UI_COMPLEXITY_HIGH_GT})</strong> and{" "}
+          <strong>Critical (&gt; {UI_COMPLEXITY_CRITICAL_GT})</strong> match the Risk badges below.{" "}
+          <strong>Healthy (&lt; {UI_COMPLEXITY_HEALTHY_LT})</strong> flags simpler control-flow.
+        </p>
+        <p className="text-muted-foreground text-xs">
+          The &quot;High complexity count&quot; metric in Additional signals uses <strong>&gt; 10</strong>{" "}
+          to align with <code className="rounded bg-muted px-1">highComplexityFunctions</code> in the
+          engine.
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function CodeQualityAvgFunctionLengthBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -158,7 +198,7 @@ export function RQ3AvgFunctionLengthBody() {
   );
 }
 
-export function RQ3LongFunctionCountBody() {
+export function CodeQualityLongFunctionCountBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -175,7 +215,7 @@ export function RQ3LongFunctionCountBody() {
   );
 }
 
-export function RQ3MaxNestingDepthBody() {
+export function CodeQualityMaxNestingDepthBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -194,7 +234,7 @@ export function RQ3MaxNestingDepthBody() {
   );
 }
 
-export function RQ3P90FunctionLengthBody() {
+export function CodeQualityP90FunctionLengthBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -213,7 +253,7 @@ export function RQ3P90FunctionLengthBody() {
   );
 }
 
-export function RQ3P90ComplexityBody() {
+export function CodeQualityP90ComplexityBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -228,7 +268,7 @@ export function RQ3P90ComplexityBody() {
   );
 }
 
-export function RQ3DuplicationPercentBody() {
+export function CodeQualityDuplicationPercentBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -248,7 +288,7 @@ export function RQ3DuplicationPercentBody() {
   );
 }
 
-export function RQ3PercentHighInTop10FilesBody() {
+export function CodeQualityPercentHighInTop10FilesBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -281,10 +321,10 @@ export function RQ3PercentHighInTop10FilesBody() {
 }
 
 /* ------------------------------------------------------------------ */
-/* RQ2                                                                  */
+/* Testing                                                                  */
 /* ------------------------------------------------------------------ */
 
-export function RQ2TestLocRatioBody() {
+export function TestingTestLocRatioBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -302,7 +342,86 @@ export function RQ2TestLocRatioBody() {
   );
 }
 
-export function RQ2PctCommitsTouchingTestsBody() {
+export function TestingGitTestLineChurnBody() {
+  return (
+    <>
+      <HelpSection title="What it measures">
+        <p>
+          Total <strong>lines added + deleted</strong> on paths your analyzer treats as{" "}
+          <strong>test files</strong>, summed across commits attributed to the selected author (
+          <code className="rounded bg-muted px-1 text-[11px]">git log --numstat</code>
+          style history).
+        </p>
+      </HelpSection>
+      <HelpSection title="Plain language">
+        <p>
+          It answers: “When this person committed, how much churn landed on test-like paths?” — not how
+          big the test suite is today.
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function TestingGitTestChurnRatioBody() {
+  return (
+    <>
+      <HelpSection title="What it measures">
+        <p>
+          <strong>Test-path churn</strong> divided by <strong>non-test-path churn</strong> for the same
+          author. Both numerators use add+delete lines from numstat.
+        </p>
+      </HelpSection>
+      <HelpSection title="How to read it">
+        <p>
+          Higher values mean more of this author&apos;s edit volume went through test files relative to
+          production paths. If production churn is zero but test churn exists, the dashboard shows{" "}
+          <strong>0</strong> (no comparable denominator).
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function TestingGitTestPathsTouchedBody() {
+  return (
+    <>
+      <HelpSection title="What it measures">
+        <p>
+          Count of <strong>distinct</strong> paths matching the test-file pattern that appear in this
+          author&apos;s commits — again from git history, not the current tree listing.
+        </p>
+      </HelpSection>
+      <HelpSection title="Why it differs from “Test files” (snapshot)">
+        <p>
+          Snapshot mode counts files in the checkout; churn mode counts paths the author actually
+          touched. A large suite might exist, but this number stays small if they rarely edit tests.
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function TestingGitSourcePathsTouchedBody() {
+  return (
+    <>
+      <HelpSection title="What it measures">
+        <p>
+          Distinct <strong>non-test</strong> paths changed in this author&apos;s commits (same numstat
+          pipeline).
+        </p>
+      </HelpSection>
+      <HelpSection title="Used on the Testing tab">
+        <p>
+          The scatter plot can narrow to functions living in these paths so you see complexity vs test
+          proximity for code this teammate actually modified — not the entire repo.
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function TestingPctCommitsTouchingTestsBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -318,7 +437,7 @@ export function RQ2PctCommitsTouchingTestsBody() {
   );
 }
 
-export function RQ2TestToFeatureCommitRatioBody() {
+export function TestingTestToFeatureCommitRatioBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -338,7 +457,7 @@ export function RQ2TestToFeatureCommitRatioBody() {
   );
 }
 
-export function RQ2TestCoverageProxyBody() {
+export function TestingTestCoverageProxyBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -359,7 +478,7 @@ export function RQ2TestCoverageProxyBody() {
   );
 }
 
-export function RQ2SymbolProximityScanBody() {
+export function TestingSymbolProximityScanBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -388,7 +507,81 @@ export function RQ2SymbolProximityScanBody() {
   );
 }
 
-export function RQ2RefactorCommitRatioBody() {
+export function TestingConceptCyclomaticComplexityBody() {
+  return (
+    <>
+      <HelpSection title="Plain language">
+        <p>
+          A rough count of <strong>how many independent paths</strong> exist through a function (loops,
+          branches, catches, logical operators, etc.). Higher numbers usually mean more cases to reason
+          about and more tests to stay confident.
+        </p>
+      </HelpSection>
+      <HelpSection title="On this chart">
+        <p>
+          Each dot&apos;s horizontal position is that function&apos;s cyclomatic complexity from the static
+          analyzer. Very large values may sit on the right edge when the axis is capped for readability —
+          hover or tap the dot for the exact number.
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function TestingConceptProximityBandsBody() {
+  return (
+    <>
+      <HelpSection title="Plain language">
+        <p>
+          Instead of a smooth 0–1 scale, functions fall into <strong>three buckets</strong> based on
+          static pairing with tests — strongest signal at the top.
+        </p>
+      </HelpSection>
+      <HelpSection title="The three bands">
+        <ul className="list-disc space-y-1 pl-4">
+          <li>
+            <strong>Name in paired test</strong> — the symbol name shows up in the paired test file&apos;s
+            source (word-boundary match).
+          </li>
+          <li>
+            <strong>Test file paired only</strong> — a conventional sibling test file exists, but no name
+            hit was found yet.
+          </li>
+          <li>
+            <strong>No paired test</strong> — no conventional paired test file was found for this source
+            file.
+          </li>
+        </ul>
+        <p className="text-muted-foreground text-xs pt-2">
+          This is structural proximity, not executed coverage.
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function TestingConceptRiskTierBody() {
+  return (
+    <>
+      <HelpSection title="Plain language">
+        <p>
+          <strong>Risk tier</strong> combines how complex a function is with how weak its static link to
+          tests looks. It highlights where complexity and weak verification show up together — not a CI
+          grade.
+        </p>
+      </HelpSection>
+      <HelpSection title="Dot colors">
+        <p>
+          Critical / high / medium / low are buckets derived from complexity and the analyzer&apos;s risk
+          score. Use them to prioritize reviews and targeted tests, especially for dots in lower proximity
+          bands.
+        </p>
+      </HelpSection>
+    </>
+  );
+}
+
+export function TestingRefactorCommitRatioBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -411,48 +604,46 @@ export function RQ2RefactorCommitRatioBody() {
   );
 }
 
-export function RQ2RiskVsVerificationBody() {
+export function RiskProfileHelpBody() {
   return (
     <>
-      <HelpSection title="What it measures">
+      <HelpSection title="What this chart shows">
         <p>
-          A minimal 2×2 view: <strong>structural risk</strong> (complexity + long functions) versus{" "}
-          <strong>verification density</strong> (test LOC ratio). Labels (Low/High) are derived from
-          simple thresholds for readability.
+          A simple four-cell summary: <strong>structural hotspots</strong> in the repo (functions counted
+          as high-complexity or overly long) compared with <strong>how much test code</strong> sits next to
+          production code in the current snapshot (test LOC versus source LOC). This is{" "}
+          <strong>not</strong> line coverage or CI results—only static signals from this analysis.
         </p>
       </HelpSection>
-      <HelpSection title="How it is calculated">
-        <p className="font-medium">Indices (0–1) on the dashboard</p>
-        <FormulaBox>
-          riskRaw = highComplexityCount + longFunctionCount
-          <br />
-          riskIndex = min(1, riskRaw / 20)
-          <br />
-          verificationIndex = min(1, testLocRatio × 5)
-        </FormulaBox>
-        <p className="font-medium pt-2">Quadrant labels</p>
-        <ul className="list-disc space-y-1 pl-4">
-          <li>
-            Risk <strong>High</strong> if riskRaw ≥ 10, else <strong>Low</strong>.
-          </li>
-          <li>
-            Verification <strong>High</strong> if testLocRatio ≥ 0.1, else <strong>Low</strong>.
-          </li>
-        </ul>
-        <p className="text-muted-foreground text-xs">
-          The indices are for plotting position; the quadrant text uses the discrete Low/High labels
-          only.
+      <HelpSection title="How the scores and quadrant work">
+        <p>
+          The two large percentages are the same underlying scores, shown from 0–100%.{" "}
+          <strong>Structural risk</strong> rises as the combined number of high-complexity and long functions
+          grows; it reaches the top of the scale at 20 combined.{" "}
+          <strong>Verification</strong> rises with the snapshot ratio of test LOC to source LOC; it reaches
+          the top when test code is about one-fifth of source LOC by lines.
+        </p>
+        <p className="pt-2">
+          The colored quadrant uses easier <strong>High</strong> / <strong>Low</strong> bands: structural
+          side is <strong>High</strong> when there are at least 10 of those hotspot functions combined; the
+          verification side is <strong>High</strong> when test LOC is at least 10% of source LOC. Those bands
+          drive which cell is highlighted, not a different math from the percentages.
         </p>
       </HelpSection>
     </>
   );
 }
 
+/** @deprecated Prefer `RiskProfileHelpBody` — kept for older imports. */
+export function TestingRiskVsVerificationBody() {
+  return <RiskProfileHelpBody />;
+}
+
 /* ------------------------------------------------------------------ */
-/* RQ1                                                                  */
+/* CommitHabits                                                                  */
 /* ------------------------------------------------------------------ */
 
-export function RQ1CommitsPerWeekBody() {
+export function CommitHabitsCommitsPerWeekBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -468,7 +659,7 @@ export function RQ1CommitsPerWeekBody() {
   );
 }
 
-export function RQ1LargeCommitRatioBody() {
+export function CommitHabitsLargeCommitRatioBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -484,7 +675,7 @@ export function RQ1LargeCommitRatioBody() {
   );
 }
 
-export function RQ1BurstRatioBody() {
+export function CommitHabitsBurstRatioBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -507,7 +698,7 @@ export function RQ1BurstRatioBody() {
   );
 }
 
-export function RQ1EntropyBody() {
+export function CommitHabitsEntropyBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -524,7 +715,7 @@ export function RQ1EntropyBody() {
   );
 }
 
-export function RQ1DuplicationPercentBody() {
+export function CommitHabitsDuplicationPercentBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -545,7 +736,7 @@ export function RQ1DuplicationPercentBody() {
   );
 }
 
-export function RQ1MedianCommitSizeBody() {
+export function CommitHabitsMedianCommitSizeBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -564,7 +755,7 @@ export function RQ1MedianCommitSizeBody() {
   );
 }
 
-export function RQ1AvgLinesPerCommitBody() {
+export function CommitHabitsAvgLinesPerCommitBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -578,10 +769,10 @@ export function RQ1AvgLinesPerCommitBody() {
 }
 
 /* ------------------------------------------------------------------ */
-/* RQ3 React / TSX (heuristic benchmarks)                               */
+/* CodeQuality React / TSX (heuristic benchmarks)                               */
 /* ------------------------------------------------------------------ */
 
-export function RQ3ReactFerreiraBody() {
+export function ReactComponentsFerreiraBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -600,7 +791,7 @@ export function RQ3ReactFerreiraBody() {
   );
 }
 
-export function RQ3ReactTampereBody() {
+export function ReactComponentsTampereBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -619,7 +810,7 @@ export function RQ3ReactTampereBody() {
   );
 }
 
-export function RQ3ReactMaxJsxDepthRepoBody() {
+export function ReactComponentsMaxJsxDepthRepoBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -635,7 +826,7 @@ export function RQ3ReactMaxJsxDepthRepoBody() {
   );
 }
 
-export function RQ3ReactPropDrillingBody() {
+export function ReactComponentsPropDrillingBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -654,7 +845,7 @@ export function RQ3ReactPropDrillingBody() {
   );
 }
 
-export function RQ3ReactConditionalHooksBody() {
+export function ReactComponentsConditionalHooksBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -676,7 +867,7 @@ export function RQ3ReactConditionalHooksBody() {
   );
 }
 
-export function RQ3ReactAsyncUseEffectBody() {
+export function ReactComponentsAsyncUseEffectBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -693,7 +884,7 @@ export function RQ3ReactAsyncUseEffectBody() {
   );
 }
 
-export function RQ3ReactMissingDepsBody() {
+export function ReactComponentsMissingDepsBody() {
   return (
     <>
       <HelpSection title="What it measures">
@@ -713,7 +904,7 @@ export function RQ3ReactMissingDepsBody() {
   );
 }
 
-export function RQ3ReactNonPrimitiveDepsBody() {
+export function ReactComponentsNonPrimitiveDepsBody() {
   return (
     <>
       <HelpSection title="What it measures">

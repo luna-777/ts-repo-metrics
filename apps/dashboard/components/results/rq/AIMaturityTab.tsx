@@ -308,7 +308,7 @@ function buildAiUsageProfileBrief(data: AUMData): Record<string, unknown> {
   };
 }
 
-/** Opens Repo Coach with a dynamic prompt — same UX idea as CoachExplainButton + RQ2. */
+/** Opens Repo Coach with a dynamic prompt — same UX idea as CoachExplainButton on Testing. */
 function CoachAiActionButton({
   prompt,
   send,

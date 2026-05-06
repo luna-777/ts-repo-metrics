@@ -46,7 +46,7 @@ export function ReactComponentTableColumnHelp({
             <CircleHelp className="size-3" aria-hidden />
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>

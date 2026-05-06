@@ -10,11 +10,16 @@ import {
 } from "@/components/ui/card";
 import type { RepoReport } from "@/lib/reportTypes";
 import type { TestingScopeMetricValues } from "@/lib/testingScopeMetrics";
+import {
+  findContributorForScope,
+  type CommitHabitsScopeId,
+} from "@/lib/commitHabitsScopeMetrics";
 import { cn } from "@/lib/utils";
 
-interface RQ2CoreSignalsSectionProps {
+interface TestingCoreSignalsSectionProps {
   mv: TestingScopeMetricValues;
   report: RepoReport;
+  testingScopeId: CommitHabitsScopeId;
 }
 
 type SignalTier = "strong" | "good" | "needs_work" | "critical";
@@ -60,9 +65,17 @@ function tierForTestFiles(files: number): SignalTier {
   return "strong";
 }
 
-function formatRatioDecimal(r: number): string {
-  if (!Number.isFinite(r)) return "—";
-  return r.toFixed(3);
+/** Distinct test paths from git churn are usually much smaller than repo-wide test file counts. */
+function tierForTestPathsFromChurn(paths: number): SignalTier {
+  if (paths <= 0) return "critical";
+  if (paths < 3) return "needs_work";
+  if (paths < 12) return "good";
+  return "strong";
+}
+
+function formatRatioAsPercent(ratio: number): string {
+  if (!Number.isFinite(ratio)) return "—";
+  return `${parseFloat((ratio * 100).toFixed(1))}%`;
 }
 
 function totalCommitsFromReport(report: RepoReport): number | null {
@@ -73,25 +86,52 @@ function totalCommitsFromReport(report: RepoReport): number | null {
   return sum > 0 ? sum : null;
 }
 
-export function RQ2CoreSignalsSection({ mv, report }: RQ2CoreSignalsSectionProps) {
+export function TestingCoreSignalsSection({
+  mv,
+  report,
+  testingScopeId,
+}: TestingCoreSignalsSectionProps) {
+  const fromGitChurn = mv.locSource === "gitChurn";
   const ratioTier = tierForTestLocRatio(mv.testLocRatio, mv.sourceLoc);
   const pctTier = tierForPctCommits(mv.pctCommitsTouchingTests);
-  const filesTier = tierForTestFiles(mv.testFiles);
+  const filesTier = fromGitChurn
+    ? tierForTestPathsFromChurn(mv.testFiles)
+    : tierForTestFiles(mv.testFiles);
   const totalCommits = totalCommitsFromReport(report);
   const commitsRounded = Number.isFinite(mv.pctCommitsTouchingTests)
     ? Math.round(mv.pctCommitsTouchingTests)
     : 0;
 
-  const pctOfSource = Math.min(100, Math.max(0, Math.round(mv.testLocRatio * 100)));
+  const churnSharePct = Math.min(100, Math.max(0, Math.round(mv.testLocRatio * 100)));
+  const snapshotSharePct = churnSharePct;
+
+  const ratioTitle = fromGitChurn ? "Test churn share" : "Test coverage ratio";
+  const testFilesTitle = fromGitChurn ? "Test paths touched" : "Test files";
 
   const ratioDescription = (() => {
-    if (ratioTier === "strong" || ratioTier === "good") {
-      return `Your test code is about ${pctOfSource}% of source—within a healthy band for this proxy. Keep pairing new features with tests so the ratio does not slip.`;
+    if (fromGitChurn) {
+      if (ratioTier === "strong" || ratioTier === "good") {
+        return `About ${churnSharePct}% of this author’s line churn (add + delete) landed on test paths—a healthy share for this git-history proxy. Keep pairing production edits with test updates when behavior changes.`;
+      }
+      return `Only about ${churnSharePct}% of this author’s line churn is on test paths. Aim to raise the share of test-path edits as features stabilize—same threshold idea as snapshot test/source ratio, but from numstat history.`;
     }
-    return `Your test code is ${pctOfSource}% of source. Industry standard is 20–30%. Roughly double your test coverage to reach a safe threshold.`;
+    if (ratioTier === "strong" || ratioTier === "good") {
+      return `Test code is about ${snapshotSharePct}% of source in the snapshot—within a healthy band for this proxy. Keep pairing new features with tests so the ratio does not slip.`;
+    }
+    return `Test code is ${snapshotSharePct}% of source in the snapshot. Many teams aim for roughly 20–30% by LOC proxy; growing test files alongside features closes the gap.`;
   })();
 
   const commitsDescription = (() => {
+    if (mv.mode === "contributor") {
+      const phrase = authorCommitsPhrase(report, mv, testingScopeId);
+      if (pctTier === "critical" && mv.pctCommitsTouchingTests <= 0) {
+        return `None of ${phrase} included test file changes. Every feature shipped without a test is a future risk—this habit matters most.`;
+      }
+      if (pctTier === "needs_work") {
+        return `Only about ${commitsRounded}% of ${phrase} touch tests. Aim to include at least one test change on most feature commits so verification keeps pace.`;
+      }
+      return `About ${commitsRounded}% of ${phrase} touch tests—solid habit. Watch for regressions if complexity grows without new checks.`;
+    }
     const n = totalCommits;
     const commitPhrase = n != null ? `${n} commit${n === 1 ? "" : "s"}` : "your commits";
     if (pctTier === "critical" && mv.pctCommitsTouchingTests <= 0) {
@@ -104,6 +144,15 @@ export function RQ2CoreSignalsSection({ mv, report }: RQ2CoreSignalsSectionProps
   })();
 
   const filesDescription = (() => {
+    if (fromGitChurn) {
+      if (mv.testFiles <= 0) {
+        return "No test paths matched the test-file pattern in this author’s parsed commits. A first step is touching an existing spec or adding one beside the next change.";
+      }
+      if (filesTier === "needs_work" || filesTier === "critical") {
+        return "Few distinct test paths show up in this author’s history. As responsibilities grow, widen edits to include specs that lock behavior in.";
+      }
+      return `${mv.testFiles} distinct test path${mv.testFiles === 1 ? "" : "s"} in this author’s commits—keep expanding coverage as you ship.`;
+    }
     if (mv.testFiles <= 0) {
       return "No test files matched the analyzer’s patterns yet. Add a first spec or test module so verification has a foothold in the tree.";
     }
@@ -126,26 +175,40 @@ export function RQ2CoreSignalsSection({ mv, report }: RQ2CoreSignalsSectionProps
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <SignalCard
-          title="Test Coverage Ratio"
+          title={ratioTitle}
           tier={ratioTier}
-          value={formatRatioDecimal(mv.testLocRatio)}
+          value={formatRatioAsPercent(mv.testLocRatio)}
           description={ratioDescription}
         />
         <SignalCard
-          title="Commits Touching Tests"
+          title="Commits touching tests"
           tier={pctTier}
           value={`${commitsRounded}%`}
           description={commitsDescription}
         />
         <SignalCard
-          title="Test Files"
+          title={testFilesTitle}
           tier={filesTier}
-          value={`${mv.testFiles} files`}
+          value={`${mv.testFiles} ${fromGitChurn ? "paths" : "files"}`}
           description={filesDescription}
         />
       </div>
     </section>
   );
+}
+
+function authorCommitsPhrase(
+  report: RepoReport,
+  mv: TestingScopeMetricValues,
+  testingScopeId: CommitHabitsScopeId,
+): string {
+  const label = mv.contributorDisplayName?.trim() || "this contributor";
+  const row = findContributorForScope(report, testingScopeId);
+  const n = row?.commitCount;
+  if (typeof n === "number" && n > 0) {
+    return `${n} commit${n === 1 ? "" : "s"} for ${label}`;
+  }
+  return `${label}’s commits in this analysis`;
 }
 
 function SignalCard({

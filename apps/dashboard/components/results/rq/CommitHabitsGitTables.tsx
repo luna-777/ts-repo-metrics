@@ -22,7 +22,7 @@ function formatNumber(n: number): string {
   return n.toFixed(2);
 }
 
-export function RQ1ContributorsTableCard({
+export function CommitHabitsContributorsTableCard({
   contributors,
 }: {
   contributors: ContributorActivity[];
@@ -93,7 +93,7 @@ type ChurnRow = {
   linesChanged: number;
 };
 
-export function RQ1ChurnHotspotCards({
+export function CommitHabitsChurnHotspotCards({
   churnMods,
   churnLines,
 }: {

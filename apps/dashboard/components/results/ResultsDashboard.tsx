@@ -6,10 +6,10 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { RQ1Tab } from "./rq/RQ1Tab";
-import { RQ2Tab } from "./rq/RQ2Tab";
-import { RQ3Tab } from "./rq/RQ3Tab";
-import { RQ3ReactTab } from "./rq/RQ3ReactTab";
+import { CommitHabitsMetricsTab } from "./rq/CommitHabitsMetricsTab";
+import { TestingMetricsTab } from "./rq/TestingMetricsTab";
+import { CodeQualityMetricsTab } from "./rq/CodeQualityMetricsTab";
+import { ReactComponentsMetricsTab } from "./rq/ReactComponentsMetricsTab";
 import { Phase2ComplexityTab } from "./rq/Phase2ComplexityTab";
 import { Phase3PathologyTab } from "./rq/Phase3PathologyTab";
 import { AIMaturityTab } from "./rq/AIMaturityTab";
@@ -27,6 +27,7 @@ import { CoachExplainProvider } from "@/lib/repoCoachContext";
 import { ResultsTabPanelIntro } from "./ResultsTabPanelIntro";
 import { CommitHabitsTabInsightProvider } from "./CommitHabitsTabInsightContext";
 import { RESULTS_TAB, type ResultsTabId } from "@/lib/resultsNavigation";
+import { COMMIT_HABITS_SCOPE_TEAM, type CommitHabitsScopeId } from "@/lib/commitHabitsScopeMetrics";
 
 interface ResultsDashboardProps {
   report: RepoReport;
@@ -52,6 +53,15 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
   const exportFilename = `repo-metrics-${resultId}-${commit}.json`;
   const [newAnalysisHref, setNewAnalysisHref] = useState("/");
   const [resultsTab, setResultsTab] = useState<ResultsTabId>(RESULTS_TAB.commitHabits);
+  const [commitHabitsScopeId, setCommitHabitsScopeId] = useState<CommitHabitsScopeId>(
+    COMMIT_HABITS_SCOPE_TEAM,
+  );
+  const [testingScopeId, setTestingScopeId] = useState<CommitHabitsScopeId>(
+    COMMIT_HABITS_SCOPE_TEAM,
+  );
+  const [codeQualityScopeId, setCodeQualityScopeId] = useState<CommitHabitsScopeId>(
+    COMMIT_HABITS_SCOPE_TEAM,
+  );
 
   useEffect(() => {
     if (!isBrowserSupabaseConfigured()) return;
@@ -72,6 +82,9 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
 
   useEffect(() => {
     setResultsTab(RESULTS_TAB.commitHabits);
+    setCommitHabitsScopeId(COMMIT_HABITS_SCOPE_TEAM);
+    setTestingScopeId(COMMIT_HABITS_SCOPE_TEAM);
+    setCodeQualityScopeId(COMMIT_HABITS_SCOPE_TEAM);
   }, [resultId, report.analysis_timestamp, report.source?.commit]);
 
   useEffect(() => {
@@ -149,6 +162,7 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
         <CommitHabitsTabInsightProvider
           report={report}
           enabled={resultsTab === RESULTS_TAB.commitHabits}
+          commitHabitsScopeId={commitHabitsScopeId}
         >
           <Tabs value={resultsTab} onValueChange={(v) => setResultsTab(v as ResultsTabId)} className="w-full">
             <div className="w-full max-w-full overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
@@ -217,26 +231,34 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
               </TabsList>
             </div>
             <div className="mt-4">
-              <ResultsTabPanelIntro activeTab={resultsTab} report={report} />
+              <ResultsTabPanelIntro activeTab={resultsTab} report={report} codeQualityScopeId={codeQualityScopeId} testingScopeId={testingScopeId} />
             </div>
             <TabsContent
               value={RESULTS_TAB.commitHabits}
               id="commit-habits-panel"
               className="mt-6 scroll-mt-8"
             >
-              <RQ1Tab report={report} />
+              <CommitHabitsMetricsTab
+                report={report}
+                scopeId={commitHabitsScopeId}
+                onScopeIdChange={setCommitHabitsScopeId}
+              />
             </TabsContent>
             <TabsContent value={RESULTS_TAB.testing} className="mt-6">
               <div id="testing-panel" className="scroll-mt-8 space-y-8">
-                <RQ2Tab
+                <TestingMetricsTab
                   report={report}
+                  scopeId={testingScopeId}
+                  onScopeIdChange={setTestingScopeId}
                   onOpenCodeQualityTab={() => setResultsTab(RESULTS_TAB.codeQuality)}
                 />
               </div>
             </TabsContent>
             <TabsContent value={RESULTS_TAB.codeQuality} id="code-quality-panel" className="mt-6 scroll-mt-8">
-              <RQ3Tab
+              <CodeQualityMetricsTab
                 report={report}
+                scopeId={codeQualityScopeId}
+                onScopeIdChange={setCodeQualityScopeId}
                 onOpenTestingTab={() => setResultsTab(RESULTS_TAB.testing)}
               />
             </TabsContent>
@@ -246,7 +268,7 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
                 id="react-components-panel"
                 className="mt-6 scroll-mt-8"
               >
-                <RQ3ReactTab
+                <ReactComponentsMetricsTab
                   report={report}
                   onOpenCodeQualityTab={() => setResultsTab(RESULTS_TAB.codeQuality)}
                 />

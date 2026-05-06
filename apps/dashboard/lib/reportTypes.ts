@@ -116,6 +116,11 @@ export interface ContributorActivity {
   testFilesTouched: number;
   /** Distinct non-test paths touched. */
   sourceFilesTouched: number;
+  /**
+   * Distinct non-test paths from git numstat for this author (forward slashes), sorted.
+   * Present when extended git history was analyzed; used to scope symbol-level Testing views.
+   */
+  sourcePathsTouchedList?: string[];
   commitStats: {
     medianCommitSize: number;
     p90CommitSize: number;
@@ -123,12 +128,23 @@ export interface ContributorActivity {
     pctOver1000Loc: number;
   };
   burstStats: { burstCount: number; burstRatio: number };
-  entropy: { stdDevTimeBetweenCommits: number };
+  entropy: { stdDevTimeBetweenCommits: number; meanTimeBetweenCommits: number };
   refactorBehavior: { refactorCommitRatio: number };
   testCoupling: {
     pctCommitsTouchingTests: number;
     testToFeatureCommitRatio: number;
   };
+  /** Per-author churn hotspots; same shape as `gitMetricsV2.churn` when the engine includes it. */
+  churn?: {
+    topByModifications: Array<{ file: string; modifications?: number; linesChanged?: number }>;
+    topByLinesChanged: Array<{ file: string; modifications?: number; linesChanged?: number }>;
+  };
+  commitCalendar?: {
+    grid: number[][];
+    columnWeekStarts: string[];
+    busiestWeekdayIndex: number | null;
+  } | null;
+  commitsPerWeek?: number;
 }
 
 /** Per-symbol row for complexity vs test-proximity (engine heuristic, not Istanbul). */
@@ -195,7 +211,7 @@ export interface RepoReport {
   gitMetricsV2?: {
     commitStats: { medianCommitSize: number; p90CommitSize: number; pctOver500Loc: number; pctOver1000Loc: number };
     burstStats: { burstCount: number; burstRatio: number };
-    entropy: { stdDevTimeBetweenCommits: number };
+    entropy: { stdDevTimeBetweenCommits: number; meanTimeBetweenCommits: number };
     churn: { topByModifications: unknown[]; topByLinesChanged: unknown[] };
     refactorBehavior: { refactorCommitRatio: number };
     testCoupling: { pctCommitsTouchingTests: number; testToFeatureCommitRatio: number };
@@ -218,7 +234,7 @@ export interface RepoReport {
   github?: GitHubRepositoryMeta;
   framework?: { type: string; hasReact: boolean; hasBackend: boolean } | null;
   perFile: PerFileEntry[];
-  /** Present when the analyzer includes RQ3 React metrics (TSX). */
+  /** Present when the analyzer includes optional React/TSX metrics (`reactMetrics`). */
   reactMetrics?: ReactMetricsReport;
   /** Phase 3 — AI smell / pathology metrics when the engine version supports them. */
   phase3?: Phase3Metrics;

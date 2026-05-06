@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import {
   buildFeatureVector,
   getFeatureCategory,
-  getFeatureRqMapping,
+  getFeatureResultsConstruct,
 } from "@/lib/featureVector";
 import {
   Table,
@@ -88,7 +88,7 @@ export function FeatureVectorTable({ report }: FeatureVectorTableProps) {
                 <TableCell className="font-mono text-sm">{name}</TableCell>
                 <TableCell>{String(value)}</TableCell>
                 <TableCell>{getFeatureCategory(name)}</TableCell>
-                <TableCell>{getFeatureRqMapping(name)}</TableCell>
+                <TableCell>{getFeatureResultsConstruct(name)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

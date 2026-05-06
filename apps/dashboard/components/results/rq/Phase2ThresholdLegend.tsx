@@ -1,3 +1,6 @@
+"use client";
+
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -27,7 +30,7 @@ function cnDot(bg: string) {
 }
 
 /**
- * Explains calibrated bands for conditional formatting on the Phase 2 function table,
+ * Explains calibrated bands for conditional formatting on the per-function metrics table,
  * with academic / industry provenance and interpretive significance.
  */
 export function Phase2ThresholdLegend() {
@@ -35,15 +38,21 @@ export function Phase2ThresholdLegend() {
     <details className="bg-card text-card-foreground group rounded-xl border border-muted-foreground/25 shadow-sm">
       <summary className="text-foreground flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-4 text-base font-semibold tracking-tight [&::-webkit-details-marker]:hidden">
         <span>Threshold calibration</span>
-        <span className="text-muted-foreground text-xs font-normal group-open:hidden">Expand</span>
-        <span className="text-muted-foreground hidden text-xs font-normal group-open:inline">Collapse</span>
+        <ChevronDown
+          className="size-4 shrink-0 text-muted-foreground group-open:hidden"
+          aria-hidden
+        />
+        <ChevronUp
+          className="hidden size-4 shrink-0 text-muted-foreground group-open:inline"
+          aria-hidden
+        />
       </summary>
       <div className="space-y-4 border-t px-5 pb-5 pt-4">
         <p className="text-muted-foreground text-sm font-normal leading-relaxed">
-          The Phase 2 table tints <strong className="text-foreground font-medium">MI_norm</strong>,{" "}
+          This listing colors <strong className="text-foreground font-medium">MI_norm</strong>,{" "}
           <strong className="text-foreground font-medium">CC</strong>, and{" "}
           <strong className="text-foreground font-medium">cognitive complexity</strong> using the bands below. Sources
-          anchor the dashboard in peer-reviewed and industry-accepted benchmarks—not ad hoc cutoffs.
+          follow widely cited benchmarks—not ad hoc cutoffs.
         </p>
         <div className="overflow-x-auto rounded-md border">
           <Table>

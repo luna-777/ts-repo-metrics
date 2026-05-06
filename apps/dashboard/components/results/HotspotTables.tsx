@@ -27,6 +27,10 @@ import { FileDetailSheet } from "./FileDetailSheet";
 import { SeverityTableCell } from "./SeverityTableCell";
 import { fileStats } from "@/lib/perFileStats";
 import type { RepoReport, FunctionDetail, FunctionComplexity, PerFileEntry } from "@/lib/reportTypes";
+import {
+  UI_COMPLEXITY_CRITICAL_GT,
+  UI_COMPLEXITY_HIGH_GT,
+} from "@/lib/uiComplexityThresholds";
 
 const HIGH_COMPLEXITY = 10;
 const LONG_FUNCTION = 50;
@@ -62,10 +66,10 @@ function mergeHotspots(report: RepoReport): HotspotRow[] {
 }
 
 function RiskBadge({ complexity }: { complexity: number }) {
-  if (complexity > 50) {
+  if (complexity > UI_COMPLEXITY_CRITICAL_GT) {
     return <Badge variant="destructive">Critical</Badge>;
   }
-  if (complexity > 25) {
+  if (complexity > UI_COMPLEXITY_HIGH_GT) {
     return (
       <Badge className="border-0 bg-amber-950 font-medium text-amber-400 shadow-none hover:bg-amber-950">
         High
@@ -194,7 +198,7 @@ export function HotspotTables({ report }: HotspotTablesProps) {
               </p>
             ) : null}
             <p className="text-center text-xs text-muted-foreground leading-relaxed">
-              Tip: Complexity above 10 is hard to test. Above 25 is high risk. Above 50 is critical.
+              Tip: Same bands as Complexity Distribution — above 10 is harder to test; above {UI_COMPLEXITY_HIGH_GT} is high; above {UI_COMPLEXITY_CRITICAL_GT} is critical.
             </p>
           </CardContent>
         </Card>

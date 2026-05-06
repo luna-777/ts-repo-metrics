@@ -1,33 +1,45 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { MetricCard } from "../MetricCard";
-import { RQ2Quadrant } from "./RQ2Quadrant";
+import { TestingRiskQuadrant } from "./TestingRiskQuadrant";
 import { SymbolRiskProximityFullPageDialog } from "./SymbolRiskProximityFullPageDialog";
 import { SymbolRiskScatter } from "./SymbolRiskScatter";
 import type { RepoReport } from "@/lib/reportTypes";
 import {
   COMMIT_HABITS_SCOPE_TEAM,
+  findContributorForScope,
   type CommitHabitsScopeId,
 } from "@/lib/commitHabitsScopeMetrics";
+import { filterSymbolVerificationRisksForContributor } from "@/lib/filterSymbolVerificationRisksForContributor";
 import { getTestingScopeMetricValues } from "@/lib/testingScopeMetrics";
 import {
-  RQ2PctCommitsTouchingTestsBody,
-  RQ2RefactorCommitRatioBody,
-  RQ2SymbolProximityScanBody,
-  RQ2TestCoverageProxyBody,
-  RQ2TestLocRatioBody,
+  TestingConceptCyclomaticComplexityBody,
+  TestingConceptProximityBandsBody,
+  TestingConceptRiskTierBody,
+  TestingGitSourcePathsTouchedBody,
+  TestingGitTestChurnRatioBody,
+  TestingGitTestLineChurnBody,
+  TestingGitTestPathsTouchedBody,
+  TestingPctCommitsTouchingTestsBody,
+  TestingRefactorCommitRatioBody,
+  TestingSymbolProximityScanBody,
+  TestingTestCoverageProxyBody,
+  TestingTestLocRatioBody,
 } from "./metricHelpContent";
+import { ConceptHelpDialog } from "../ConceptHelpDialog";
 import { buildScatterPoints } from "@/lib/symbolRiskViz";
 import { CoachExplainButton } from "@/components/chat/CoachExplainButton";
 import { useCoachExplain } from "@/lib/repoCoachContext";
-import { RQ2_EXPLAIN_PROXIMITY, RQ2_EXPLAIN_SAFETY_NETS } from "@/lib/rq2ExplainPrompts";
-import { RQ2CoreSignalsSection } from "./RQ2CoreSignalsSection";
-import { RQ2TestingImprovementSection } from "./RQ2TestingImprovementSection";
+import { TESTING_EXPLAIN_PROXIMITY, TESTING_EXPLAIN_SAFETY_NETS } from "@/lib/testingCoachExplainPrompts";
+import { TestingCoreSignalsSection } from "./TestingCoreSignalsSection";
+import { TestingImprovementSection } from "./TestingImprovementSection";
 
-interface RQ2TabProps {
+interface TestingMetricsTabProps {
   report: RepoReport;
-  /** Switch parent results tabs to Code Quality (cyclomatic / structural metrics). */
+  scopeId: CommitHabitsScopeId;
+  onScopeIdChange: (next: CommitHabitsScopeId) => void;
+  /** Switch parent results tabs to Code Quality (structural metrics). */
   onOpenCodeQualityTab?: () => void;
 }
 
@@ -46,27 +58,36 @@ function capitalizeWord(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
+export function TestingMetricsTab({ report, scopeId, onScopeIdChange, onOpenCodeQualityTab }: TestingMetricsTabProps) {
   const coachExplain = useCoachExplain();
 
   const contributors = useMemo(() => report.contributors ?? [], [report.contributors]);
-  const [scopeId, setScopeId] = useState<CommitHabitsScopeId>(COMMIT_HABITS_SCOPE_TEAM);
-
-  useEffect(() => {
-    setScopeId(COMMIT_HABITS_SCOPE_TEAM);
-  }, [report.analysis_timestamp, report.source?.commit]);
-
   const mv = useMemo(() => getTestingScopeMetricValues(report, scopeId), [report, scopeId]);
 
-  const symbolRiskRows = report.symbolVerificationRisks;
+  const scopedContributor = useMemo(() => {
+    if (scopeId === COMMIT_HABITS_SCOPE_TEAM || !String(scopeId ?? "").trim()) return null;
+    return findContributorForScope(report, scopeId) ?? null;
+  }, [report, scopeId]);
+
+  const symbolRiskFilter = useMemo(
+    () =>
+      filterSymbolVerificationRisksForContributor(report.symbolVerificationRisks, {
+        scopeTeam: mv.mode === "team",
+        sourcePathsTouchedList:
+          mv.mode === "contributor" ? scopedContributor?.sourcePathsTouchedList : null,
+      }),
+    [mv.mode, report.symbolVerificationRisks, scopedContributor?.sourcePathsTouchedList],
+  );
+
+  const symbolRiskRowsScoped = symbolRiskFilter.rows;
   const scatterPoints = useMemo(
-    () => (symbolRiskRows?.length ? buildScatterPoints(symbolRiskRows) : []),
-    [symbolRiskRows],
+    () => (symbolRiskRowsScoped.length ? buildScatterPoints(symbolRiskRowsScoped) : []),
+    [symbolRiskRowsScoped],
   );
 
   const symbolProximitySummary = useMemo(() => {
-    const rows = report.symbolVerificationRisks;
-    if (!rows?.length) return null;
+    const rows = symbolRiskRowsScoped;
+    if (!rows.length) return null;
     let referencedInTest = 0;
     let pairedFileOnly = 0;
     let none = 0;
@@ -77,7 +98,7 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
     }
     const withSignal = referencedInTest + pairedFileOnly;
     return { total: rows.length, referencedInTest, pairedFileOnly, none, withSignal };
-  }, [report.symbolVerificationRisks]);
+  }, [symbolRiskRowsScoped]);
 
   const complexity = report.complexity;
   const smells = report.smells;
@@ -101,7 +122,7 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
     };
   }, [complexity?.highComplexityFunctions, smells?.longFunctions, testLocRatioForQuadrant]);
 
-  const cardProps = { rq: "RQ2" as const, hideResearchBadge: true };
+  const cardProps = { metricCategory: "testing" as const, hideResearchBadge: true };
   const teamOnly = mv.mode === "team";
 
   const pctTestTooltip =
@@ -127,6 +148,22 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
   const riskProfileTitle =
     mv.mode === "team" ? "Your risk profile" : "Your risk profile (whole repository)";
 
+  const scatterRaw = report.symbolVerificationRisks;
+  const scatterUnavailable = scatterRaw === undefined;
+  const scatterEmptyRaw = scatterRaw?.length === 0;
+  const scatterFilteredEmpty = symbolRiskFilter.contributorFilterYieldedNone;
+
+  const proximitySummaryTooltip = symbolProximitySummary
+    ? symbolRiskFilter.contributorFilterActive
+      ? `Filtered to functions in source files this author touched (git numstat paths). Referenced in paired test: ${symbolProximitySummary.referencedInTest}. Paired file only: ${symbolProximitySummary.pairedFileOnly}. No static link: ${symbolProximitySummary.none}.`
+      : `Whole-repository symbol scan (same rows as the scatter/table below). Referenced in paired test: ${symbolProximitySummary.referencedInTest}. Paired file only: ${symbolProximitySummary.pairedFileOnly}. No static link: ${symbolProximitySummary.none}.`
+    : "";
+
+  const pathScopeUnavailableForContributor =
+    mv.mode === "contributor" &&
+    scopedContributor != null &&
+    !scopedContributor.sourcePathsTouchedList?.length;
+
   return (
     <div className="space-y-8">
       {contributors.length > 0 ? (
@@ -138,7 +175,7 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
             <select
               id="testing-scope"
               value={scopeId}
-              onChange={(e) => setScopeId(e.target.value)}
+              onChange={(e) => onScopeIdChange(e.target.value)}
               className="min-w-[220px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value={COMMIT_HABITS_SCOPE_TEAM}>Whole repository (team)</option>
@@ -150,6 +187,36 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
             </select>
           </div>
         </div>
+      ) : null}
+
+      <div
+        className="rounded-lg border border-border/80 bg-muted/25 px-3 py-2.5 text-xs leading-snug text-muted-foreground"
+        role="note"
+        aria-label="How Testing tab metrics are scoped"
+      >
+        <span className="font-semibold text-foreground">Data scope — </span>
+        <span className="text-foreground/90">
+          <strong>Per author</strong> (dropdown): test/source churn, unique paths touched, % commits touching tests,
+          refactor ratio when git numstat is available.
+        </span>{" "}
+        <span className="text-foreground/90">
+          <strong>Whole repository</strong>: test coverage proxy, risk quadrant, complexity aggregates.
+        </span>{" "}
+        <span className="text-foreground/90">
+          <strong>Symbol scatter</strong>: static analyzer scan
+          {symbolRiskFilter.contributorFilterActive
+            ? ", narrowed to production files this author touched in git history."
+            : pathScopeUnavailableForContributor
+              ? " across the full analyzed tree this run (path narrowing unavailable — no per-author source path list)."
+              : " for all matching functions."}
+        </span>
+      </div>
+
+      {pathScopeUnavailableForContributor ? (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-950/25 dark:text-amber-50">
+          Path-level scoping is unavailable for this contributor (no source path list in this run).
+          Structural metrics show the full analyzed tree; hygiene cards are always repo-wide.
+        </p>
       ) : null}
 
       {!teamOnly ? (
@@ -181,12 +248,12 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
         )
       ) : null}
 
-      <RQ2CoreSignalsSection mv={mv} report={report} />
+      <TestingCoreSignalsSection mv={mv} report={report} testingScopeId={scopeId} />
 
       <section id="testing-safety-nets">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold flex-1 min-w-0">{safetyNetsSectionTitle}</h2>
-          <CoachExplainButton prompt={RQ2_EXPLAIN_SAFETY_NETS} send={coachExplain} />
+          <CoachExplainButton prompt={TESTING_EXPLAIN_SAFETY_NETS} send={coachExplain} />
         </div>
         {mv.locSource === "gitChurn" ? (
           <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
@@ -204,6 +271,14 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
                 ? `Test-path line churn (add + del). ${gitChurnTooltip}`
                 : `Lines of code in test files (*.test / *.spec). ${locSnapshotTooltip}`
             }
+            metricHelp={
+              mv.locSource === "gitChurn"
+                ? {
+                    title: "Test line churn (git)",
+                    children: <TestingGitTestLineChurnBody />,
+                  }
+                : undefined
+            }
           />
           <MetricCard
             {...cardProps}
@@ -218,9 +293,12 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
               mv.locSource === "profile"
                 ? {
                     title: "Test LOC ratio",
-                    children: <RQ2TestLocRatioBody />,
+                    children: <TestingTestLocRatioBody />,
                   }
-                : undefined
+                : {
+                    title: "Test churn / source churn",
+                    children: <TestingGitTestChurnRatioBody />,
+                  }
             }
           />
           <MetricCard
@@ -232,6 +310,14 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
                 ? `Distinct paths matching the test file pattern in this author’s commits. ${gitChurnTooltip}`
                 : `Files matching *.test.ts, *.spec.ts, etc. ${locSnapshotTooltip}`
             }
+            metricHelp={
+              mv.locSource === "gitChurn"
+                ? {
+                    title: "Test paths touched (git)",
+                    children: <TestingGitTestPathsTouchedBody />,
+                  }
+                : undefined
+            }
           />
           {mv.sourceFilesTouched != null ? (
             <MetricCard
@@ -239,6 +325,14 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
               label="Source files touched"
               value={mv.sourceFilesTouched}
               tooltip={`Distinct non-test paths in this author’s commits. ${gitChurnTooltip}`}
+              metricHelp={
+                mv.locSource === "gitChurn"
+                  ? {
+                      title: "Source files touched (git)",
+                      children: <TestingGitSourcePathsTouchedBody />,
+                    }
+                  : undefined
+              }
             />
           ) : null}
           <MetricCard
@@ -248,7 +342,7 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
             tooltip={pctTestTooltip}
             metricHelp={{
               title: "Percent of commits touching tests",
-              children: <RQ2PctCommitsTouchingTestsBody />,
+              children: <TestingPctCommitsTouchingTestsBody />,
             }}
           />
           {report.testCoverageProxy ? (
@@ -259,7 +353,7 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
               tooltip={`Static test LOC ÷ source LOC on the full tree, bucketed low (&lt;10%), moderate (10–30%), high (&gt;30%). Same snapshot for every scope—not author churn. ${locSnapshotTooltip}`}
               metricHelp={{
                 title: "Test coverage proxy",
-                children: <RQ2TestCoverageProxyBody />,
+                children: <TestingTestCoverageProxyBody />,
               }}
             />
           ) : null}
@@ -268,10 +362,10 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
               {...cardProps}
               label="Functions with static test link"
               value={`${symbolProximitySummary.withSignal} / ${symbolProximitySummary.total}`}
-              tooltip={`Whole-repository symbol scan (same rows as the scatter/table below). Referenced in paired test: ${symbolProximitySummary.referencedInTest}. Paired file only: ${symbolProximitySummary.pairedFileOnly}. No static link: ${symbolProximitySummary.none}.`}
+              tooltip={proximitySummaryTooltip}
               metricHelp={{
                 title: "Static test linkage (summary)",
-                children: <RQ2SymbolProximityScanBody />,
+                children: <TestingSymbolProximityScanBody />,
               }}
             />
           ) : null}
@@ -282,66 +376,96 @@ export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
             tooltip={refactorTooltip}
             metricHelp={{
               title: "Refactor commit ratio",
-              children: <RQ2RefactorCommitRatioBody />,
+              children: <TestingRefactorCommitRatioBody />,
             }}
           />
         </div>
       </section>
 
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-semibold flex-1 min-w-0">
+      <section className="grid grid-cols-12 gap-4 lg:gap-x-6 lg:gap-y-5">
+        <div className="col-span-12 flex flex-wrap items-center gap-x-2 gap-y-2">
+          <h2 className="text-lg font-semibold flex-1 min-w-[14rem]">
             Complexity versus test proximity
           </h2>
-          <CoachExplainButton prompt={RQ2_EXPLAIN_PROXIMITY} send={coachExplain} />
+          <div className="flex flex-wrap items-center gap-1">
+            <ConceptHelpDialog title="Cyclomatic complexity" ariaLabel="About cyclomatic complexity">
+              <TestingConceptCyclomaticComplexityBody />
+            </ConceptHelpDialog>
+            <ConceptHelpDialog title="Test proximity bands" ariaLabel="About the three proximity bands">
+              <TestingConceptProximityBandsBody />
+            </ConceptHelpDialog>
+            <ConceptHelpDialog title="Risk tier" ariaLabel="About risk tier dot colors">
+              <TestingConceptRiskTierBody />
+            </ConceptHelpDialog>
+            <CoachExplainButton prompt={TESTING_EXPLAIN_PROXIMITY} send={coachExplain} />
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground max-w-3xl">
+        <p className="col-span-12 max-w-3xl text-sm text-muted-foreground">
           Each dot is one function: <strong>X</strong> is cyclomatic complexity. Rows are{" "}
           <strong>three discrete bands</strong> (no paired test file → paired file only → function name seen
           in paired test)—not a smooth 0–1 axis. Dot <strong>color</strong> is{" "}
           <strong>risk tier</strong> from complexity × proximity. That is{" "}
           <strong>not line coverage</strong>. Cursor/IDE audit logs about AI edits are not incorporated in
           this release.
+          {symbolRiskFilter.contributorFilterActive ? (
+            <>
+              {" "}
+              With a teammate selected, dots are limited to functions in <strong>source files that author
+              touched</strong> according to git numstat paths (same list that drives “Source files touched”).
+            </>
+          ) : pathScopeUnavailableForContributor ? (
+            <>
+              {" "}
+              Path narrowing for scatter is unavailable for this contributor on this report; dots include all
+              analyzed functions (see notice above).
+            </>
+          ) : null}
         </p>
-        {symbolRiskRows === undefined ? (
-          <p className="text-sm text-muted-foreground border rounded-md px-4 py-3 bg-muted/30">
+        {scatterUnavailable ? (
+          <p className="col-span-12 text-sm text-muted-foreground border rounded-md px-4 py-3 bg-muted/30">
             Re-run analysis with the current analyzer to populate this view (cached reports may omit
             symbol-level rows).
           </p>
-        ) : symbolRiskRows.length === 0 ? (
-          <p className="text-sm text-muted-foreground border rounded-md px-4 py-3 bg-muted/30">
+        ) : scatterEmptyRaw ? (
+          <p className="col-span-12 text-sm text-muted-foreground border rounded-md px-4 py-3 bg-muted/30">
             No matching rows (no qualifying functions or no paired-test layout found).
           </p>
+        ) : scatterFilteredEmpty ? (
+          <p className="col-span-12 text-sm text-muted-foreground border rounded-md px-4 py-3 bg-muted/30">
+            No symbol rows remain after narrowing to source files this author touched in git history (paths
+            must overlap the static analyzer&apos;s function list). Try whole repository or pick another
+            teammate.
+          </p>
         ) : (
-          <div className="space-y-4">
+          <div className="col-span-12 min-w-0 space-y-4">
             <SymbolRiskScatter points={scatterPoints} />
             <div className="flex flex-wrap items-center justify-end gap-2">
               <SymbolRiskProximityFullPageDialog
-                rows={symbolRiskRows}
-                instanceKey={`${report.analysis_timestamp ?? ""}-${scopeId}-${symbolRiskRows.length}`}
+                rows={symbolRiskRowsScoped}
+                instanceKey={`${report.analysis_timestamp ?? ""}-${scopeId}-${symbolRiskRowsScoped.length}-${symbolRiskFilter.contributorFilterActive ? "author-paths" : "all"}`}
               />
             </div>
           </div>
         )}
-        <p className="text-sm text-muted-foreground max-w-3xl">
-          Repo-wide <strong>high complexity</strong>, <strong>long function</strong>, and{" "}
-          <strong>max cyclomatic</strong> counts are on the{" "}
-          <span className="font-medium text-foreground">Code Quality</span> tab (Structural complexity).
-        </p>
       </section>
 
       <section>
-        <RQ2Quadrant
+        <TestingRiskQuadrant
           sectionTitle={riskProfileTitle}
           riskIndex={riskIndex}
           verificationIndex={verificationIndex}
           riskLabel={riskLabel}
           verificationLabel={verificationLabel}
           wholeRepositoryNote={!teamOnly}
+          structuralRiskSignals={{
+            highComplexityFunctions: complexity?.highComplexityFunctions ?? 0,
+            longFunctions: smells?.longFunctions ?? 0,
+          }}
+          testLocShare={testLocRatioForQuadrant}
         />
       </section>
 
-      <RQ2TestingImprovementSection onOpenCodeQualityTab={onOpenCodeQualityTab} />
+      <TestingImprovementSection mv={mv} onOpenCodeQualityTab={onOpenCodeQualityTab} />
     </div>
   );
 }

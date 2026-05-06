@@ -1,7 +1,7 @@
 "use client";
 
 import { DATA_DICTIONARY } from "@/lib/dataDictionary";
-import { getFeatureRqMapping } from "@/lib/featureVector";
+import { getFeatureResultsConstruct } from "@/lib/featureVector";
 import {
   Table,
   TableBody,
@@ -28,7 +28,7 @@ export function DataDictionarySection() {
               <TableHead>Feature Name</TableHead>
               <TableHead>Definition</TableHead>
               <TableHead>Unit</TableHead>
-              <TableHead>RQ</TableHead>
+              <TableHead>Construct</TableHead>
               <TableHead>Interpretation</TableHead>
             </TableRow>
           </TableHeader>
@@ -38,7 +38,7 @@ export function DataDictionarySection() {
                 <TableCell className="font-mono text-sm">{name}</TableCell>
                 <TableCell className="max-w-md">{def.definition}</TableCell>
                 <TableCell>{def.unit}</TableCell>
-                <TableCell>{getFeatureRqMapping(name) || def.rq}</TableCell>
+                <TableCell>{getFeatureResultsConstruct(name) || def.resultsConstruct}</TableCell>
                 <TableCell className="max-w-sm text-muted-foreground text-sm">
                   {def.interpretation}
                 </TableCell>

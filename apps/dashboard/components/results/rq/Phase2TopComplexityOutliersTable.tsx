@@ -34,7 +34,7 @@ const INITIAL_VISIBLE = 10;
 const VISIBLE_STEP = 5;
 
 interface Phase2TopComplexityOutliersTableProps {
-  /** Pre-filtered to Phase 2 metrics; parent sorts (cognitive desc, Halstead desc). */
+  /** Functions with full Halstead + cognitive + MI_norm; parent sorts cognitive desc, Halstead desc. */
   sortedOutliers: Phase2FunctionRow[];
   summary: Phase2Summary;
   showReact: boolean;
@@ -83,7 +83,7 @@ export function Phase2TopComplexityOutliersTable({
           </CardHeader>
           <CardContent className="space-y-4">
             {sortedOutliers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No Phase 2 outliers to rank.</p>
+              <p className="text-sm text-muted-foreground">No complexity outliers to rank yet.</p>
             ) : (
               <>
                 <Table>

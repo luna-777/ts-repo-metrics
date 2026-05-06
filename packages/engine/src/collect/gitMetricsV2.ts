@@ -27,7 +27,20 @@ const LARGE_COMMIT_500 = 500;
 const LARGE_COMMIT_1000 = 1000;
 /** GitHub-style columns: one per week, ~12 months. */
 const HEATMAP_WEEK_COLUMNS = 52;
+/** Same rolling window as `extractGitMetrics` for commits/week (≈3 months). */
+const CPW_WINDOW_WEEKS = 13;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function commitsPerWeekInRecentWindow(group: ParsedCommit[], windowWeeks: number): number {
+  if (group.length === 0 || windowWeeks <= 0) return 0;
+  const now = Date.now();
+  const windowStartMs = now - windowWeeks * 7 * MS_PER_DAY;
+  let n = 0;
+  for (const c of group) {
+    if (c.timestamp * 1000 >= windowStartMs) n++;
+  }
+  return Math.round((n / windowWeeks) * 10) / 10;
+}
 
 function utcMondayStart(tsMs: number): number {
   const d = new Date(tsMs);
@@ -247,7 +260,9 @@ function computeBurstStats(commits: ParsedCommit[]): BurstStats {
 
 function computeEntropyStats(commits: ParsedCommit[]): EntropyStats {
   const byTime = [...commits].sort((a, b) => a.timestamp - b.timestamp);
-  if (byTime.length < 2) return { stdDevTimeBetweenCommits: 0 };
+  if (byTime.length < 2) {
+    return { stdDevTimeBetweenCommits: 0, meanTimeBetweenCommits: 0 };
+  }
 
   const gaps: number[] = [];
   for (let i = 1; i < byTime.length; i++) {
@@ -259,6 +274,7 @@ function computeEntropyStats(commits: ParsedCommit[]): EntropyStats {
   const stdDev = Math.sqrt(variance);
   return {
     stdDevTimeBetweenCommits: Math.round(stdDev * 10) / 10,
+    meanTimeBetweenCommits: Math.round(mean * 10) / 10,
   };
 }
 
@@ -380,15 +396,21 @@ export function buildContributorActivityFromParsedCommits(
         linesAdded += f.add;
         linesDeleted += f.del;
         const churn = f.add + f.del;
-        if (TEST_FILE_RE.test(f.path)) {
+        const rel = f.path.replace(/\\/g, "/");
+        if (TEST_FILE_RE.test(rel)) {
           testLineChurn += churn;
-          testPathsDistinct.add(f.path);
+          testPathsDistinct.add(rel);
         } else {
           sourceLineChurn += churn;
-          sourcePathsDistinct.add(f.path);
+          sourcePathsDistinct.add(rel);
         }
       }
     }
+    const sourcePathsTouchedList =
+      sourcePathsDistinct.size > 0
+        ? Array.from(sourcePathsDistinct).sort((a, b) => a.localeCompare(b))
+        : undefined;
+
     out.push({
       id,
       displayName,
@@ -400,12 +422,15 @@ export function buildContributorActivityFromParsedCommits(
       sourceLineChurn,
       testFilesTouched: testPathsDistinct.size,
       sourceFilesTouched: sourcePathsDistinct.size,
+      sourcePathsTouchedList,
       commitStats: computeCommitStats(group),
       burstStats: computeBurstStats(group),
       entropy: computeEntropyStats(group),
       churn: computeChurnStats(group),
       testCoupling: computeTestCoupling(group),
       refactorBehavior: computeRefactorRate(group),
+      commitCalendar: buildCommitCalendar(group, HEATMAP_WEEK_COLUMNS),
+      commitsPerWeek: commitsPerWeekInRecentWindow(group, CPW_WINDOW_WEEKS),
     });
   }
   out.sort((a, b) => b.commitCount - a.commitCount);

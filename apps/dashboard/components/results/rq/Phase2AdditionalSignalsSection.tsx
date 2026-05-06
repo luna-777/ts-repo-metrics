@@ -42,7 +42,7 @@ export function Phase2AdditionalSignalsSection({
           <MetricCard
             label="React Component Share"
             value={`${reactPct}%`}
-            rq="RQ3"
+            metricCategory="code-quality"
             hideResearchBadge
             description="Share of analyzed functions labeled as UI-layer React components—complexity concentration vs logic."
             tooltip="Structural density of React-labeled functions vs total functions."
@@ -52,19 +52,19 @@ export function Phase2AdditionalSignalsSection({
         <MetricCard
           label="P90 Halstead Volume"
           value={p90h}
-          rq="RQ3"
+          metricCategory="code-quality"
           hideResearchBadge
           description="90% of functions sit below this lexical volume—outliers drive the tail."
-          tooltip="90th percentile Halstead volume across functions with Phase 2 metrics."
+          tooltip="90th percentile Halstead volume across functions that have a full lexical + cognitive metric set."
           metricHelp={help("halstead")}
         />
         <MetricCard
           label="P90 Cognitive Complexity"
           value={p90c}
-          rq="RQ3"
+          metricCategory="code-quality"
           hideResearchBadge
           description="90% of functions stay below this cognitive score—spot the few that exceed it."
-          tooltip="90th percentile cognitive complexity across functions with Phase 2 metrics."
+          tooltip="90th percentile cognitive complexity across functions that have a full lexical + cognitive metric set."
           metricHelp={help("cognitive")}
         />
       </div>

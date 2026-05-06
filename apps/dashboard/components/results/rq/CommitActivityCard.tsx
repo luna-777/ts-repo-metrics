@@ -3,6 +3,11 @@
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { RepoReport } from "@/lib/reportTypes";
+import {
+  COMMIT_HABITS_SCOPE_TEAM,
+  findContributorForScope,
+  type CommitHabitsScopeId,
+} from "@/lib/commitHabitsScopeMetrics";
 import { cn } from "@/lib/utils";
 import { coreSignalTierMeta } from "./CoreSignalsPrimitives";
 
@@ -62,8 +67,44 @@ type CalendarInput = NonNullable<
   NonNullable<RepoReport["gitMetricsV2"]>["commitCalendar"]
 >;
 
-function resolveCalendar(report: RepoReport): CalendarInput | null {
-  return report.gitMetricsV2?.commitCalendar ?? report.commitCalendar ?? null;
+/** Weeks to show (most recent). ~6 months keeps the card scannable and centers “latest” activity. */
+const COMMIT_ACTIVITY_FOCUS_WEEKS = 26;
+
+function resolveCalendar(report: RepoReport, scopeId: CommitHabitsScopeId): CalendarInput | null {
+  const trimmed = String(scopeId ?? "").trim();
+  if (scopeId === COMMIT_HABITS_SCOPE_TEAM || trimmed === "") {
+    return report.gitMetricsV2?.commitCalendar ?? report.commitCalendar ?? null;
+  }
+  const c = findContributorForScope(report, scopeId);
+  return c?.commitCalendar ?? null;
+}
+
+/** Keep only the latest `weeks` columns and recompute busiest weekday for that window. */
+function focusCalendarOnLatestWeeks(cal: CalendarInput, weeks: number): CalendarInput {
+  const cols = cal.grid[0]?.length ?? 0;
+  if (cols <= weeks || weeks <= 0) return cal;
+  const start = cols - weeks;
+  const grid = cal.grid.map((row) => row.slice(start));
+  const columnWeekStarts = cal.columnWeekStarts.slice(start);
+
+  const weekdayTotals = [0, 0, 0, 0, 0, 0, 0];
+  for (let d = 0; d < 7; d++) {
+    const row = grid[d] ?? [];
+    for (let w = 0; w < row.length; w++) {
+      weekdayTotals[d] = (weekdayTotals[d] ?? 0) + (row[w] ?? 0);
+    }
+  }
+  let busiestWeekdayIndex: number | null = null;
+  let maxD = -1;
+  for (let d = 0; d < 7; d++) {
+    if (weekdayTotals[d]! > maxD) {
+      maxD = weekdayTotals[d]!;
+      busiestWeekdayIndex = d;
+    }
+  }
+  if (maxD <= 0) busiestWeekdayIndex = null;
+
+  return { grid, columnWeekStarts, busiestWeekdayIndex };
 }
 
 function isDisplayableCalendar(cal: CalendarInput | null | undefined): cal is CalendarInput {
@@ -93,24 +134,36 @@ const CELL =
   "size-5 shrink-0 rounded-[4px] sm:size-6 md:size-7";
 const GAP = "gap-1 sm:gap-1.5";
 
-export function CommitActivityCard({ report }: { report: RepoReport }) {
-  const rawCal = useMemo(() => resolveCalendar(report), [report]);
+export function CommitActivityCard({
+  report,
+  scopeId,
+}: {
+  report: RepoReport;
+  scopeId: CommitHabitsScopeId;
+}) {
+  const rawCal = useMemo(() => resolveCalendar(report, scopeId), [report, scopeId]);
   const cal = useMemo(() => (isDisplayableCalendar(rawCal) ? rawCal : null), [rawCal]);
   const git = report.git;
+  const scopedContributor = useMemo(() => {
+    const trimmed = String(scopeId ?? "").trim();
+    if (scopeId === COMMIT_HABITS_SCOPE_TEAM || trimmed === "") return null;
+    return findContributorForScope(report, scopeId) ?? null;
+  }, [report, scopeId]);
 
   const visualization = useMemo(() => {
     if (!cal) return null;
+    const focused = focusCalendarOnLatestWeeks(cal, COMMIT_ACTIVITY_FOCUS_WEEKS);
     let maxC = 0;
-    for (const row of cal.grid) {
+    for (const row of focused.grid) {
       for (const c of row) {
         if (c > maxC) maxC = c;
       }
     }
     return {
-      grid: cal.grid,
-      columnWeekStarts: cal.columnWeekStarts,
+      grid: focused.grid,
+      columnWeekStarts: focused.columnWeekStarts,
       max: maxC,
-      busiestWeekdayIndex: cal.busiestWeekdayIndex,
+      busiestWeekdayIndex: focused.busiestWeekdayIndex,
     };
   }, [cal]);
 
@@ -123,19 +176,33 @@ export function CommitActivityCard({ report }: { report: RepoReport }) {
 
   const footerLine = useMemo(() => {
     if (!visualization) return null;
-    const cpw = git?.commitsPerWeek;
+    const cpwRaw =
+      scopedContributor != null ? scopedContributor.commitsPerWeek : git?.commitsPerWeek;
     const cpwStr =
-      typeof cpw === "number" && cpw > 0 ? `${cpw.toFixed(1)} per week average` : null;
+      typeof cpwRaw === "number" && cpwRaw > 0
+        ? scopedContributor != null
+          ? `${cpwRaw.toFixed(1)} commits/week (your recent window)`
+          : `${cpwRaw.toFixed(1)} per week average (repo)`
+        : null;
     const total = sumGrid(visualization.grid);
+    const cols = visualization.grid[0]?.length ?? 0;
+    const windowLabel =
+      cols >= COMMIT_ACTIVITY_FOCUS_WEEKS
+        ? "latest ~6 months"
+        : "all weeks available in this analysis";
     const busy =
       visualization.busiestWeekdayIndex != null &&
       visualization.busiestWeekdayIndex >= 0 &&
       visualization.busiestWeekdayIndex < 7
         ? `Most active day: ${WEEKDAY_NAMES[visualization.busiestWeekdayIndex]}`
         : null;
-    const parts = [`${total} commits in the last 12 months`, cpwStr, busy].filter(Boolean) as string[];
+    const parts = [
+      `${total} commits in this view (${windowLabel})`,
+      cpwStr,
+      busy,
+    ].filter(Boolean) as string[];
     return parts.join(" · ");
-  }, [git?.commitsPerWeek, visualization]);
+  }, [git?.commitsPerWeek, scopedContributor, visualization]);
 
   const legendMax = Math.max(visualization?.max ?? 0, 1);
   const noDataBadgeClass = coreSignalTierMeta.no_data.badgeClass;
@@ -144,12 +211,18 @@ export function CommitActivityCard({ report }: { report: RepoReport }) {
     <section aria-labelledby="commit-habits-commit-activity-heading" className="space-y-0">
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm ring-1 ring-border/40 sm:p-8">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-          <h2
-            id="commit-habits-commit-activity-heading"
-            className="text-lg font-semibold tracking-tight text-foreground sm:text-xl"
-          >
-            Commit Activity
-          </h2>
+          <div className="min-w-0">
+            <h2
+              id="commit-habits-commit-activity-heading"
+              className="text-lg font-semibold tracking-tight text-foreground sm:text-xl"
+            >
+              Commit Activity
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+              Heatmap highlights the latest weeks (up to about six months), ending on your most recent
+              commit week.
+            </p>
+          </div>
         </div>
 
         {!visualization ? (
@@ -175,7 +248,7 @@ export function CommitActivityCard({ report }: { report: RepoReport }) {
               <div
                 className={cn("inline-flex min-w-0 flex-col", GAP)}
                 role="img"
-                aria-label="Commit heatmap by day and week"
+                aria-label="Commit activity heatmap: most recent six months by weekday and week"
               >
                 <div className={cn("flex", GAP)}>
                   <div className={cn(LABEL_COL, "shrink-0")} />

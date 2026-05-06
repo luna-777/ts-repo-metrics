@@ -2,9 +2,11 @@
 
 import type { Phase2Summary } from "@/lib/phase2Summary";
 import { CoreSignalCard, type CoreSignalTier } from "./CoreSignalsPrimitives";
+import type { Phase2DeepDiveId } from "./Phase2MetricDeepDiveDialog";
 
 interface Phase2CodeComplexityCoreSignalsProps {
   summary: Phase2Summary;
+  onOpenDeepDive?: (id: Phase2DeepDiveId) => void;
 }
 
 function formatMiMean(m: number): string {
@@ -43,7 +45,10 @@ function tierHalsteadMean(m: number): CoreSignalTier {
   return "critical";
 }
 
-export function Phase2CodeComplexityCoreSignals({ summary }: Phase2CodeComplexityCoreSignalsProps) {
+export function Phase2CodeComplexityCoreSignals({
+  summary,
+  onOpenDeepDive,
+}: Phase2CodeComplexityCoreSignalsProps) {
   const mi = summary.miNormMean;
   const cog = summary.cognitiveMean;
   const hal = summary.halsteadVolMean;
@@ -91,18 +96,24 @@ export function Phase2CodeComplexityCoreSignals({ summary }: Phase2CodeComplexit
           tier={tMi}
           value={formatMiMean(mi)}
           description={descMi}
+          titleInfo="Composite 0–100-style index from volume, cyclomatic, and size in this engine's GRAD-AI normalization."
+          onOpenDeepDive={onOpenDeepDive ? () => onOpenDeepDive("mi") : undefined}
         />
         <CoreSignalCard
           title="Cognitive Complexity"
           tier={tCog}
           value={formatCogMean(cog)}
           description={descCog}
+          titleInfo="Nesting-weighted mental load per function—higher means harder to simulate when reading."
+          onOpenDeepDive={onOpenDeepDive ? () => onOpenDeepDive("cognitive") : undefined}
         />
         <CoreSignalCard
           title="Halstead Volume"
           tier={tHal}
           value={formatHalMean(hal)}
           description={descHal}
+          titleInfo="Lexical size of the implementation (operator/operand usage)—larger functions read as heavier."
+          onOpenDeepDive={onOpenDeepDive ? () => onOpenDeepDive("halstead") : undefined}
         />
       </div>
     </section>

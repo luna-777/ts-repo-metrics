@@ -1,9 +1,10 @@
 /**
  * Builds a flat feature vector from the analysis report for research export.
- * Features use snake_case. Categories and RQ mappings support the Dataset tab.
+ * Features use snake_case. Categories and dashboard-tab constructs support the Dataset tab.
  */
 
 import type { RepoReport, FunctionDetail } from "./reportTypes";
+import type { ResultsConstructId } from "./resultsConstructConfig";
 
 export type FeatureCategory =
   | "Structural"
@@ -11,79 +12,80 @@ export type FeatureCategory =
   | "Verification"
   | "Distribution";
 
-export type RQMapping = "RQ1" | "RQ2" | "RQ3" | "TBD";
+/** Which Results dashboard construct (tab theme) primarily owns this feature for exports. */
+export type FeatureResultsConstruct = ResultsConstructId | "tbd";
 
-/** Canonical feature list with category and RQ mapping.
- * Aligned with RQ-driven IA: RQ1=behavioral, RQ2=verification/risk, RQ3=quality outcomes.
+/** Canonical feature list with category and Results-tab mapping.
+ * commit-habits ≈ workflow cadence; testing ≈ verification signals; code-quality ≈ structural outcomes.
  */
 export const FEATURE_SPEC: Record<
   string,
-  { category: FeatureCategory; rq: RQMapping }
+  { category: FeatureCategory; construct: FeatureResultsConstruct }
 > = {
-  total_commits: { category: "Behavioral", rq: "RQ1" },
-  commits_per_week: { category: "Behavioral", rq: "RQ1" },
-  median_commit_size: { category: "Behavioral", rq: "RQ1" },
-  average_lines_per_commit: { category: "Behavioral", rq: "RQ1" },
-  large_commit_ratio: { category: "Behavioral", rq: "RQ1" },
-  pct_over_500_loc: { category: "Behavioral", rq: "RQ1" },
-  pct_over_1000_loc: { category: "Behavioral", rq: "RQ1" },
-  burst_count: { category: "Behavioral", rq: "RQ1" },
-  burst_ratio: { category: "Behavioral", rq: "RQ1" },
-  std_dev_time_between_commits: { category: "Behavioral", rq: "RQ1" },
-  duplication_percent: { category: "Behavioral", rq: "RQ1" },
-  test_loc_ratio: { category: "Verification", rq: "RQ2" },
-  test_coverage_classification: { category: "Verification", rq: "RQ2" },
-  pct_commits_touching_tests: { category: "Verification", rq: "RQ2" },
-  test_to_feature_commit_ratio: { category: "Verification", rq: "RQ2" },
-  refactor_commit_ratio: { category: "Verification", rq: "RQ2" },
-  empty_catch_block_count: { category: "Verification", rq: "RQ2" },
-  console_log_count: { category: "Verification", rq: "RQ2" },
-  high_complexity_count: { category: "Structural", rq: "RQ2" },
-  long_function_count: { category: "Structural", rq: "RQ2" },
-  max_complexity: { category: "Structural", rq: "RQ2" },
-  total_functions: { category: "Structural", rq: "RQ3" },
-  avg_complexity: { category: "Structural", rq: "RQ3" },
-  avg_function_length: { category: "Structural", rq: "RQ3" },
-  median_function_length: { category: "Structural", rq: "RQ3" },
-  max_nesting_depth: { category: "Structural", rq: "RQ3" },
-  long_parameter_list_count: { category: "Structural", rq: "RQ3" },
-  maintainability_score: { category: "Structural", rq: "RQ3" },
-  maintainability_classification: { category: "Structural", rq: "RQ3" },
-  total_loc: { category: "Structural", rq: "TBD" },
-  source_loc: { category: "Structural", rq: "TBD" },
-  test_loc: { category: "Structural", rq: "TBD" },
-  files_analyzed: { category: "Structural", rq: "TBD" },
-  files_skipped: { category: "Structural", rq: "TBD" },
-  p90_commit_size: { category: "Behavioral", rq: "RQ1" },
-  p50_function_length: { category: "Distribution", rq: "RQ3" },
-  p75_function_length: { category: "Distribution", rq: "RQ3" },
-  p90_function_length: { category: "Distribution", rq: "RQ3" },
-  p50_complexity: { category: "Distribution", rq: "RQ3" },
-  p75_complexity: { category: "Distribution", rq: "RQ3" },
-  p90_complexity: { category: "Distribution", rq: "RQ3" },
+  total_commits: { category: "Behavioral", construct: "commit-habits" },
+  commits_per_week: { category: "Behavioral", construct: "commit-habits" },
+  median_commit_size: { category: "Behavioral", construct: "commit-habits" },
+  average_lines_per_commit: { category: "Behavioral", construct: "commit-habits" },
+  large_commit_ratio: { category: "Behavioral", construct: "commit-habits" },
+  pct_over_500_loc: { category: "Behavioral", construct: "commit-habits" },
+  pct_over_1000_loc: { category: "Behavioral", construct: "commit-habits" },
+  burst_count: { category: "Behavioral", construct: "commit-habits" },
+  burst_ratio: { category: "Behavioral", construct: "commit-habits" },
+  std_dev_time_between_commits: { category: "Behavioral", construct: "commit-habits" },
+  duplication_percent: { category: "Behavioral", construct: "commit-habits" },
+  test_loc_ratio: { category: "Verification", construct: "testing" },
+  test_coverage_classification: { category: "Verification", construct: "testing" },
+  pct_commits_touching_tests: { category: "Verification", construct: "testing" },
+  test_to_feature_commit_ratio: { category: "Verification", construct: "testing" },
+  refactor_commit_ratio: { category: "Verification", construct: "testing" },
+  empty_catch_block_count: { category: "Verification", construct: "testing" },
+  console_log_count: { category: "Verification", construct: "testing" },
+  high_complexity_count: { category: "Structural", construct: "testing" },
+  long_function_count: { category: "Structural", construct: "testing" },
+  max_complexity: { category: "Structural", construct: "testing" },
+  total_functions: { category: "Structural", construct: "code-quality" },
+  avg_complexity: { category: "Structural", construct: "code-quality" },
+  avg_function_length: { category: "Structural", construct: "code-quality" },
+  median_function_length: { category: "Structural", construct: "code-quality" },
+  max_nesting_depth: { category: "Structural", construct: "code-quality" },
+  long_parameter_list_count: { category: "Structural", construct: "code-quality" },
+  maintainability_score: { category: "Structural", construct: "code-quality" },
+  maintainability_classification: { category: "Structural", construct: "code-quality" },
+  total_loc: { category: "Structural", construct: "tbd" },
+  source_loc: { category: "Structural", construct: "tbd" },
+  test_loc: { category: "Structural", construct: "tbd" },
+  files_analyzed: { category: "Structural", construct: "tbd" },
+  files_skipped: { category: "Structural", construct: "tbd" },
+  p90_commit_size: { category: "Behavioral", construct: "commit-habits" },
+  p50_function_length: { category: "Distribution", construct: "code-quality" },
+  p75_function_length: { category: "Distribution", construct: "code-quality" },
+  p90_function_length: { category: "Distribution", construct: "code-quality" },
+  p50_complexity: { category: "Distribution", construct: "code-quality" },
+  p75_complexity: { category: "Distribution", construct: "code-quality" },
+  p90_complexity: { category: "Distribution", construct: "code-quality" },
   percent_high_complexity_in_top_10_percent_files: {
     category: "Distribution",
-    rq: "RQ3",
+    construct: "code-quality",
   },
-  phase2_halstead_volume_mean: { category: "Structural", rq: "RQ3" },
-  phase2_halstead_volume_p90: { category: "Distribution", rq: "RQ3" },
-  phase2_halstead_volume_max: { category: "Structural", rq: "RQ3" },
-  phase2_cognitive_mean: { category: "Structural", rq: "RQ3" },
-  phase2_cognitive_p90: { category: "Distribution", rq: "RQ3" },
-  phase2_cognitive_max: { category: "Structural", rq: "RQ3" },
-  phase2_mi_norm_mean: { category: "Structural", rq: "RQ3" },
-  phase2_mi_norm_median: { category: "Distribution", rq: "RQ3" },
-  phase2_mi_raw_mean: { category: "Structural", rq: "RQ3" },
-  phase2_react_component_count: { category: "Structural", rq: "RQ3" },
-  phase2_react_component_share: { category: "Structural", rq: "RQ3" },
+  phase2_halstead_volume_mean: { category: "Structural", construct: "code-quality" },
+  phase2_halstead_volume_p90: { category: "Distribution", construct: "code-quality" },
+  phase2_halstead_volume_max: { category: "Structural", construct: "code-quality" },
+  phase2_cognitive_mean: { category: "Structural", construct: "code-quality" },
+  phase2_cognitive_p90: { category: "Distribution", construct: "code-quality" },
+  phase2_cognitive_max: { category: "Structural", construct: "code-quality" },
+  phase2_mi_norm_mean: { category: "Structural", construct: "code-quality" },
+  phase2_mi_norm_median: { category: "Distribution", construct: "code-quality" },
+  phase2_mi_raw_mean: { category: "Structural", construct: "code-quality" },
+  phase2_react_component_count: { category: "Structural", construct: "code-quality" },
+  phase2_react_component_share: { category: "Structural", construct: "code-quality" },
 };
 
 export function getFeatureCategory(name: string): FeatureCategory {
   return FEATURE_SPEC[name]?.category ?? "Structural";
 }
 
-export function getFeatureRqMapping(name: string): RQMapping {
-  return FEATURE_SPEC[name]?.rq ?? "TBD";
+export function getFeatureResultsConstruct(name: string): FeatureResultsConstruct {
+  return FEATURE_SPEC[name]?.construct ?? "tbd";
 }
 
 function flattenFunctionDetails(report: RepoReport): FunctionDetail[] {

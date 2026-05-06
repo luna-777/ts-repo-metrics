@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { MathBlock } from "@/components/research/MathBlock";
 import { cn } from "@/lib/utils";
-import { RQFramingHeader } from "./RQFramingHeader";
+import { ResultsConstructFramingHeader } from "./ResultsConstructFramingHeader";
 import { hasReactUiScope } from "@/lib/hasReactUiScope";
 
 interface Phase3PathologyTabProps {
@@ -67,7 +67,7 @@ export function Phase3PathologyTab({ report }: Phase3PathologyTabProps) {
 
   return (
     <div className="space-y-8">
-      <RQFramingHeader rq="RQ3" />
+      <ResultsConstructFramingHeader constructId="code-quality" heading="Code Risks" />
       <p className="text-muted-foreground text-sm max-w-2xl">
         <span className="font-medium text-foreground">Phase 3 — AI smell &amp; bloat.</span> KPIs are
         framed as <strong className="text-foreground">integrity</strong>,{" "}
@@ -483,7 +483,7 @@ function Phase3KpiCard({
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <Badge variant="secondary" className="text-xs">
-            RQ3
+            Code Risks
           </Badge>
           <Dialog>
             <DialogTrigger asChild>
@@ -497,7 +497,7 @@ function Phase3KpiCard({
                 <CircleHelp className="size-3.5" aria-hidden />
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-lg">
+            <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-5xl">
               <DialogHeader>
                 <DialogTitle>{helpTitle}</DialogTitle>
               </DialogHeader>

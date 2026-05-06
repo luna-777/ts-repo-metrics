@@ -3,9 +3,9 @@
 import { cn } from "@/lib/utils";
 import type { ReactComponentMetrics } from "@/lib/reportTypes";
 
-interface RQ3ReactImprovementSectionProps {
+interface ReactComponentsImprovementSectionProps {
   topComponent: ReactComponentMetrics | null;
-  /** Switch parent results tabs to Code Quality (RQ3 structural). */
+  /** Switch parent results tabs to Code Quality (structural metrics). */
   onOpenCodeQualityTab?: () => void;
   className?: string;
 }
@@ -13,11 +13,11 @@ interface RQ3ReactImprovementSectionProps {
 const linkButtonClass =
   "font-inherit text-primary underline-offset-4 hover:text-primary/90 hover:underline";
 
-export function RQ3ReactImprovementSection({
+export function ReactComponentsImprovementSection({
   topComponent,
   onOpenCodeQualityTab,
   className,
-}: RQ3ReactImprovementSectionProps) {
+}: ReactComponentsImprovementSectionProps) {
   const codeQualityControl =
     onOpenCodeQualityTab != null ? (
       <button type="button" onClick={onOpenCodeQualityTab} className={linkButtonClass}>
@@ -32,15 +32,15 @@ export function RQ3ReactImprovementSection({
 
   return (
     <section
-      id="rq3-react-how-to-improve"
-      aria-labelledby="rq3-react-how-to-improve-heading"
+      id="react-components-how-to-improve"
+      aria-labelledby="react-components-how-to-improve-heading"
       className={cn(
         "rounded-xl border border-border bg-card p-5 text-card-foreground shadow-md ring-1 ring-border/60 sm:p-6",
         className,
       )}
     >
       <h2
-        id="rq3-react-how-to-improve-heading"
+        id="react-components-how-to-improve-heading"
         className="text-lg font-semibold leading-6 tracking-tight text-foreground"
       >
         How to improve React Components
@@ -85,7 +85,7 @@ export function RQ3ReactImprovementSection({
       </ol>
 
       <p className="mt-5">
-        <a href="#rq3-react-oversized" className={cn("text-sm font-normal", linkButtonClass)}>
+        <a href="#react-components-oversized" className={cn("text-sm font-normal", linkButtonClass)}>
           → Jump to Top Oversized Components
         </a>
       </p>

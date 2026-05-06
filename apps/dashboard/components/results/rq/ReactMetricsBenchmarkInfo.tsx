@@ -67,7 +67,7 @@ export function ReactMetricsBenchmarkInfo() {
           <li>
             <strong className="text-foreground">Tampere: JSX depth &gt; 5</strong> — count of components whose maximum
             nested JSX tree depth exceeds <strong className="text-foreground">5</strong> (structural complexity
-            benchmark label used in RQ3; not the ReactSniffer catalog verbatim).
+            benchmark label used on the Code Quality view; not the ReactSniffer catalog verbatim).
           </li>
           <li>
             <strong className="text-foreground">Prop pass-through / Drill</strong> — same-file heuristic: parameter

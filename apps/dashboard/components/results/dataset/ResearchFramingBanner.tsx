@@ -8,7 +8,10 @@ export function ResearchFramingBanner() {
       </p>
       <ul className="mt-2 space-y-1 text-blue-800 dark:text-blue-200">
         <li>• Each repository = one observation in the dataset.</li>
-        <li>• Features operationalize RQ1–RQ3 (structural, behavioral, verification).</li>
+        <li>
+          • Features operationalize dashboard constructs aligned with Commit Habits, Testing, and Code Quality
+          (behavioral, verification, and structural outcomes).
+        </li>
         <li>• Some constructs (e.g., cognitive engagement) are measured externally via survey.</li>
         <li>• Repo-derived features are distinct from survey data.</li>
       </ul>

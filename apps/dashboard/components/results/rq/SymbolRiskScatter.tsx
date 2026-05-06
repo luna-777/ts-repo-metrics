@@ -1,10 +1,17 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import {
   scatterComplexityDisplayMax,
+  tierAction,
   type SymbolRiskScatterPoint,
   type VerificationLane,
 } from "@/lib/symbolRiskViz";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const W = 560;
 const H = 360;
@@ -53,11 +60,30 @@ const laneIndex: Record<VerificationLane, number> = {
   none: 2,
 };
 
+function lanePlain(lane: VerificationLane): string {
+  switch (lane) {
+    case "referenced":
+      return "Referenced in paired test";
+    case "paired_only":
+      return "Paired test file only";
+    default:
+      return "No paired test";
+  }
+}
+
+function dotTooltipLines(p: SymbolRiskScatterPoint, xMax: number): string {
+  const capNote =
+    p.x > xMax ? "\nAxis capped — dot drawn at right edge; value shown here is exact." : "";
+  return `${p.labelShort}\nCyclomatic complexity: ${p.x}${capNote}\nProximity: ${lanePlain(p.lane)}\nRisk tier: ${p.tier}\nTip: ${tierAction(p.tier)}`;
+}
+
 interface SymbolRiskScatterProps {
   points: SymbolRiskScatterPoint[];
 }
 
 export function SymbolRiskScatter({ points }: SymbolRiskScatterProps) {
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
   const xs = points.map((p) => p.x);
   const { xMax, capped } = scatterComplexityDisplayMax(xs);
   const numLanes = LANES.length;
@@ -73,22 +99,53 @@ export function SymbolRiskScatter({ points }: SymbolRiskScatterProps) {
     return base + jitter01(p.key) * jitterScale;
   };
 
+  const selectedPoint = useMemo(
+    () => (selectedKey ? points.find((p) => p.key === selectedKey) ?? null : null),
+    [points, selectedKey],
+  );
+
+  useEffect(() => {
+    setSelectedKey(null);
+  }, [points]);
+
+  useEffect(() => {
+    if (!selectedKey) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedKey(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedKey]);
+
   return (
-    <div className="rounded-md border bg-muted/20 p-3 overflow-x-auto space-y-3">
+    <div className="rounded-md border bg-muted/20 p-3 space-y-3 min-w-0">
       <svg
-        width={W}
-        height={H}
         viewBox={`0 0 ${W} ${H}`}
-        className="max-w-full h-auto"
+        className="block h-auto w-full max-w-full"
         role="img"
         aria-label={
           capped
-            ? "Cyclomatic complexity by test proximity band; horizontal axis is capped so the main cluster is readable—hover points for exact complexity."
-            : "Cyclomatic complexity by test proximity band, with risk tier colors"
+            ? "Functions plotted in three discrete test-proximity bands on Y (not a continuous scale); cyclomatic complexity on X; axis capped for readability—hover dots for exact complexity."
+            : "Functions plotted in three discrete test-proximity bands on Y (not a continuous scale); cyclomatic complexity on X; dot colors show risk tier."
         }
       >
+        {/* Alternating lane fills — Y axis is three discrete bands, not a continuous scale */}
+        {LANES.map((_lane, i) => {
+          const y0 = PAD.t + i * laneHeight;
+          return (
+            <rect
+              key={`lane-bg-${i}`}
+              x={PAD.l}
+              y={y0}
+              width={INNER_W}
+              height={laneHeight}
+              className={i % 2 === 0 ? "fill-muted/25" : "fill-muted/10"}
+            />
+          );
+        })}
+
         <text x={W / 2} y={20} textAnchor="middle" className="fill-muted-foreground text-[11px]">
-          Cyclomatic complexity vs test proximity (three bands)
+          Cyclomatic complexity vs three test-proximity bands (not a 0–1 scale)
         </text>
 
         {/* Horizontal lane guides */}
@@ -161,22 +218,44 @@ export function SymbolRiskScatter({ points }: SymbolRiskScatterProps) {
           {capped ? `${Math.round(xMax)}+` : Math.round(xMax)}
         </text>
 
-        {points.map((p) => (
-          <circle
-            key={p.key}
-            cx={scaleX(p.x)}
-            cy={dotY(p)}
-            r={4.5}
-            fill={tierColor[p.tier]}
-            opacity={0.88}
-          >
-            <title>
-              {`${p.labelShort} — cyclomatic ${p.x}${
-                p.x > xMax ? " (shown at right edge; axis capped for readability)" : ""
-              } — ${p.lane === "paired_only" ? "paired test only" : p.lane === "referenced" ? "referenced" : "no paired test"} — tier ${p.tier}`}
-            </title>
-          </circle>
-        ))}
+        {points.map((p) => {
+          const cx = scaleX(p.x);
+          const cy = dotY(p);
+          const isSel = selectedKey === p.key;
+          const tip = dotTooltipLines(p, xMax);
+          return (
+            <Tooltip key={p.key} delayDuration={200}>
+              <TooltipTrigger asChild>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={isSel ? 6 : 4.5}
+                  fill={tierColor[p.tier]}
+                  opacity={isSel ? 1 : 0.88}
+                  stroke={isSel ? "oklch(0.85 0.02 260)" : "transparent"}
+                  strokeWidth={isSel ? 2 : 0}
+                  className="cursor-pointer outline-none focus-visible:stroke-[oklch(0.85_0.02_260)] focus-visible:stroke-2"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedKey((k) => (k === p.key ? null : p.key));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedKey((k) => (k === p.key ? null : p.key));
+                    }
+                  }}
+                >
+                  <title>{tip.replace(/\n/g, " — ")}</title>
+                </circle>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-xs leading-snug">
+                {tip}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
       </svg>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
@@ -199,11 +278,41 @@ export function SymbolRiskScatter({ points }: SymbolRiskScatterProps) {
         </span>
         {capped ? (
           <span className="w-full text-[10px] leading-snug sm:w-auto">
-            Axis capped for readability; values above the scale sit on the right edge—hover a dot for exact
-            complexity.
+            Axis capped for readability; values above the scale sit on the right edge—hover or focus a dot for exact complexity.
           </span>
         ) : null}
       </div>
+
+      {selectedPoint ? (
+        <div className="rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0 space-y-1">
+              <p className="truncate font-mono text-xs font-medium text-foreground" title={selectedPoint.labelShort}>
+                {selectedPoint.labelShort}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Cyclomatic <span className="tabular-nums text-foreground">{selectedPoint.x}</span>
+                {" · "}
+                {lanePlain(selectedPoint.lane)}
+                {" · "}
+                Tier <span className="capitalize text-foreground">{selectedPoint.tier}</span>
+              </p>
+              <p className="text-xs leading-snug text-muted-foreground">{tierAction(selectedPoint.tier)}</p>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 text-xs font-medium text-primary underline-offset-4 hover:underline"
+              onClick={() => setSelectedKey(null)}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      ) : points.length > 0 ? (
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Hover or focus a dot for a tooltip. Click or press Enter to pin details here (Esc clears).
+        </p>
+      ) : null}
     </div>
   );
 }

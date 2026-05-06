@@ -3,7 +3,7 @@
 import type { RepoReport } from "@/lib/reportTypes";
 import { CoreSignalCard, type CoreSignalTier } from "./CoreSignalsPrimitives";
 
-interface RQ3CoreSignalsSectionProps {
+interface CodeQualityCoreSignalsSectionProps {
   report: RepoReport;
 }
 
@@ -32,7 +32,7 @@ function tierMaxComplexity(n: number): CoreSignalTier {
   return "critical";
 }
 
-export function RQ3CoreSignalsSection({ report }: RQ3CoreSignalsSectionProps) {
+export function CodeQualityCoreSignalsSection({ report }: CodeQualityCoreSignalsSectionProps) {
   const total = report.totals?.functions ?? 0;
   const highCx = report.complexity?.highComplexityFunctions ?? 0;
   const maxCx = report.complexity?.max ?? 0;
@@ -70,13 +70,13 @@ export function RQ3CoreSignalsSection({ report }: RQ3CoreSignalsSectionProps) {
 
   return (
     <section
-      aria-labelledby="rq3-core-signals-heading"
+      aria-labelledby="code-quality-core-signals-heading"
       className="space-y-4"
-      id="rq3-core-signals"
+      id="code-quality-core-signals"
     >
       <div>
         <h2
-          id="rq3-core-signals-heading"
+          id="code-quality-core-signals-heading"
           className="text-sm font-medium tracking-wide text-muted-foreground"
         >
           Core Signals
@@ -88,18 +88,21 @@ export function RQ3CoreSignalsSection({ report }: RQ3CoreSignalsSectionProps) {
           tier={tTotal}
           value={formatInt(total)}
           description={descTotal}
+          titleInfo="Function-like units with a paired complexity row in this view—matches rows in the hotspot table."
         />
         <CoreSignalCard
           title="High complexity functions"
           tier={tHigh}
           value={formatInt(highCx)}
           description={descHigh}
+          titleInfo="Cyclomatic complexity strictly greater than 10 (engine rule), same as highComplexityFunctions in the report JSON."
         />
         <CoreSignalCard
           title="Max complexity"
           tier={tMax}
           value={formatInt(maxCx)}
           description={descMax}
+          titleInfo="Largest cyclomatic value among functions in this view—your worst single hotspot."
         />
       </div>
     </section>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeCommitHabitsScore } from "../lib/commitHabitsScore";
-import type { RepoReport } from "../lib/reportTypes";
+import { computeCommitHabitsScore, computeCommitHabitsScoreForContributor } from "../lib/commitHabitsScore";
+import type { ContributorActivity, RepoReport } from "../lib/reportTypes";
 
 function minimalReport(over: Partial<RepoReport> = {}): RepoReport {
   const base: RepoReport = {
@@ -33,6 +33,37 @@ function minimalReport(over: Partial<RepoReport> = {}): RepoReport {
       consoleLogs: 0,
     },
     perFile: [],
+    ...over,
+  };
+  return base;
+}
+
+function minimalContributor(over: Partial<ContributorActivity> = {}): ContributorActivity {
+  const base: ContributorActivity = {
+    id: "a@example.com",
+    displayName: "Author",
+    authorEmail: "a@example.com",
+    commitCount: 25,
+    linesAdded: 500,
+    linesDeleted: 100,
+    testLineChurn: 0,
+    sourceLineChurn: 600,
+    testFilesTouched: 0,
+    sourceFilesTouched: 4,
+    commitStats: {
+      medianCommitSize: 40,
+      p90CommitSize: 90,
+      pctOver500Loc: 8,
+      pctOver1000Loc: 1,
+    },
+    burstStats: { burstCount: 1, burstRatio: 12 },
+    entropy: {
+      stdDevTimeBetweenCommits: 3_600_000,
+      meanTimeBetweenCommits: 86_400_000,
+    },
+    refactorBehavior: { refactorCommitRatio: 0.12 },
+    testCoupling: { pctCommitsTouchingTests: 15, testToFeatureCommitRatio: 0.25 },
+    commitsPerWeek: 2.5,
     ...over,
   };
   return base;
@@ -93,7 +124,7 @@ describe("computeCommitHabitsScore", () => {
             pctOver1000Loc: 1,
           },
           burstStats: { burstCount: 1, burstRatio: 10 },
-          entropy: { stdDevTimeBetweenCommits: 3600000 },
+          entropy: { stdDevTimeBetweenCommits: 3600000, meanTimeBetweenCommits: 86_400_000 },
           churn: { topByModifications: [], topByLinesChanged: [] },
           refactorBehavior: { refactorCommitRatio: 0.15 },
           testCoupling: {
@@ -128,7 +159,7 @@ describe("computeCommitHabitsScore", () => {
             pctOver1000Loc: 2,
           },
           burstStats: { burstCount: 2, burstRatio: 25 },
-          entropy: { stdDevTimeBetweenCommits: 7200000 },
+          entropy: { stdDevTimeBetweenCommits: 7200000, meanTimeBetweenCommits: 86_400_000 },
           churn: { topByModifications: [], topByLinesChanged: [] },
           refactorBehavior: { refactorCommitRatio: 0.1 },
           testCoupling: {
@@ -156,7 +187,7 @@ describe("computeCommitHabitsScore", () => {
             pctOver1000Loc: 2,
           },
           burstStats: { burstCount: 8, burstRatio: 92 },
-          entropy: { stdDevTimeBetweenCommits: 7200000 },
+          entropy: { stdDevTimeBetweenCommits: 7200000, meanTimeBetweenCommits: 86_400_000 },
           churn: { topByModifications: [], topByLinesChanged: [] },
           refactorBehavior: { refactorCommitRatio: 0.1 },
           testCoupling: {
@@ -171,5 +202,37 @@ describe("computeCommitHabitsScore", () => {
     expect(highBurst.drivers.find((d) => d.id === "burstiness")!.score).toBeLessThan(
       lowBurst.drivers.find((d) => d.id === "burstiness")!.score,
     );
+  });
+});
+
+describe("computeCommitHabitsScoreForContributor", () => {
+  it("returns critical for zero commits", () => {
+    const c = minimalContributor({ commitCount: 0, commitsPerWeek: 0 });
+    const r = computeCommitHabitsScoreForContributor(c);
+    expect(r.score).toBe(0);
+    expect(r.tier).toBe("critical");
+  });
+
+  it("uses author commitCount, commitsPerWeek, and git v2 fields", () => {
+    const r = computeCommitHabitsScoreForContributor(
+      minimalContributor({
+        commitCount: 80,
+        commitsPerWeek: 4,
+        commitStats: {
+          medianCommitSize: 60,
+          p90CommitSize: 100,
+          pctOver500Loc: 4,
+          pctOver1000Loc: 0,
+        },
+        burstStats: { burstCount: 1, burstRatio: 8 },
+        entropy: {
+          stdDevTimeBetweenCommits: 3_600_000,
+          meanTimeBetweenCommits: 86_400_000,
+        },
+      }),
+    );
+    expect(r.score).toBeGreaterThanOrEqual(60);
+    expect(r.drivers).toHaveLength(5);
+    expect(r.drivers.find((d) => d.id === "cadence")!.score).toBeGreaterThan(50);
   });
 });

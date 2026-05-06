@@ -1,18 +1,18 @@
 /**
- * RQ definitions and operationalization copy for the dashboard.
- * Each RQ tab uses this for framing headers.
+ * Dashboard construct ids align with Results tabs: Commit Habits, Testing, Code Quality.
+ * {@link RESULTS_CONSTRUCT_CONFIGS} supplies titles where study framing appears in the UI.
  */
 
-export type RQId = "RQ1" | "RQ2" | "RQ3";
+export type ResultsConstructId = "commit-habits" | "testing" | "code-quality";
 
-export interface RQConfig {
-  id: RQId;
+export interface ResultsConstructConfig {
+  id: ResultsConstructId;
   title: string;
   question: string;
   operationalization: string;
 }
 
-/** Student-facing copy for the Behavioral (RQ1) tab — learning-only; no research header. */
+/** Student-facing copy for the Commit Habits tab — learning-only; no research header. */
 export const BEHAVIORAL_LEARNING_FRAMING = {
   title: "How your team works",
   lead:
@@ -29,7 +29,7 @@ export const BEHAVIORAL_LEARNING_FRAMING = {
     "If something looks off, check the metric help (?) on each card and the documentation for how each value is computed.",
 } as const;
 
-/** Student-facing copy for the Verification (RQ2) tab — learning-only; no research header. */
+/** Student-facing copy for the Testing tab — learning-only; no research header. */
 export const VERIFICATION_LEARNING_FRAMING = {
   title: "Checking your work",
   lead:
@@ -40,26 +40,26 @@ export const VERIFICATION_LEARNING_FRAMING = {
     "Repository-wide totals (LOC, complexity, catches) describe the codebase as scanned; git-based shares can be narrowed to one author below when contributors are known.",
 } as const;
 
-export const RQ_CONFIGS: Record<RQId, RQConfig> = {
-  RQ1: {
-    id: "RQ1",
-    title: "Behavioral Shift",
+export const RESULTS_CONSTRUCT_CONFIGS: Record<ResultsConstructId, ResultsConstructConfig> = {
+  "commit-habits": {
+    id: "commit-habits",
+    title: "Commit Habits",
     question:
       "How does access to generative AI tools correspond with observable software engineering behaviors?",
     operationalization:
       "We measure workflow cadence, commit structure, burst patterns, and churn concentration.",
   },
-  RQ2: {
-    id: "RQ2",
-    title: "Verification & Engagement",
+  testing: {
+    id: "testing",
+    title: "Testing",
     question:
       "Within AI-using teams, how do verification efforts and cognitive engagement patterns relate to repository indicators of quality and stability?",
     operationalization:
       "We compare verification effort (test coverage proxy, test-touch commits) against minimal structural risk exposure to assess moderation.",
   },
-  RQ3: {
-    id: "RQ3",
-    title: "Quality Outcomes",
+  "code-quality": {
+    id: "code-quality",
+    title: "Code Quality",
     question:
       "Do projects developed with AI exhibit differences in complexity, maintainability, documentation, and testability?",
     operationalization:
@@ -67,46 +67,46 @@ export const RQ_CONFIGS: Record<RQId, RQConfig> = {
   },
 };
 
-/** Metric keys mapped to their primary RQ for badge display. */
-export const METRIC_TO_RQ: Record<string, RQId> = {
-  total_commits: "RQ1",
-  commits_per_week: "RQ1",
-  median_commit_size: "RQ1",
-  average_lines_per_commit: "RQ1",
-  large_commit_ratio: "RQ1",
-  burst_ratio: "RQ1",
-  burst_count: "RQ1",
-  std_dev_time_between_commits: "RQ1",
-  pct_over_500_loc: "RQ1",
-  pct_over_1000_loc: "RQ1",
-  duplication_percent: "RQ1",
-  framework_detected: "RQ1",
-  test_loc_ratio: "RQ2",
-  test_loc: "RQ2",
-  source_loc: "RQ2",
-  test_files: "RQ2",
-  pct_commits_touching_tests: "RQ2",
-  refactor_commit_ratio: "RQ2",
-  empty_catch_block_count: "RQ2",
-  console_log_count: "RQ2",
-  high_complexity_count: "RQ2",
-  long_function_count: "RQ2",
-  max_complexity: "RQ2",
-  total_functions: "RQ3",
-  avg_complexity: "RQ3",
-  p90_complexity: "RQ3",
-  avg_function_length: "RQ3",
-  p90_function_length: "RQ3",
-  max_nesting_depth: "RQ3",
-  long_parameter_list_count: "RQ3",
-  maintainability_score: "RQ3",
-  maintainability_classification: "RQ3",
-  percent_high_complexity_in_top_10_percent_files: "RQ3",
-  phase3_sfd: "RQ3",
-  phase3_mcr: "RQ3",
-  phase3_srs: "RQ3",
-  phase3_silent_failure_count: "RQ3",
-  phase3_monolithic_component_count: "RQ3",
-  phase3_react_component_count: "RQ3",
-  phase3_srs_weighted_numerator: "RQ3",
+/** Metric keys mapped to primary Results tab construct for optional badge display. */
+export const METRIC_TO_RESULTS_CONSTRUCT: Record<string, ResultsConstructId> = {
+  total_commits: "commit-habits",
+  commits_per_week: "commit-habits",
+  median_commit_size: "commit-habits",
+  average_lines_per_commit: "commit-habits",
+  large_commit_ratio: "commit-habits",
+  burst_ratio: "commit-habits",
+  burst_count: "commit-habits",
+  std_dev_time_between_commits: "commit-habits",
+  pct_over_500_loc: "commit-habits",
+  pct_over_1000_loc: "commit-habits",
+  duplication_percent: "commit-habits",
+  framework_detected: "commit-habits",
+  test_loc_ratio: "testing",
+  test_loc: "testing",
+  source_loc: "testing",
+  test_files: "testing",
+  pct_commits_touching_tests: "testing",
+  refactor_commit_ratio: "testing",
+  empty_catch_block_count: "testing",
+  console_log_count: "testing",
+  high_complexity_count: "testing",
+  long_function_count: "testing",
+  max_complexity: "testing",
+  total_functions: "code-quality",
+  avg_complexity: "code-quality",
+  p90_complexity: "code-quality",
+  avg_function_length: "code-quality",
+  p90_function_length: "code-quality",
+  max_nesting_depth: "code-quality",
+  long_parameter_list_count: "code-quality",
+  maintainability_score: "code-quality",
+  maintainability_classification: "code-quality",
+  percent_high_complexity_in_top_10_percent_files: "code-quality",
+  phase3_sfd: "code-quality",
+  phase3_mcr: "code-quality",
+  phase3_srs: "code-quality",
+  phase3_silent_failure_count: "code-quality",
+  phase3_monolithic_component_count: "code-quality",
+  phase3_react_component_count: "code-quality",
+  phase3_srs_weighted_numerator: "code-quality",
 };

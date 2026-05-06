@@ -3,7 +3,7 @@
 import type { ReactMetricsReport } from "@/lib/reportTypes";
 import { CoreSignalCard, type CoreSignalTier } from "./CoreSignalsPrimitives";
 
-interface RQ3ReactCoreSignalsSectionProps {
+interface ReactComponentsCoreSignalsSectionProps {
   reactMetrics: ReactMetricsReport;
 }
 
@@ -32,7 +32,7 @@ function tierLowCohesionCount(n: number): CoreSignalTier {
   return "critical";
 }
 
-export function RQ3ReactCoreSignalsSection({ reactMetrics }: RQ3ReactCoreSignalsSectionProps) {
+export function ReactComponentsCoreSignalsSection({ reactMetrics }: ReactComponentsCoreSignalsSectionProps) {
   const s = reactMetrics.summary;
   const tsx = s.tsxFilesAnalyzed;
   const comps = s.componentsAnalyzed;
@@ -72,13 +72,13 @@ export function RQ3ReactCoreSignalsSection({ reactMetrics }: RQ3ReactCoreSignals
 
   return (
     <section
-      aria-labelledby="rq3-react-core-signals-heading"
+      aria-labelledby="react-components-core-signals-heading"
       className="space-y-4"
-      id="rq3-react-core-signals"
+      id="react-components-core-signals"
     >
       <div>
         <h2
-          id="rq3-react-core-signals-heading"
+          id="react-components-core-signals-heading"
           className="text-sm font-medium tracking-wide text-muted-foreground"
         >
           Core Signals

@@ -5,7 +5,7 @@
  * Tier bands: strong ≥70, good ≥55, needs_work ≥35, else critical.
  */
 
-import type { RepoReport } from "./reportTypes";
+import type { ContributorActivity, RepoReport } from "./reportTypes";
 
 export type CommitHabitsTier = "strong" | "good" | "needs_work" | "critical";
 
@@ -101,72 +101,56 @@ function buildHeadline(tier: CommitHabitsTier, worst: CommitHabitsDriver): strin
   }
 }
 
-export function computeCommitHabitsScore(report: RepoReport): CommitHabitsScoreResult {
-  const git = report.git;
-  const gv2 = report.gitMetricsV2;
-
-  const totalCommits = git?.totalCommits ?? 0;
-  const commitsPerWeek = git?.commitsPerWeek ?? 0;
-
-  if (totalCommits <= 0) {
-    const drivers: CommitHabitsDriver[] = [
-      {
-        id: "cadence",
-        label: "Weekly cadence",
-        score: 0,
-        advice:
-          "Start committing early—even README or scaffold commits establish rhythm.",
-      },
-      {
-        id: "volume",
-        label: "Commit volume",
-        score: 0,
-        advice:
-          "Push small slices as you go so history reflects real progress.",
-      },
-      {
-        id: "batch_size",
-        label: "Batch size",
-        score: 50,
-        advice:
-          "When you start committing, keep each change set reviewable.",
-      },
-      {
-        id: "burstiness",
-        label: "Burstiness",
-        score: 50,
-        advice:
-          "Spread work across days instead of one mega-session.",
-      },
-      {
-        id: "rhythm",
-        label: "Rhythm consistency",
-        score: 50,
-        advice:
-          "Touch the repo regularly so CI and teammates stay aligned.",
-      },
-    ];
-    const worst = drivers[1]!;
-    return {
+function emptyCommitDrivers(): CommitHabitsDriver[] {
+  return [
+    {
+      id: "cadence",
+      label: "Weekly cadence",
       score: 0,
-      tier: "critical",
-      headline: "No commits in this snapshot yet—start with small, frequent pushes.",
-      drivers,
-      worst,
-    };
-  }
+      advice:
+        "Start committing early—even README or scaffold commits establish rhythm.",
+    },
+    {
+      id: "volume",
+      label: "Commit volume",
+      score: 0,
+      advice: "Push small slices as you go so history reflects real progress.",
+    },
+    {
+      id: "batch_size",
+      label: "Batch size",
+      score: 50,
+      advice: "When you start committing, keep each change set reviewable.",
+    },
+    {
+      id: "burstiness",
+      label: "Burstiness",
+      score: 50,
+      advice: "Spread work across days instead of one mega-session.",
+    },
+    {
+      id: "rhythm",
+      label: "Rhythm consistency",
+      score: 50,
+      advice: "Touch the repo regularly so CI and teammates stay aligned.",
+    },
+  ];
+}
 
-  const pctOver500 = gv2?.commitStats?.pctOver500Loc ?? (git?.largeCommitRatio ?? 0) * 100;
-  const burstRatio = gv2?.burstStats?.burstRatio ?? 0;
-  const stdDevMs = gv2?.entropy?.stdDevTimeBetweenCommits ?? 0;
+function buildDriversFromSignals(input: {
+  commitsPerWeek: number;
+  totalCommits: number;
+  pctOver500: number;
+  burstRatio: number;
+  stdDevMs: number;
+}): CommitHabitsDriver[] {
+  const cadence = scoreCadence(input.commitsPerWeek);
+  const volume = scoreVolume(input.totalCommits);
+  const batch = scoreBatchDiscipline(typeof input.pctOver500 === "number" ? input.pctOver500 : 0);
+  const burst = scoreBurstDiscipline(typeof input.burstRatio === "number" ? input.burstRatio : 0);
+  const rhythm = scoreRhythm(input.stdDevMs);
 
-  const cadence = scoreCadence(commitsPerWeek);
-  const volume = scoreVolume(totalCommits);
-  const batch = scoreBatchDiscipline(typeof pctOver500 === "number" ? pctOver500 : 0);
-  const burst = scoreBurstDiscipline(typeof burstRatio === "number" ? burstRatio : 0);
-  const rhythm = scoreRhythm(stdDevMs);
-
-  const drivers: CommitHabitsDriver[] = [
+  return [
     {
       id: "cadence",
       label: "Weekly cadence",
@@ -203,16 +187,13 @@ export function computeCommitHabitsScore(report: RepoReport): CommitHabitsScoreR
         "Avoid long silent gaps then spikes; touch the repo regularly so CI and teammates stay aligned.",
     },
   ];
+}
 
-  const weighted =
-    WEIGHT *
-    drivers.reduce((s, d) => s + d.score, 0);
-
+function finalizeScore(drivers: CommitHabitsDriver[]): CommitHabitsScoreResult {
+  const weighted = WEIGHT * drivers.reduce((s, d) => s + d.score, 0);
   const score = roundScore(weighted);
   const tier = tierFromScore(score);
-
   const worst = drivers.reduce((a, b) => (a.score <= b.score ? a : b));
-
   return {
     score,
     tier,
@@ -220,4 +201,70 @@ export function computeCommitHabitsScore(report: RepoReport): CommitHabitsScoreR
     drivers,
     worst,
   };
+}
+
+export function computeCommitHabitsScore(report: RepoReport): CommitHabitsScoreResult {
+  const git = report.git;
+  const gv2 = report.gitMetricsV2;
+
+  const totalCommits = git?.totalCommits ?? 0;
+  const commitsPerWeek = git?.commitsPerWeek ?? 0;
+
+  if (totalCommits <= 0) {
+    const drivers = emptyCommitDrivers();
+    const worst = drivers[1]!;
+    return {
+      score: 0,
+      tier: "critical",
+      headline: "No commits in this snapshot yet—start with small, frequent pushes.",
+      drivers,
+      worst,
+    };
+  }
+
+  const pctOver500 = gv2?.commitStats?.pctOver500Loc ?? (git?.largeCommitRatio ?? 0) * 100;
+  const burstRatio = gv2?.burstStats?.burstRatio ?? 0;
+  const stdDevMs = gv2?.entropy?.stdDevTimeBetweenCommits ?? 0;
+
+  const drivers = buildDriversFromSignals({
+    commitsPerWeek,
+    totalCommits,
+    pctOver500: typeof pctOver500 === "number" ? pctOver500 : 0,
+    burstRatio: typeof burstRatio === "number" ? burstRatio : 0,
+    stdDevMs,
+  });
+
+  return finalizeScore(drivers);
+}
+
+/** Commit Habits score from one contributor row (matches scope dropdown on Commit Habits tab). */
+export function computeCommitHabitsScoreForContributor(c: ContributorActivity): CommitHabitsScoreResult {
+  const totalCommits = c.commitCount;
+  const commitsPerWeek = c.commitsPerWeek ?? 0;
+
+  if (totalCommits <= 0) {
+    const drivers = emptyCommitDrivers();
+    const worst = drivers[1]!;
+    return {
+      score: 0,
+      tier: "critical",
+      headline: "No commits attributed to this author in the parsed history.",
+      drivers,
+      worst,
+    };
+  }
+
+  const pctOver500 = c.commitStats.pctOver500Loc;
+  const burstRatio = c.burstStats.burstRatio;
+  const stdDevMs = c.entropy.stdDevTimeBetweenCommits;
+
+  const drivers = buildDriversFromSignals({
+    commitsPerWeek,
+    totalCommits,
+    pctOver500: typeof pctOver500 === "number" ? pctOver500 : 0,
+    burstRatio: typeof burstRatio === "number" ? burstRatio : 0,
+    stdDevMs,
+  });
+
+  return finalizeScore(drivers);
 }

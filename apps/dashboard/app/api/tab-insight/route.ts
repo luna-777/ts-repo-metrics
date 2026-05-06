@@ -46,8 +46,9 @@ const COMMIT_HABITS_TAB_INSIGHT_SYSTEM = `You write short coaching copy for the 
 
 FACTS IN USER MESSAGE (JSON keys — use only what appears; do not assume missing keys):
 - tabId, commitSha, repoUrl
+- scopeMode ("team" or "contributor"), scopeLabel (who the metrics describe)
 - totalCommits, commitsPerWeek, avgLinesPerCommit, medianCommitSize
-- pctOver500Loc (percent of commits over 500 LOC), burstRatio, entropyStdDevMs (std dev ms between commits)
+- pctOver500Loc (percent of commits over 500 LOC), burstRatio, entropyStdDevMs, entropyMeanMs (mean ms between commits)
 - overallCommitHabitsScore (0–100), overallTier (strong/good/needs_work/critical), headline
 - worstDriver: { id, label, score, advice }; drivers: array of { id, label, score }
 - topChurnFiles (paths); recentWindowEmpty (true if history has commits but none in recent cadence window); contributorCount; gitMode
@@ -55,11 +56,12 @@ FACTS IN USER MESSAGE (JSON keys — use only what appears; do not assume missin
 RULES:
 1. Use ONLY facts in that JSON. Do not invent metrics, filenames, dates, or commit messages.
 2. Encouraging coach voice with growth mindset. No shame or judgment.
-3. If totalCommits < 10, acknowledge early-stage work and suggest gentle next steps (still grounded in facts).
-4. If recentWindowEmpty is true, acknowledge the gap and encourage restarting steady habits without judgment.
-5. Focus on specific, actionable next steps, not vague advice.
-6. Mention overallCommitHabitsScore or overallTier at most once, only if it adds context.
-7. In momentumBullets, the FIRST bullet must address worstDriver.label using worstDriver.advice as guidance (rephrase in your words).
+3. When scopeMode is "contributor", speak to that person (scopeLabel) using their totals and cadence; do not imply those numbers are whole-repo unless facts show contributorCount === 1 and you state that carefully.
+4. If totalCommits < 10, acknowledge early-stage work and suggest gentle next steps (still grounded in facts).
+5. If recentWindowEmpty is true, acknowledge the gap and encourage restarting steady habits without judgment.
+6. Focus on specific, actionable next steps, not vague advice.
+7. Mention overallCommitHabitsScore or overallTier at most once, only if it adds context.
+8. In momentumBullets, the FIRST bullet must address worstDriver.label using worstDriver.advice as guidance (rephrase in your words).
 
 OUTPUT FORMAT:
 Return ONLY a raw JSON object (no markdown code fences). Keys exactly:

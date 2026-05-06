@@ -21,14 +21,21 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CircleHelp, HelpCircle } from "lucide-react";
-import type { RQId } from "@/lib/rqConfig";
+import type { ResultsConstructId } from "@/lib/resultsConstructConfig";
+import { RESULTS_CONSTRUCT_CONFIGS } from "@/lib/resultsConstructConfig";
 import type { ReactNode } from "react";
+
+const METRIC_CATEGORY_BADGE: Record<ResultsConstructId, string> = {
+  "commit-habits": RESULTS_CONSTRUCT_CONFIGS["commit-habits"].title,
+  testing: RESULTS_CONSTRUCT_CONFIGS.testing.title,
+  "code-quality": RESULTS_CONSTRUCT_CONFIGS["code-quality"].title,
+};
 
 interface MetricCardProps {
   label: string;
   value: string | number;
-  rq: RQId;
-  /** When true, hide the RQ1/RQ2/RQ3 badge (e.g. student-facing How we work tab). */
+  metricCategory: ResultsConstructId;
+  /** When true, hide the category badge (Commit Habits / Testing / Code Quality). */
   hideResearchBadge?: boolean;
   /** One-line context shown under the value (lighter text). */
   description?: string;
@@ -44,7 +51,7 @@ interface MetricCardProps {
 export function MetricCard({
   label,
   value,
-  rq,
+  metricCategory,
   hideResearchBadge = false,
   description,
   tooltip,
@@ -57,7 +64,7 @@ export function MetricCard({
         <div className="flex items-center gap-2">
           {hideResearchBadge ? null : (
             <Badge variant="secondary" className="text-xs">
-              {rq}
+              {METRIC_CATEGORY_BADGE[metricCategory]}
             </Badge>
           )}
           {metricHelp ? (
@@ -73,7 +80,7 @@ export function MetricCard({
                   <CircleHelp className="size-3.5" aria-hidden />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-lg">
+              <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-5xl">
                 <DialogHeader>
                   <DialogTitle>{metricHelp.title}</DialogTitle>
                 </DialogHeader>

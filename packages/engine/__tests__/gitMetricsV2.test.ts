@@ -101,6 +101,7 @@ chore: cleanup
       }),
       entropy: expect.objectContaining({
         stdDevTimeBetweenCommits: expect.any(Number),
+        meanTimeBetweenCommits: expect.any(Number),
       }),
       churn: expect.objectContaining({
         topByModifications: expect.any(Array),
@@ -128,6 +129,9 @@ chore: cleanup
 
     // D6: 2 refactor commits (refactor, cleanup)
     expect(result!.refactorBehavior.refactorCommitRatio).toBe(40);
+
+    // D3: gaps 5 min, 5 min, 110 min, 5 min between consecutive commits
+    expect(result!.entropy.meanTimeBetweenCommits).toBe(1_875_000);
 
     // D4: src/foo.ts modified in 4 commits (most)
     expect(result!.churn.topByModifications[0]!.file).toBe("src/foo.ts");
@@ -191,6 +195,11 @@ three
     expect(bob?.testLineChurn).toBe(0);
     expect(bob?.sourceLineChurn).toBe(100);
     expect(bob?.sourceFilesTouched).toBe(1);
+    expect(alice?.commitCalendar).not.toBeNull();
+    expect(alice?.commitCalendar?.grid.length).toBe(7);
+    expect(typeof alice?.commitsPerWeek).toBe("number");
+    expect(bob?.commitCalendar).not.toBeNull();
+    expect(typeof bob?.commitsPerWeek).toBe("number");
   });
 
   it("classifies test vs source churn paths", async () => {
@@ -215,5 +224,6 @@ m
     expect(a.sourceLineChurn).toBe(15);
     expect(a.testFilesTouched).toBe(1);
     expect(a.sourceFilesTouched).toBe(1);
+    expect(a.sourcePathsTouchedList).toEqual(["src/x.ts"]);
   });
 });

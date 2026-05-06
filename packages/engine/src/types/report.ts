@@ -145,9 +145,12 @@ export interface BurstStats {
   burstRatio: number;
 }
 
-/** D3: Temporal irregularity of commits. */
+/** D3: Temporal irregularity of commits (ms between consecutive commits). */
 export interface EntropyStats {
+  /** Population standard deviation of gaps between consecutive commits. */
   stdDevTimeBetweenCommits: number;
+  /** Mean of those gaps (typical time from one commit to the next). */
+  meanTimeBetweenCommits: number;
 }
 
 /** D4: Top files by churn. */
@@ -216,12 +219,21 @@ export interface ContributorActivity {
   testFilesTouched: number;
   /** Distinct non-test paths touched in commits (any path bucketed as production/source side). */
   sourceFilesTouched: number;
+  /**
+   * Distinct non-test paths this author touched (forward slashes), sorted.
+   * Lets the dashboard narrow symbol-level views to files seen in `git log --numstat`.
+   */
+  sourcePathsTouchedList?: string[];
   commitStats: CommitStats;
   burstStats: BurstStats;
   entropy: EntropyStats;
   churn: ChurnStats;
   testCoupling: TestCouplingStats;
   refactorBehavior: RefactorBehaviorStats;
+  /** Mon–Sun heatmap for this author (same shape as `GitMetricsV2.commitCalendar`). */
+  commitCalendar?: CommitCalendar | null;
+  /** Commits per week in the recent window (aligned with repo `git.commitsPerWeek`: last 13 weeks). */
+  commitsPerWeek?: number;
 }
 
 /** One language row from GitHub /repos/{owner}/{repo}/languages (bytes + share). */

@@ -28,13 +28,16 @@ export interface CommitHabitsMetricValues {
   contributorDisplayName: string | null;
   contributorEmail: string | null;
   totalCommits: number;
-  /** `null` when viewing a contributor (no per-author weekly rate). */
+  /** Recent-window commits/week (13-week window); repo row from `git`, contributor from `ContributorActivity.commitsPerWeek`. */
   commitsPerWeek: number | null;
   medianCommitSize: number;
   avgLinesPerCommit: number;
   largeCommitRatio: number;
   burstRatio: number;
+  /** Std. dev. of gaps between consecutive commits (ms). */
   entropy: number;
+  /** Mean gap between consecutive commits (ms). */
+  commitSpacingMeanMs: number;
   duplication: number;
   framework: string;
 }
@@ -62,6 +65,7 @@ export function getCommitHabitsMetricValues(
     largeCommitRatio: gv2?.commitStats?.pctOver500Loc ?? git?.largeCommitRatio ?? 0,
     burstRatio: gv2?.burstStats?.burstRatio ?? 0,
     entropy: gv2?.entropy?.stdDevTimeBetweenCommits ?? 0,
+    commitSpacingMeanMs: gv2?.entropy?.meanTimeBetweenCommits ?? 0,
     duplication,
     framework,
   });
@@ -84,12 +88,13 @@ export function getCommitHabitsMetricValues(
     contributorDisplayName: c.displayName,
     contributorEmail: c.authorEmail,
     totalCommits: c.commitCount,
-    commitsPerWeek: null,
+    commitsPerWeek: typeof c.commitsPerWeek === "number" ? c.commitsPerWeek : null,
     medianCommitSize: c.commitStats.medianCommitSize,
     avgLinesPerCommit,
     largeCommitRatio: c.commitStats.pctOver500Loc,
     burstRatio: c.burstStats.burstRatio,
     entropy: c.entropy.stdDevTimeBetweenCommits,
+    commitSpacingMeanMs: c.entropy.meanTimeBetweenCommits ?? 0,
     duplication,
     framework,
   };

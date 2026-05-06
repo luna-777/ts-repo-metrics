@@ -1,7 +1,7 @@
 "use client";
 
 import type { RepoReport } from "@/lib/reportTypes";
-import { BEHAVIORAL_LEARNING_FRAMING } from "@/lib/rqConfig";
+import { BEHAVIORAL_LEARNING_FRAMING } from "@/lib/resultsConstructConfig";
 
 function resolveGitTrustNote(report: RepoReport): string {
   const mode = report.git?.mode;

@@ -2,20 +2,18 @@
 
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Info, Maximize2 } from "lucide-react";
+import { Maximize2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { RQ2RiskVsVerificationBody } from "./metricHelpContent";
+import { RiskProfileHelpBody } from "./metricHelpContent";
+import { ConceptHelpDialog } from "../ConceptHelpDialog";
 
 type QuadrantPosition = "tl" | "tr" | "bl" | "br";
 
-interface RQ2QuadrantProps {
+interface TestingRiskQuadrantProps {
   /** Section heading (e.g. includes “whole repository” when scoped to a contributor). */
   sectionTitle?: string;
   riskIndex: number;
@@ -24,6 +22,13 @@ interface RQ2QuadrantProps {
   verificationLabel: "Low" | "High";
   /** When true, show that indices come from the whole-repository scan (contributor dropdown does not apply). */
   wholeRepositoryNote?: boolean;
+  /** Repo-wide counts backing structural risk (same basis as quadrant). */
+  structuralRiskSignals?: {
+    highComplexityFunctions: number;
+    longFunctions: number;
+  };
+  /** Snapshot test LOC ÷ source LOC (0–1), same basis as verification score. */
+  testLocShare?: number;
 }
 
 const QUADRANT_COPY: Record<
@@ -38,7 +43,7 @@ const QUADRANT_COPY: Record<
   tr: {
     title: "Low risk / High verification",
     description:
-      "Strong verification density relative to structural risk — the sweet spot for this coarse view.",
+      "Strong verification density relative to structural risk — a good balance for this summary view.",
   },
   bl: {
     title: "High risk / Low verification",
@@ -52,7 +57,7 @@ const QUADRANT_COPY: Record<
   },
 };
 
-/** UCSC Developer Analytics “YourRiskProfile” frame — dark panel + fixed quadrant tints. */
+/** Dark panel shell for the risk profile card (matches existing Testing tab styling). */
 const shell = "rounded-[14px] border border-[#262626] bg-[#171717] text-[#fafafa] shadow-sm";
 const matrixShell =
   "rounded-[10px] border border-[#262626] bg-[#0a0a0a] p-2 sm:p-2.5";
@@ -152,60 +157,69 @@ function cell(position: QuadrantPosition, active: QuadrantPosition, roomy: boole
   );
 }
 
-function RiskProfileInfoDialog() {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0 text-[#a1a1a1] hover:bg-transparent hover:text-[#fafafa]"
-          aria-label="How risk and verification indices are calculated"
-        >
-          <Info className="size-4" aria-hidden strokeWidth={1.75} />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Risk vs verification profile</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 text-sm text-foreground">
-          <p className="leading-relaxed text-muted-foreground">
-            How the quadrant combines structural risk (complexity + long functions) with verification
-            density (test LOC ratio).
-          </p>
-          <RQ2RiskVsVerificationBody />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-interface RQ2QuadrantInnerProps {
+interface TestingRiskQuadrantInnerProps {
   sectionTitle: string;
   wholeRepositoryNote: boolean;
   riskIndex: number;
   verificationIndex: number;
   riskLabel: "Low" | "High";
   verificationLabel: "Low" | "High";
+  structuralRiskSignals?: {
+    highComplexityFunctions: number;
+    longFunctions: number;
+  };
+  testLocShare?: number;
   roomy: boolean;
   headerTrailing: ReactNode;
 }
 
-function RQ2QuadrantInner({
+function formatScorePercent(index: number): string {
+  if (!Number.isFinite(index)) return "—";
+  return `${Math.round(Math.min(1, Math.max(0, index)) * 100)}%`;
+}
+
+function TestingRiskQuadrantInner({
   sectionTitle,
   wholeRepositoryNote,
   riskIndex,
   verificationIndex,
   riskLabel,
   verificationLabel,
+  structuralRiskSignals,
+  testLocShare,
   roomy,
   headerTrailing,
-}: RQ2QuadrantInnerProps) {
+}: TestingRiskQuadrantInnerProps) {
   const active = activePosition(riskLabel, verificationLabel);
   const narrative = narrativeForActive(active);
   const showImproveCta = active !== "tr";
+
+  const riskRaw =
+    structuralRiskSignals != null
+      ? structuralRiskSignals.highComplexityFunctions + structuralRiskSignals.longFunctions
+      : null;
+  const riskFootnote =
+    structuralRiskSignals != null && riskRaw != null ? (
+      <p className="mt-1.5 text-[11px] font-normal leading-snug text-[#737373]">
+        From <span className="tabular-nums text-[#a1a1a1]">{structuralRiskSignals.highComplexityFunctions}</span>{" "}
+        high-complexity +{" "}
+        <span className="tabular-nums text-[#a1a1a1]">{structuralRiskSignals.longFunctions}</span> long functions (
+        <span className="tabular-nums text-[#a1a1a1]">{riskRaw}</span> combined). Score is that count ÷ 20, capped
+        at 100%.
+      </p>
+    ) : null;
+
+  const sharePct =
+    typeof testLocShare === "number" && Number.isFinite(testLocShare)
+      ? parseFloat((testLocShare * 100).toFixed(1))
+      : null;
+  const verificationFootnote =
+    sharePct != null ? (
+      <p className="mt-1.5 text-[11px] font-normal leading-snug text-[#737373]">
+        Test code is <span className="tabular-nums text-[#a1a1a1]">{sharePct}%</span> of source LOC (repo snapshot).
+        Score is 5× that share, capped at 100% (reaches max when test share is at least 20%).
+      </p>
+    ) : null;
 
   return (
     <>
@@ -262,7 +276,7 @@ function RQ2QuadrantInner({
           )}
         >
           <div className="space-y-1.5">
-            <p className={sideLabel}>Risk index</p>
+            <p className={sideLabel}>Structural risk score</p>
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={cn(
@@ -270,7 +284,7 @@ function RQ2QuadrantInner({
                   riskLabel === "High" ? "text-[#ef4444]" : "text-[#22c55e]",
                 )}
               >
-                {riskIndex.toFixed(2)}
+                {formatScorePercent(riskIndex)}
               </span>
               <span
                 className={cn(
@@ -280,13 +294,14 @@ function RQ2QuadrantInner({
                     : "bg-[rgba(34,197,94,0.08)] text-[#22c55e]",
                 )}
               >
-                {riskLabel}
+                {riskLabel} band
               </span>
             </div>
+            {riskFootnote}
           </div>
 
           <div className="space-y-1.5">
-            <p className={sideLabel}>Verification index</p>
+            <p className={sideLabel}>Verification score</p>
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={cn(
@@ -294,7 +309,7 @@ function RQ2QuadrantInner({
                   verificationLabel === "High" ? "text-[#22c55e]" : "text-[#eab308]",
                 )}
               >
-                {verificationIndex.toFixed(2)}
+                {formatScorePercent(verificationIndex)}
               </span>
               <span
                 className={cn(
@@ -304,9 +319,10 @@ function RQ2QuadrantInner({
                     : "border border-[#eab308]/50 bg-[rgba(234,179,8,0.08)] text-[#eab308]",
                 )}
               >
-                {verificationLabel}
+                {verificationLabel} band
               </span>
             </div>
+            {verificationFootnote}
           </div>
 
           <div className="h-px w-full shrink-0 bg-[#262626]" aria-hidden />
@@ -333,45 +349,46 @@ function RQ2QuadrantInner({
   );
 }
 
-export function RQ2Quadrant({
+export function TestingRiskQuadrant({
   sectionTitle = "Your risk profile",
   riskIndex,
   verificationIndex,
   riskLabel,
   verificationLabel,
   wholeRepositoryNote = false,
-}: RQ2QuadrantProps) {
+  structuralRiskSignals,
+  testLocShare,
+}: TestingRiskQuadrantProps) {
   const [fullOpen, setFullOpen] = useState(false);
 
-  const innerProps: RQ2QuadrantInnerProps = {
+  const innerProps: TestingRiskQuadrantInnerProps = {
     sectionTitle,
     wholeRepositoryNote,
     riskIndex,
     verificationIndex,
     riskLabel,
     verificationLabel,
+    structuralRiskSignals,
+    testLocShare,
     roomy: false,
     headerTrailing: (
-      <>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0 text-[#a1a1a1] hover:bg-transparent hover:text-[#fafafa]"
-          aria-label="Open risk profile full screen"
-          onClick={() => setFullOpen(true)}
-        >
-          <Maximize2 className="size-4" aria-hidden strokeWidth={1.75} />
-        </Button>
-        <RiskProfileInfoDialog />
-      </>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="shrink-0 text-[#a1a1a1] hover:bg-transparent hover:text-[#fafafa]"
+        aria-label="Open risk profile full screen"
+        onClick={() => setFullOpen(true)}
+      >
+        <Maximize2 className="size-4" aria-hidden strokeWidth={1.75} />
+      </Button>
     ),
   };
 
   return (
     <>
       <div className={cn(shell, "p-5 sm:p-6")}>
-        <RQ2QuadrantInner {...innerProps} />
+        <TestingRiskQuadrantInner {...innerProps} />
       </div>
 
       <Dialog open={fullOpen} onOpenChange={setFullOpen}>
@@ -383,15 +400,17 @@ export function RQ2Quadrant({
           )}
         >
           <div className={cn(shell, "border-[#262626] m-4 rounded-[14px] border sm:m-6 sm:p-8")}>
-            <RQ2QuadrantInner
+            <TestingRiskQuadrantInner
               sectionTitle={sectionTitle}
               wholeRepositoryNote={wholeRepositoryNote}
               riskIndex={riskIndex}
               verificationIndex={verificationIndex}
               riskLabel={riskLabel}
               verificationLabel={verificationLabel}
+              structuralRiskSignals={structuralRiskSignals}
+              testLocShare={testLocShare}
               roomy
-              headerTrailing={<RiskProfileInfoDialog />}
+              headerTrailing={null}
             />
           </div>
         </DialogContent>

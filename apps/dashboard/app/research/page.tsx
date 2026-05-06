@@ -56,7 +56,7 @@ export default function ResearchPage() {
 
         <Card className="mb-4">
           <CardHeader>
-            <CardTitle className="text-base">RQ1 — Behavioral Shift</CardTitle>
+            <CardTitle className="text-base">RQ1 — Commit Habits (behavioral shift)</CardTitle>
             <CardDescription>Observable workflow behaviors</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
@@ -83,7 +83,7 @@ export default function ResearchPage() {
 
         <Card className="mb-4">
           <CardHeader>
-            <CardTitle className="text-base">RQ2 — Verification &amp; Engagement</CardTitle>
+            <CardTitle className="text-base">RQ2 — Testing (verification &amp; engagement)</CardTitle>
             <CardDescription>Verification effort and cognitive engagement</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
@@ -107,7 +107,7 @@ export default function ResearchPage() {
 
         <Card className="mb-4">
           <CardHeader>
-            <CardTitle className="text-base">RQ3 — Project Quality Outcomes</CardTitle>
+            <CardTitle className="text-base">RQ3 — Code Quality (project outcomes)</CardTitle>
             <CardDescription>Structural complexity and maintainability</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
@@ -136,15 +136,15 @@ export default function ResearchPage() {
           <CardContent className="pt-6 text-sm">
             <div className="flex flex-col items-center gap-2 font-medium sm:flex-row sm:justify-center sm:gap-4">
               <span className="rounded-md border bg-muted/50 px-4 py-2 text-center">
-                Behavioral Predictors (RQ1)
+                Behavioral predictors (RQ1 · Commit Habits)
               </span>
               <span className="text-muted-foreground">↓</span>
               <span className="rounded-md border bg-muted/50 px-4 py-2 text-center">
-                Verification Moderators (RQ2)
+                Verification moderators (RQ2 · Testing)
               </span>
               <span className="text-muted-foreground">↓</span>
               <span className="rounded-md border bg-muted/50 px-4 py-2 text-center">
-                Structural Outcomes (RQ3)
+                Structural outcomes (RQ3 · Code Quality)
               </span>
             </div>
             <p className="mt-4 text-muted-foreground">
@@ -211,7 +211,7 @@ export default function ResearchPage() {
             </ul>
             <p className="mt-3">
               Does not include diff-level churn. This mode ensures serverless compatibility
-              while preserving RQ1 signals.
+              while preserving Commit Habits (RQ1) workflow signals.
             </p>
           </CardContent>
         </Card>
@@ -256,7 +256,7 @@ export default function ResearchPage() {
               <li>Engine refactor complete</li>
               <li>Supabase persistence implemented</li>
               <li>GitHub API fallback for workflow metrics implemented</li>
-              <li>Dashboard aligned to RQ1–RQ3 constructs</li>
+              <li>Dashboard aligned with Commit Habits, Testing, and Code Quality views (RQ1–RQ3)</li>
               <li>Ingestion modes recorded for reproducibility</li>
             </ul>
             <p className="mt-4">

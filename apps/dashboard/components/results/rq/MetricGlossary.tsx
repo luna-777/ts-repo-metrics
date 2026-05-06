@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { CircleHelp } from "lucide-react";
+import { ChevronDown, ChevronUp, CircleHelp } from "lucide-react";
 import { MathBlock } from "@/components/research/MathBlock";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,8 +61,8 @@ type MetricBody = {
   formulaFirst?: boolean;
   /** Numbered heuristic criteria (e.g. React component labeling). */
   heuristicBullets?: string[];
-  /** Narrative bullets for RQ3 interpretation. */
-  rq3Bullets?: string[];
+  /** Narrative bullets for Code Quality interpretation. */
+  codeQualityBullets?: string[];
   /** Roadmap / dashboard note (e.g. sub-population toggle). */
   futureDashboardNote?: string;
 };
@@ -136,7 +136,7 @@ function metricBody(id: Phase2MetricId): MetricBody | null {
         citation:
           "Heuristic: @repo-metrics/engine (Tree-sitter). React maintainability context: Bollu, P. (2024). Tampere University.",
         description:
-          "Structural density: what percentage of analyzed functions live in the UI layer (React components) versus general logic. As a domain filter for RQ3, it helps isolate whether quality decay is repo-wide or concentrated in AI-assisted UI code.",
+          "Structural density: what percentage of analyzed functions live in the UI layer (React components) versus general logic. As a lens on the Code Quality view, it helps isolate whether quality decay is repo-wide or concentrated in AI-assisted UI code.",
         formulaFirst: true,
         formulas: [
           "\\text{React Component Share} = \\dfrac{\\text{Count of heuristic-matched components}}{\\text{Total number of functions}} \\times 100",
@@ -149,13 +149,13 @@ function metricBody(id: Phase2MetricId): MetricBody | null {
         ],
         significance:
           "Use the share together with per-file or per-component flags: if a modest fraction of functions are UI-labeled but most “red” rows land in .tsx files, you have evidence that AI-heavy UI work—not utilities—is driving hotspots.",
-        rq3Bullets: [
+        codeQualityBullets: [
           "AI “playground”: tools like Copilot or v0 are often used more for UI than for backend logic—cross-reference this share with where complexity or debt clusters to localize stickier technical debt.",
           "Normalizing complexity: avoids skew from thousands of tiny helpers vs. a few heavy components; supports comparing MI or Halstead in a React sub-population vs. pure-logic functions.",
           "Verification gap: UI is often validated in the browser; this label lets you ask whether review rigor drops for React-labeled functions even when integration tests pass.",
         ],
         futureDashboardNote:
-          "Dashboard roadmap: a sub-population toggle (React-labeled vs pure logic) for Phase 2 aggregates would make these comparisons explicit in one click.",
+          "Dashboard roadmap: a sub-population toggle (React-labeled vs pure logic) for these summaries would make comparisons explicit in one click.",
       };
     default:
       return null;
@@ -222,11 +222,11 @@ function MetricBodySections({
           <p className="text-foreground mb-1 font-medium">{significanceHeading}</p>
           <p className="text-muted-foreground leading-relaxed">{body.significance}</p>
         </div>
-        {body.rq3Bullets && body.rq3Bullets.length > 0 ? (
+        {body.codeQualityBullets && body.codeQualityBullets.length > 0 ? (
           <div className="space-y-2">
-            <p className="text-foreground font-medium">Why this matters for RQ3</p>
+            <p className="text-foreground font-medium">Why this matters for Code Quality</p>
             <ul className="text-muted-foreground list-disc space-y-2 pl-5 leading-relaxed">
-              {body.rq3Bullets.map((item) => (
+              {body.codeQualityBullets.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
@@ -249,11 +249,11 @@ function MetricBodySections({
         <p className="text-foreground mb-1 font-medium">{significanceHeading}</p>
         <p className="text-muted-foreground leading-relaxed">{body.significance}</p>
       </div>
-      {body.rq3Bullets && body.rq3Bullets.length > 0 ? (
+      {body.codeQualityBullets && body.codeQualityBullets.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-foreground font-medium">Why this matters for RQ3</p>
+          <p className="text-foreground font-medium">Why this matters for Code Quality</p>
           <ul className="text-muted-foreground list-disc space-y-2 pl-5 leading-relaxed">
-            {body.rq3Bullets.map((item) => (
+            {body.codeQualityBullets.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
@@ -284,12 +284,10 @@ export function Phase2MethodologyCard({
   return (
     <Card className={cn("border-muted-foreground/20", className)}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">The Research Lens</CardTitle>
+        <CardTitle className="text-base">How we interpret complexity</CardTitle>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          <strong className="text-foreground font-medium">The Research Lens: </strong>
-          We analyze software quality through three distinct but overlapping lenses to identify the{" "}
-          <strong className="text-foreground font-medium">verification gap</strong>
-          —where code complexity exceeds a student&apos;s ability to maintain or explain it.
+          We combine lexical, structural, and cognitive signals so you can see where code is hard to change or hard to
+          reason about—especially when complexity outpaces what reviews or tests typically catch.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -323,8 +321,14 @@ export function Phase2MethodologyCard({
         <details className="group rounded-md border border-primary/20 bg-primary/[0.03] px-4 py-3 text-sm">
           <summary className="text-foreground flex cursor-pointer list-none items-center justify-between gap-2 font-medium [&::-webkit-details-marker]:hidden">
             <span>Definitions &amp; formulas (metric glossary)</span>
-            <span className="text-muted-foreground text-xs font-normal group-open:hidden">Expand</span>
-            <span className="text-muted-foreground hidden text-xs font-normal group-open:inline">Collapse</span>
+            <ChevronDown
+              className="size-4 shrink-0 text-muted-foreground group-open:hidden"
+              aria-hidden
+            />
+            <ChevronUp
+              className="hidden size-4 shrink-0 text-muted-foreground group-open:inline"
+              aria-hidden
+            />
           </summary>
           <div className="mt-4 space-y-8 border-t border-border pt-4">
             {methodologyIds.map((id) => {
@@ -346,14 +350,16 @@ export function Phase2MethodologyCard({
         </details>
 
         <details className="group rounded-md border bg-muted/20 px-4 py-3 text-sm">
-          <summary className="cursor-pointer font-medium text-foreground list-none [&::-webkit-details-marker]:hidden flex items-center justify-between gap-2">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-medium text-foreground [&::-webkit-details-marker]:hidden">
             How to read this table
-            <span className="text-muted-foreground text-xs font-normal group-open:hidden">
-              Show
-            </span>
-            <span className="text-muted-foreground text-xs font-normal hidden group-open:inline">
-              Hide
-            </span>
+            <ChevronDown
+              className="size-4 shrink-0 text-muted-foreground group-open:hidden"
+              aria-hidden
+            />
+            <ChevronUp
+              className="hidden size-4 shrink-0 text-muted-foreground group-open:inline"
+              aria-hidden
+            />
           </summary>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground">
             <li>
@@ -423,7 +429,7 @@ export function MetricHelpButton({
         <DialogContent
           className={cn(
             "max-h-[min(90vh,40rem)] overflow-y-auto",
-            metricId === "reactShare" ? "sm:max-w-2xl" : "sm:max-w-xl",
+            metricId === "reactShare" ? "sm:max-w-[84rem]" : "sm:max-w-6xl",
           )}
           aria-labelledby={titleId}
           aria-describedby={descId}
@@ -448,7 +454,7 @@ export function MetricHelpButton({
 export function Phase2ReferencesFooter() {
   return (
     <div className="rounded-lg border p-4 text-sm space-y-3 text-muted-foreground">
-      <p className="font-medium text-foreground">References</p>
+      <p className="font-medium text-foreground">Sources &amp; citations</p>
       <ol className="list-decimal space-y-2 pl-5">
         <li>
           Imai, S. (2022). Is GitHub Copilot a substitute for human programmers? A pilot study on software quality.{" "}
@@ -467,12 +473,11 @@ export function Phase2ReferencesFooter() {
         </li>
       </ol>
       <p className="border-t pt-3 text-xs leading-relaxed">
-        <span className="text-foreground font-medium">Coleman vs. GRAD-AI: </span>
-        Repository-level <code className="rounded bg-muted px-1">maintainability.score</code> may follow a
-        Coleman-style composite from classic tooling; per-function{" "}
-        <code className="rounded bg-muted px-1">MI_norm</code> / <code className="rounded bg-muted px-1">MI_raw</code>{" "}
-        in this tab use the GRAD-AI (2025) coefficients so committee-facing charts stay aligned with current
-        AI-in-education instrumentation.
+        <span className="text-foreground font-medium">Older tooling vs. GRAD-AI MI: </span>
+        Repository-level <code className="rounded bg-muted px-1">maintainability.score</code> may come from a classic
+        Coleman-style composite in other tools. Per-function{" "}
+        <code className="rounded bg-muted px-1">MI_norm</code> / <code className="rounded bg-muted px-1">MI_raw</code> in
+        this dashboard use GRAD-AI (2025) coefficients so on-screen values stay comparable with the formulas above.
       </p>
     </div>
   );

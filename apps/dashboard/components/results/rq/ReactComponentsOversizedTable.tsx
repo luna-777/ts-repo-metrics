@@ -49,15 +49,15 @@ function sheetJsxClass(depth: number): string {
   );
 }
 
-interface RQ3ReactOversizedComponentsTableProps {
+interface ReactComponentsOversizedTableProps {
   components: ReactComponentMetrics[];
   className?: string;
 }
 
-export function RQ3ReactOversizedComponentsTable({
+export function ReactComponentsOversizedTable({
   components,
   className,
-}: RQ3ReactOversizedComponentsTableProps) {
+}: ReactComponentsOversizedTableProps) {
   const sorted = useMemo(
     () => [...components].sort((a, b) => b.lines - a.lines),
     [components],
@@ -75,15 +75,15 @@ export function RQ3ReactOversizedComponentsTable({
   return (
     <>
       <section
-        id="rq3-react-oversized"
-        aria-labelledby="rq3-react-oversized-heading"
+        id="react-components-oversized"
+        aria-labelledby="react-components-oversized-heading"
         className={className}
       >
         <Card>
           <CardHeader className="space-y-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-1">
-                <CardTitle id="rq3-react-oversized-heading" className="text-lg">
+                <CardTitle id="react-components-oversized-heading" className="text-lg">
                   Top Oversized Components
                 </CardTitle>
                 <p className="max-w-2xl text-sm leading-snug text-muted-foreground">

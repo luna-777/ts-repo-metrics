@@ -328,7 +328,7 @@ function MetricsTab() {
       <Card>
         <CardHeader>
           <CardTitle>Commit & Workflow Practices</CardTitle>
-          <CardDescription>RQ1 construct</CardDescription>
+          <CardDescription>Commit Habits tab</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <ul className="list-inside list-disc space-y-1">
@@ -344,7 +344,7 @@ function MetricsTab() {
       <Card>
         <CardHeader>
           <CardTitle>Verification Discipline</CardTitle>
-          <CardDescription>RQ2 construct</CardDescription>
+          <CardDescription>Testing tab</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <ul className="list-inside list-disc space-y-1">
@@ -359,7 +359,7 @@ function MetricsTab() {
       <Card>
         <CardHeader>
           <CardTitle>Project Quality</CardTitle>
-          <CardDescription>RQ3 construct</CardDescription>
+          <CardDescription>Code Quality tab</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <ul className="list-inside list-disc space-y-1">

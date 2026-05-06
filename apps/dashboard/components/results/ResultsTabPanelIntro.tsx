@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Info } from "lucide-react";
 import { CoachInsightTone } from "@/components/results/coach/CoachInsightTone";
 import type { RepoReport } from "@/lib/reportTypes";
@@ -7,11 +8,23 @@ import { tryGetPhase2Summary } from "@/lib/phase2Summary";
 import { RESULTS_TAB, type ResultsTabId } from "@/lib/resultsNavigation";
 import { cn } from "@/lib/utils";
 import { CommitHabitsTabInsightIntro } from "./CommitHabitsTabInsightIntro";
+import {
+  COMMIT_HABITS_SCOPE_TEAM,
+  findContributorForScope,
+  type CommitHabitsScopeId,
+} from "@/lib/commitHabitsScopeMetrics";
+import { getTestingScopeMetricValues } from "@/lib/testingScopeMetrics";
+import { resolveCodeQualityScope } from "@/lib/codeQualityScope";
+import { UI_COMPLEXITY_CRITICAL_GT } from "@/lib/uiComplexityThresholds";
 
 interface ResultsTabPanelIntroProps {
   activeTab: string;
   report: RepoReport;
   className?: string;
+  /** Scoped contributor for Testing tab intro (aligned with “View metrics for”). */
+  testingScopeId?: CommitHabitsScopeId;
+  /** Scoped contributor for Code Quality tab intro. */
+  codeQualityScopeId?: CommitHabitsScopeId;
 }
 
 function totalCommitsFromReport(report: RepoReport): number | null {
@@ -22,28 +35,77 @@ function totalCommitsFromReport(report: RepoReport): number | null {
   return sum > 0 ? sum : null;
 }
 
-function TestingVerificationIntro({ report, className }: { report: RepoReport; className?: string }) {
-  const testFiles = report.profile?.testFiles ?? 0;
-  const pct = report.gitMetricsV2?.testCoupling?.pctCommitsTouchingTests ?? 0;
-  const profile = report.profile;
-  const testLocRatio =
-    profile && profile.sourceLOC > 0 ? profile.testLOC / profile.sourceLOC : 0;
+function TestingVerificationIntro({
+  report,
+  testingScopeId = COMMIT_HABITS_SCOPE_TEAM,
+  className,
+}: {
+  report: RepoReport;
+  testingScopeId?: CommitHabitsScopeId;
+  className?: string;
+}) {
+  const mv = getTestingScopeMetricValues(report, testingScopeId);
+  const isContributor = mv.mode === "contributor";
+  const scopeLabel = mv.contributorDisplayName?.trim() || "This contributor";
+  const fromGitChurn = isContributor && mv.locSource === "gitChurn";
+
+  const pct = mv.pctCommitsTouchingTests;
+  const testLocRatio = mv.testLocRatio;
+  const snapshotTestFiles = report.profile?.testFiles ?? 0;
+  /** Distinct test paths (git churn) vs. test files in tree snapshot */
+  const testCountForCopy = fromGitChurn ? mv.testFiles : snapshotTestFiles;
+  const testCountLabel = fromGitChurn
+    ? `distinct test path${testCountForCopy === 1 ? "" : "s"} they touched in parsed history`
+    : `test file${snapshotTestFiles === 1 ? "" : "s"} in the repo snapshot`;
+
+  const authorRow =
+    isContributor && testingScopeId
+      ? findContributorForScope(report, testingScopeId)
+      : undefined;
+  const authorCommits =
+    isContributor &&
+    typeof authorRow?.commitCount === "number" &&
+    authorRow.commitCount > 0
+      ? authorRow.commitCount
+      : null;
+
   const totalCommits = totalCommitsFromReport(report);
-  const commitsNoun =
-    totalCommits != null
+  const commitsNoun = isContributor
+    ? authorCommits != null
+      ? `${authorCommits} commit${authorCommits === 1 ? "" : "s"} for ${scopeLabel}`
+      : `${scopeLabel}’s commits in this analysis`
+    : totalCommits != null
       ? `${totalCommits} commit${totalCommits === 1 ? "" : "s"}`
       : "your commits";
 
   const needsTestingFocus = pct < 10 || testLocRatio < 0.12;
 
   const detailSentence = (() => {
-    if (testFiles === 0 && pct <= 0) {
+    if (fromGitChurn) {
+      if (testCountForCopy === 0 && pct <= 0) {
+        return `${scopeLabel} has no test-path churn in parsed history, and none of ${commitsNoun} include test file changes.`;
+      }
+      if (pct <= 0) {
+        return `${scopeLabel} touched ${testCountForCopy} ${testCountLabel}, but none of ${commitsNoun} include test-path changes—tests may live in files they have not modified yet.`;
+      }
+      return `${scopeLabel} touched ${testCountForCopy} ${testCountLabel}, and about ${Math.round(pct)}% of ${commitsNoun} touch tests—there is still room to make verification a default part of their changes.`;
+    }
+    if (isContributor && !fromGitChurn) {
+      if (snapshotTestFiles === 0 && pct <= 0) {
+        return `The snapshot shows no test files yet, and none of ${commitsNoun} include test-path changes (per-author coupling still reflects their commits).`;
+      }
+      if (pct <= 0) {
+        return `The repo snapshot lists ${snapshotTestFiles} test file${snapshotTestFiles === 1 ? "" : "s"}, but none of ${commitsNoun} touch test paths—metrics below use the same snapshot for tree size.`;
+      }
+      return `The snapshot lists ${snapshotTestFiles} test file${snapshotTestFiles === 1 ? "" : "s"}, and about ${Math.round(pct)}% of ${commitsNoun} touch tests.`;
+    }
+    if (snapshotTestFiles === 0 && pct <= 0) {
       return `The snapshot shows no test files yet, and none of ${commitsNoun} include test-path changes.`;
     }
     if (pct <= 0) {
-      return `You have ${testFiles} test file${testFiles === 1 ? "" : "s"} but none of your recent commits are actively adding to them.`;
+      return `You have ${snapshotTestFiles} test file${snapshotTestFiles === 1 ? "" : "s"} but none of ${commitsNoun} are actively adding to them.`;
     }
-    return `You have ${testFiles} test file${testFiles === 1 ? "" : "s"}, and about ${Math.round(pct)}% of ${commitsNoun} touch tests—there is still room to make verification a default part of every change.`;
+    return `You have ${snapshotTestFiles} test file${snapshotTestFiles === 1 ? "" : "s"}, and about ${Math.round(pct)}% of ${commitsNoun} touch tests—there is still room to make verification a default part of every change.`;
   })();
 
   if (!needsTestingFocus) {
@@ -55,8 +117,18 @@ function TestingVerificationIntro({ report, className }: { report: RepoReport; c
         bodyClassName="text-foreground/90 font-normal"
       >
         <p>
-          Verification looks healthy relative to this snapshot: test share and commits touching tests are
-          in a solid range. Use Core signals below to spot drift over the next analyses.
+          {isContributor ? (
+            <>
+              For <strong>{scopeLabel}</strong>, verification signals look healthy on this analysis: their
+              test-activity proxy and share of commits touching tests are in a solid range. Use Core
+              signals below for detail (tree-wide scans still apply where noted).
+            </>
+          ) : (
+            <>
+              Verification looks healthy relative to this snapshot: test share and commits touching tests are
+              in a solid range. Use Core signals below to spot drift over the next analyses.
+            </>
+          )}
         </p>
       </CoachInsightTone>
     );
@@ -70,26 +142,48 @@ function TestingVerificationIntro({ report, className }: { report: RepoReport; c
       bodyClassName="text-foreground/90 font-normal"
     >
       <p>
-        Testing is your most important improvement area right now. {detailSentence} The good news: your
-        commit discipline is already strong — you just need to attach testing to that existing habit. Here
-        is what the data shows:
+        {isContributor ? (
+          <>
+            Testing stands out as a growth area for <strong>{scopeLabel}</strong> on this analysis.{" "}
+            {detailSentence} Use Core signals and commits-touching-tests cards below to turn that into a
+            steady habit.
+          </>
+        ) : (
+          <>
+            Testing is your most important improvement area right now. {detailSentence} The good news: your
+            commit discipline is already strong — you just need to attach testing to that existing habit.
+            Here is what the data shows:
+          </>
+        )}
       </p>
     </CoachInsightTone>
   );
 }
 
-function CodeQualityPanelIntro({ report, className }: { report: RepoReport; className?: string }) {
+function CodeQualityPanelIntro({
+  report,
+  codeQualityScopeId = COMMIT_HABITS_SCOPE_TEAM,
+  className,
+}: {
+  report: RepoReport;
+  codeQualityScopeId?: CommitHabitsScopeId;
+  className?: string;
+}) {
+  const scope = useMemo(
+    () => resolveCodeQualityScope(report, codeQualityScopeId ?? COMMIT_HABITS_SCOPE_TEAM),
+    [report, codeQualityScopeId],
+  );
   const maint = report.maintainability?.score ?? 0;
-  const highCx = report.complexity?.highComplexityFunctions ?? 0;
-  const maxCx = report.complexity?.max ?? 0;
+  const highCx = scope.complexity.highComplexityFunctions;
+  const maxCx = scope.complexity.max;
   const dup = report.duplication?.percentage ?? 0;
   const hasMaint = Boolean(report.maintainability);
 
   const looksStrong =
-    (!hasMaint || maint >= 55) && highCx <= 10 && maxCx <= 25 && dup <= 10;
+    (!hasMaint || maint >= 55) && highCx <= 10 && maxCx <= UI_COMPLEXITY_CRITICAL_GT && dup <= 10;
 
   const needsAttention =
-    (hasMaint && maint < 40) || highCx > 25 || maxCx > 35 || dup > 20;
+    (hasMaint && maint < 40) || highCx > 20 || maxCx > UI_COMPLEXITY_CRITICAL_GT || dup > 20;
 
   if (needsAttention) {
     return (
@@ -237,9 +331,9 @@ function CodeComplexityPanelIntro({ report, className }: { report: RepoReport; c
         bodyClassName="text-foreground/90 font-normal"
       >
         <p>
-          Phase 2 lexical and cognitive metrics appear here once functions include Halstead volume,
-          cognitive complexity, and GRAD-AI-style <code className="rounded bg-muted px-1">MI_norm</code>. Re-run
-          with the current <code className="rounded bg-muted px-1">@repo-metrics/engine</code> if this tab looks empty.
+          Lexical and cognitive metrics show up here after analysis attaches Halstead volume, cognitive complexity, and
+          GRAD-AI-style <code className="rounded bg-muted px-1">MI_norm</code> to each function. Re-run with the current{" "}
+          <code className="rounded bg-muted px-1">@repo-metrics/engine</code> if this tab looks empty.
         </p>
       </CoachInsightTone>
     );
@@ -356,9 +450,21 @@ function tabBody(activeTab: string): { title: string; body: string } | null {
   }
 }
 
-export function ResultsTabPanelIntro({ activeTab, report, className }: ResultsTabPanelIntroProps) {
+export function ResultsTabPanelIntro({
+  activeTab,
+  report,
+  className,
+  testingScopeId,
+  codeQualityScopeId,
+}: ResultsTabPanelIntroProps) {
   if (activeTab === RESULTS_TAB.testing) {
-    return <TestingVerificationIntro report={report} className={className} />;
+    return (
+      <TestingVerificationIntro
+        report={report}
+        className={className}
+        testingScopeId={testingScopeId ?? COMMIT_HABITS_SCOPE_TEAM}
+      />
+    );
   }
 
   if (activeTab === RESULTS_TAB.commitHabits) {
@@ -366,7 +472,13 @@ export function ResultsTabPanelIntro({ activeTab, report, className }: ResultsTa
   }
 
   if (activeTab === RESULTS_TAB.codeQuality) {
-    return <CodeQualityPanelIntro report={report} className={className} />;
+    return (
+      <CodeQualityPanelIntro
+        report={report}
+        className={className}
+        codeQualityScopeId={codeQualityScopeId ?? COMMIT_HABITS_SCOPE_TEAM}
+      />
+    );
   }
 
   if (activeTab === RESULTS_TAB.reactComponents) {

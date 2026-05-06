@@ -9,6 +9,8 @@ import {
 import type { RepoReport } from "@/lib/reportTypes";
 import { RESULTS_TAB } from "@/lib/resultsNavigation";
 import { buildCommitHabitsInsightFacts, useTabInsight } from "@/lib/tabInsights";
+import type { CommitHabitsScopeId } from "@/lib/commitHabitsScopeMetrics";
+import { COMMIT_HABITS_SCOPE_TEAM } from "@/lib/commitHabitsScopeMetrics";
 import type { CommitHabitsInsightFacts } from "@/lib/tabInsights/commitHabitsInsightFacts";
 import type { CommitHabitsInsightPayload } from "@/lib/tabInsights/types";
 
@@ -25,13 +27,18 @@ export const CommitHabitsTabInsightContext =
 export function CommitHabitsTabInsightProvider({
   report,
   enabled,
+  commitHabitsScopeId,
   children,
 }: {
   report: RepoReport;
   enabled: boolean;
+  commitHabitsScopeId?: CommitHabitsScopeId;
   children: ReactNode;
 }) {
-  const facts = useMemo(() => buildCommitHabitsInsightFacts(report), [report]);
+  const facts = useMemo(
+    () => buildCommitHabitsInsightFacts(report, commitHabitsScopeId ?? COMMIT_HABITS_SCOPE_TEAM),
+    [report, commitHabitsScopeId],
+  );
   const factsRecord = useMemo(
     () => ({ ...facts }) as Record<string, unknown>,
     [facts],

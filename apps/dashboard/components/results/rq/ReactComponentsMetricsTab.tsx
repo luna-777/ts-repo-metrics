@@ -1,18 +1,18 @@
 "use client";
 
 import { useMemo } from "react";
-import { RQ3ReactAdditionalSignalsSection } from "./RQ3ReactAdditionalSignalsSection";
-import { RQ3ReactCoreSignalsSection } from "./RQ3ReactCoreSignalsSection";
-import { RQ3ReactImprovementSection } from "./RQ3ReactImprovementSection";
-import { RQ3ReactOversizedComponentsTable } from "./RQ3ReactOversizedComponentsTable";
+import { ReactComponentsAdditionalSignalsSection } from "./ReactComponentsAdditionalSignalsSection";
+import { ReactComponentsCoreSignalsSection } from "./ReactComponentsCoreSignalsSection";
+import { ReactComponentsImprovementSection } from "./ReactComponentsImprovementSection";
+import { ReactComponentsOversizedTable } from "./ReactComponentsOversizedTable";
 import type { RepoReport } from "@/lib/reportTypes";
 
-interface RQ3ReactTabProps {
+interface ReactComponentsMetricsTabProps {
   report: RepoReport;
   onOpenCodeQualityTab?: () => void;
 }
 
-export function RQ3ReactTab({ report, onOpenCodeQualityTab }: RQ3ReactTabProps) {
+export function ReactComponentsMetricsTab({ report, onOpenCodeQualityTab }: ReactComponentsMetricsTabProps) {
   const rm = report.reactMetrics;
   const tsxCount = report.profile?.tsxFiles ?? 0;
 
@@ -47,10 +47,10 @@ export function RQ3ReactTab({ report, onOpenCodeQualityTab }: RQ3ReactTabProps) 
 
   return (
     <div className="space-y-8">
-      <RQ3ReactCoreSignalsSection reactMetrics={rm} />
-      <RQ3ReactAdditionalSignalsSection reactMetrics={rm} />
-      <RQ3ReactOversizedComponentsTable components={rm.components} />
-      <RQ3ReactImprovementSection
+      <ReactComponentsCoreSignalsSection reactMetrics={rm} />
+      <ReactComponentsAdditionalSignalsSection reactMetrics={rm} />
+      <ReactComponentsOversizedTable components={rm.components} />
+      <ReactComponentsImprovementSection
         topComponent={topBySloc}
         onOpenCodeQualityTab={onOpenCodeQualityTab}
       />

@@ -4,8 +4,8 @@ import type { RepoReport } from "@/lib/reportTypes";
 import type { CommitHabitsMetricValues } from "@/lib/commitHabitsScopeMetrics";
 import { CoreSignalCard, type CoreSignalTier } from "./CoreSignalsPrimitives";
 import {
-  RQ1AvgLinesPerCommitBody,
-  RQ1DuplicationPercentBody,
+  CommitHabitsAvgLinesPerCommitBody,
+  CommitHabitsDuplicationPercentBody,
 } from "./metricHelpContent";
 import { MetricCard } from "../MetricCard";
 
@@ -51,6 +51,45 @@ function tierEntropy(entropy: number, hasData: boolean): CoreSignalTier {
   if (entropy < 3_600_000) return "strong";
   if (entropy < 86_400_000) return "good";
   return "needs_work";
+}
+
+/** Human-readable band for commit spacing (badge text). */
+function commitSpacingBandLabel(tier: CoreSignalTier): string {
+  switch (tier) {
+    case "no_data":
+      return "No timing data";
+    case "strong":
+      return "Very regular spacing";
+    case "good":
+      return "Moderately variable";
+    case "needs_work":
+      return "Highly irregular";
+    case "critical":
+      return "Highly irregular";
+    default:
+      return "";
+  }
+}
+
+/** Compact duration from milliseconds (for gaps between commits). */
+function formatGapDurationMs(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  if (ms === 0) return "0";
+  const s = ms / 1000;
+  if (s < 90) return `${Math.round(s)} sec`;
+  const m = s / 60;
+  if (m < 90) return `${Math.round(m)} min`;
+  const h = m / 60;
+  if (h < 48) {
+    const whole = Math.floor(h);
+    const remM = Math.round((h - whole) * 60);
+    if (whole === 0) return `${remM} min`;
+    return remM > 0 ? `${whole} h ${remM} m` : `${whole} h`;
+  }
+  const d = h / 24;
+  const wholeD = Math.floor(d);
+  const remH = Math.round((d - wholeD) * 24);
+  return remH > 0 ? `${wholeD} d ${remH} h` : `${wholeD} d`;
 }
 
 function tierBurst(pct: number, hasData: boolean): CoreSignalTier {
@@ -134,17 +173,26 @@ function describeMedian(lines: number, tier: CoreSignalTier, hasData: boolean): 
   return "Median churn per commit is high. Consider smaller steps so feedback arrives earlier.";
 }
 
-function describeEntropyMs(entropy: number, tier: CoreSignalTier, hasData: boolean): string {
+function describeEntropyMs(
+  stdDevMs: number,
+  meanMs: number,
+  tier: CoreSignalTier,
+  hasData: boolean,
+): string {
   if (!hasData) {
-    return "Timing variability needs consecutive commit timestamps from full git history.";
+    return "Timing patterns need consecutive commit timestamps from full git history.";
   }
+  const meanPhrase =
+    meanMs > 0
+      ? ` Typical time from one commit to the next is about ${formatGapDurationMs(meanMs)}.`
+      : "";
   if (tier === "strong") {
-    return "Gaps between commits are fairly regular—rhythm is predictable for the team.";
+    return `Gaps between commits are fairly similar (low spread in timing).${meanPhrase}`;
   }
   if (tier === "good") {
-    return "Some spread in when commits land—normal for mixed priorities.";
+    return `Some spread in when commits land—common when priorities shift.${meanPhrase}`;
   }
-  return "Very irregular timing—either bursty work or sparse pushes. Check batch size and integration.";
+  return `Very uneven spacing between commits—bursts and long quiet stretches.${meanPhrase}`;
 }
 
 function describeBurst(pct: number, tier: CoreSignalTier, hasData: boolean): string {
@@ -160,27 +208,23 @@ function describeBurst(pct: number, tier: CoreSignalTier, hasData: boolean): str
   return "Many commits fall in burst clusters; consider spacing work or coordinating with reviewers.";
 }
 
-const cardProps = { rq: "RQ1" as const, hideResearchBadge: true };
+const COMMIT_SPACING_TITLE_INFO =
+  "We look at the time between each commit and the next. The large number shows how much that timing varies: if it is high, you often alternate between busy stretches and long gaps; if it is low, your commits land at a more steady pace. The line underneath is the usual gap—roughly how long you typically wait between commits. It is fine if this shifts with how your team works; use it as a rhythm check, not a grade.";
 
-export function RQ1CoreSignalsSection({
-  report,
+const cardProps = { metricCategory: "commit-habits" as const, hideResearchBadge: true };
+
+export function CommitHabitsCoreSignalsSection({
   mv,
 }: {
-  report: RepoReport;
   mv: CommitHabitsMetricValues;
 }) {
-  const teamCpw =
-    mv.mode === "team"
-      ? mv.commitsPerWeek
-      : report.git?.commitsPerWeek ?? null;
-  const cpwTier = tierCommitsPerWeek(teamCpw);
+  const cpwForCard = mv.commitsPerWeek;
+  const cpwTier = tierCommitsPerWeek(cpwForCard);
   const totalTier = tierTotalCommits(mv.totalCommits);
   const largeTier = tierLargeCommitRatio(mv.largeCommitRatio);
 
   const cpwValue =
-    teamCpw == null || !Number.isFinite(teamCpw)
-      ? "—"
-      : formatNumber(teamCpw);
+    cpwForCard == null || !Number.isFinite(cpwForCard) ? "—" : formatNumber(cpwForCard);
 
   return (
     <section id="commit-habits-core-signals" aria-labelledby="commit-habits-core-signals-heading" className="space-y-4">
@@ -198,7 +242,7 @@ export function RQ1CoreSignalsSection({
           title="Commits Per Week"
           tier={cpwTier}
           value={cpwValue}
-          description={describeCommitsPerWeek(teamCpw, cpwTier, mv.mode === "contributor")}
+          description={describeCommitsPerWeek(cpwForCard, cpwTier, mv.mode === "contributor")}
         />
         <CoreSignalCard
           title="Large Commit Ratio"
@@ -217,7 +261,7 @@ export function RQ1CoreSignalsSection({
   );
 }
 
-export function RQ1AdditionalSignalsSection({
+export function CommitHabitsAdditionalSignalsSection({
   mv,
   quality,
 }: {
@@ -227,6 +271,10 @@ export function RQ1AdditionalSignalsSection({
   const medTier = tierMedianCommitSize(mv.medianCommitSize, quality.median);
   const entTier = tierEntropy(mv.entropy, quality.entropy);
   const burstTier = tierBurst(mv.burstRatio, quality.burst);
+
+  const spacingStdLabel = quality.entropy ? formatGapDurationMs(mv.entropy) : "—";
+  const spacingMeanLabel =
+    quality.entropy && mv.commitSpacingMeanMs > 0 ? formatGapDurationMs(mv.commitSpacingMeanMs) : null;
 
   return (
     <section aria-labelledby="commit-habits-additional-signals-heading" className="space-y-4">
@@ -241,10 +289,18 @@ export function RQ1AdditionalSignalsSection({
           description={describeMedian(mv.medianCommitSize, medTier, quality.median)}
         />
         <CoreSignalCard
-          title="Commit Entropy (std dev ms)"
+          title="Commit spacing"
           tier={entTier}
-          value={quality.entropy ? formatNumber(mv.entropy) : "—"}
-          description={describeEntropyMs(mv.entropy, entTier, quality.entropy)}
+          badgeLabel={commitSpacingBandLabel(entTier)}
+          titleInfo={COMMIT_SPACING_TITLE_INFO}
+          value={quality.entropy ? spacingStdLabel : "—"}
+          secondaryValue={spacingMeanLabel ? `Typical gap: ${spacingMeanLabel}` : undefined}
+          description={describeEntropyMs(
+            mv.entropy,
+            mv.commitSpacingMeanMs,
+            entTier,
+            quality.entropy,
+          )}
         />
         <CoreSignalCard
           title="Burst Ratio"
@@ -263,7 +319,7 @@ export function RQ1AdditionalSignalsSection({
           tooltip="Mean total lines changed per commit."
           metricHelp={{
             title: "Average lines per commit",
-            children: <RQ1AvgLinesPerCommitBody />,
+            children: <CommitHabitsAvgLinesPerCommitBody />,
           }}
         />
         <MetricCard
@@ -273,7 +329,7 @@ export function RQ1AdditionalSignalsSection({
           tooltip="Repository-wide duplicate-line share from jscpd (same scan as elsewhere in this app)."
           metricHelp={{
             title: "Duplication percentage",
-            children: <RQ1DuplicationPercentBody />,
+            children: <CommitHabitsDuplicationPercentBody />,
           }}
         />
         <MetricCard

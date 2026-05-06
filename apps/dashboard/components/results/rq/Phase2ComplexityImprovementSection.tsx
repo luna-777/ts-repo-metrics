@@ -88,7 +88,7 @@ export function Phase2ComplexityImprovementSection({
       </ol>
 
       <p className="mt-5">
-        <a href="#phase2-full-table" className={cn("text-sm font-normal", linkButtonClass)}>
+        <a href="#per-function-metrics-table" className={cn("text-sm font-normal", linkButtonClass)}>
           → Explore all Code Complexity metrics in detail
         </a>
       </p>
