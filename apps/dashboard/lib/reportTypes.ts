@@ -199,6 +199,12 @@ export interface RepoReport {
     churn: { topByModifications: unknown[]; topByLinesChanged: unknown[] };
     refactorBehavior: { refactorCommitRatio: number };
     testCoupling: { pctCommitsTouchingTests: number; testToFeatureCommitRatio: number };
+    /** Mon–Sun × week columns, when the analyzer had commit timestamps (local git). */
+    commitCalendar?: {
+      grid: number[][];
+      columnWeekStarts: string[];
+      busiestWeekdayIndex: number | null;
+    } | null;
   } | null;
   contributors?: ContributorActivity[];
   github?: GitHubRepositoryMeta;

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 const toneStyles = {
   positive: "border-l-green-500 bg-green-500/5",
   concern: "border-l-red-500 bg-red-500/5",
+  informational: "border-l-primary bg-primary/5",
 } as const;
 
 export type CoachInsightToneKind = keyof typeof toneStyles;

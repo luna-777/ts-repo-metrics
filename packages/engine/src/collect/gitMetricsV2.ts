@@ -18,12 +18,89 @@ import type {
   TestCouplingStats,
   RefactorBehaviorStats,
   ContributorActivity,
+  CommitCalendar,
 } from "../types/report.js";
 
 export type { GitMetricsV2, ContributorActivity } from "../types/report.js";
 
 const LARGE_COMMIT_500 = 500;
 const LARGE_COMMIT_1000 = 1000;
+/** GitHub-style columns: one per week, ~12 months. */
+const HEATMAP_WEEK_COLUMNS = 52;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function utcMondayStart(tsMs: number): number {
+  const d = new Date(tsMs);
+  const day = d.getUTCDay(); // 0 Sun .. 6 Sat
+  const mondayOffset = (day + 6) % 7; // Mon -> 0
+  d.setUTCDate(d.getUTCDate() - mondayOffset);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function isoDateUtc(tsMs: number): string {
+  const d = new Date(tsMs);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Build a Mon–Sun × week columns grid (GitHub-style) for the last `weekCount` weeks ending at the
+ * week that contains the latest commit.
+ */
+function buildCommitCalendar(
+  commits: ParsedCommit[],
+  weekCount: number,
+): CommitCalendar | null {
+  if (commits.length === 0) return null;
+
+  const latestSec = commits.reduce((a, c) => Math.max(a, c.timestamp), 0);
+  const latestMs = latestSec * 1000;
+  const endMonday = utcMondayStart(latestMs);
+  const startMonday = endMonday - (weekCount - 1) * 7 * MS_PER_DAY;
+
+  const grid: number[][] = Array.from({ length: 7 }, () =>
+    Array.from({ length: weekCount }, () => 0),
+  );
+  const weekdayTotals = [0, 0, 0, 0, 0, 0, 0];
+
+  for (const c of commits) {
+    const tsMs = c.timestamp * 1000;
+    const cm = utcMondayStart(tsMs);
+    if (cm < startMonday || cm > endMonday) continue;
+    const w = Math.round((cm - startMonday) / (7 * MS_PER_DAY));
+    if (w < 0 || w >= weekCount) continue;
+
+    const day = new Date(tsMs);
+    const weekdayFromMonday = (day.getUTCDay() + 6) % 7;
+    grid[weekdayFromMonday]![w] = (grid[weekdayFromMonday]![w] ?? 0) + 1;
+    weekdayTotals[weekdayFromMonday] = (weekdayTotals[weekdayFromMonday] ?? 0) + 1;
+  }
+
+  const columnWeekStarts: string[] = [];
+  for (let w = 0; w < weekCount; w++) {
+    columnWeekStarts.push(isoDateUtc(startMonday + w * 7 * MS_PER_DAY));
+  }
+
+  let busiestWeekdayIndex: number | null = null;
+  let maxD = -1;
+  for (let d = 0; d < 7; d++) {
+    if (weekdayTotals[d]! > maxD) {
+      maxD = weekdayTotals[d]!;
+      busiestWeekdayIndex = d;
+    }
+  }
+  if (maxD <= 0) busiestWeekdayIndex = null;
+
+  return {
+    grid,
+    columnWeekStarts,
+    busiestWeekdayIndex,
+  };
+}
+
 const BURST_WINDOW_MS = 30 * 60 * 1000;
 const BURST_MIN_COMMITS = 3;
 const CHURN_TOP_N = 10;
@@ -270,6 +347,7 @@ function buildGitMetricsV2FromCommits(commits: ParsedCommit[]): GitMetricsV2 {
     churn: computeChurnStats(commits),
     refactorBehavior: computeRefactorRate(commits),
     testCoupling: computeTestCoupling(commits),
+    commitCalendar: buildCommitCalendar(commits, HEATMAP_WEEK_COLUMNS),
   };
 }
 

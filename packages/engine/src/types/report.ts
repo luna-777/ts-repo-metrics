@@ -174,6 +174,16 @@ export interface RefactorBehaviorStats {
   refactorCommitRatio: number;
 }
 
+/** GitHub-style contribution grid for the dashboard (last N weeks, Mon–Sun rows). */
+export interface CommitCalendar {
+  /** 7 rows (Mon..Sun) × `columnWeekStarts.length` columns (oldest week first). */
+  grid: number[][];
+  /** ISO date (UTC) of the Monday starting each column. */
+  columnWeekStarts: string[];
+  /** 0 = Monday .. 6 = Sunday; day with the most commits in the window. */
+  busiestWeekdayIndex: number | null;
+}
+
 /** Epic D: Combined git metrics V2. */
 export interface GitMetricsV2 {
   commitStats: CommitStats;
@@ -182,6 +192,8 @@ export interface GitMetricsV2 {
   churn: ChurnStats;
   refactorBehavior: RefactorBehaviorStats;
   testCoupling: TestCouplingStats;
+  /** Present when commit timestamps were available (local `git log`). */
+  commitCalendar?: CommitCalendar | null;
 }
 
 /**

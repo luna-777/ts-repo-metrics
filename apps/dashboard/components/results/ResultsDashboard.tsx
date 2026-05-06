@@ -15,7 +15,6 @@ import { Phase3PathologyTab } from "./rq/Phase3PathologyTab";
 import { AIMaturityTab } from "./rq/AIMaturityTab";
 import { DatasetTab } from "./dataset/DatasetTab";
 import { CoachSaysPanel } from "./coach";
-import { CrossRQInsightPanel } from "./CrossRQInsightPanel";
 import { GitHubRepositoryPanel } from "./GitHubRepositoryPanel";
 import {
   MOCK_OVERVIEW_CARDS,
@@ -253,10 +252,7 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
           <ResultsTabPanelIntro activeTab={resultsTab} report={report} />
         </div>
         <TabsContent value="rq1" className="mt-6">
-          <div className="space-y-8">
-            <RQ1Tab report={report} />
-            <CrossRQInsightPanel report={report} />
-          </div>
+          <RQ1Tab report={report} />
         </TabsContent>
         <TabsContent value="rq2" className="mt-6">
           <div id="rq2" className="scroll-mt-8 space-y-8">
@@ -264,30 +260,18 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
           </div>
         </TabsContent>
         <TabsContent value="rq3" className="mt-6">
-          <div className="space-y-8">
-            <RQ3Tab report={report} />
-            <CrossRQInsightPanel report={report} />
-          </div>
+          <RQ3Tab report={report} />
         </TabsContent>
         {showReact ? (
           <TabsContent value="rq3-react" className="mt-6">
-            <div className="space-y-8">
-              <RQ3ReactTab report={report} />
-              <CrossRQInsightPanel report={report} />
-            </div>
+            <RQ3ReactTab report={report} />
           </TabsContent>
         ) : null}
         <TabsContent value="phase2-complexity" className="mt-6">
-          <div className="space-y-8">
-            <Phase2ComplexityTab report={report} />
-            <CrossRQInsightPanel report={report} />
-          </div>
+          <Phase2ComplexityTab report={report} />
         </TabsContent>
         <TabsContent value="phase3-pathology" className="mt-6">
-          <div className="space-y-8">
-            <Phase3PathologyTab report={report} />
-            <CrossRQInsightPanel report={report} />
-          </div>
+          <Phase3PathologyTab report={report} />
         </TabsContent>
         <TabsContent value="ai-maturity" className="mt-6">
           <AIMaturityTab />
