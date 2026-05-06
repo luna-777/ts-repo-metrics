@@ -10,11 +10,11 @@ export const MOCK_OVERVIEW_CARDS: OverviewCardItem[] = [
     description: "Consistent cadence, healthy commit frequency",
   },
   {
-    id: "code-risks",
-    title: "Code Risks",
+    id: "code-complexity",
+    title: "Code Complexity",
     tier: "good",
     score: 78,
-    description: "No silent failures detected",
+    description: "Mean MI_norm 52.3 · 120 functions",
   },
   {
     id: "code-quality",

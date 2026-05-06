@@ -26,7 +26,7 @@ export function collectPhase2Rows(report: RepoReport): Phase2FunctionRow[] {
   return out;
 }
 
-/** Aggregates over functions that have Halstead + cognitive + MI_norm (Phase 2 block). */
+/** Aggregates over functions that have full Halstead, cognitive, and GRAD-AI MI_norm in this app. */
 export type Phase2Summary = {
   halsteadVolMean: number;
   halsteadVolP90: number;
@@ -35,9 +35,9 @@ export type Phase2Summary = {
   miNormMean: number;
   miNormMedian: number;
   reactShare: number;
-  /** Functions used for means (have full Phase 2 metrics). */
+  /** Functions included in means (complete lexical + cognitive + MI_norm set). */
   functionsWithPhase2: number;
-  /** All function rows from perFile (may include rows without Phase 2 fields). */
+  /** All function rows from perFile (some rows may omit lexical metrics). */
   totalFunctionRows: number;
 };
 

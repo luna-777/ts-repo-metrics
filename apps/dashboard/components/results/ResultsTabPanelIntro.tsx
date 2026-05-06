@@ -433,12 +433,6 @@ function AiUsagePanelIntro({ className }: { className?: string }) {
 
 function tabBody(activeTab: string): { title: string; body: string } | null {
   switch (activeTab as ResultsTabId) {
-    case RESULTS_TAB.codeRisks:
-      return {
-        title: "Code risks & smells",
-        body:
-          "Patterns that often correlate with review pain or runtime risk—empty catches, repeated glue code, and other “smells” from the scan. Confirm in context before treating any single flag as definitive.",
-      };
     case RESULTS_TAB.dataset:
       return {
         title: "Dataset export",

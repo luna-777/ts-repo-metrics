@@ -2,7 +2,7 @@ import { severityNumericCellClass, type SeverityBand } from "./severityTableCell
 import { cn } from "@/lib/utils";
 
 /**
- * Traffic-light bands for Phase 2 table cells. MI thresholds follow GRAD-AI (2025);
+ * Traffic-light bands for Code Complexity table cells. MI thresholds follow GRAD-AI (2025);
  * CC and cognitive bands follow common SonarSource-style guidance and the project’s
  * Tampere / verification-gap framing (see dashboard legend).
  */

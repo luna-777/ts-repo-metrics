@@ -78,13 +78,13 @@ export function Phase2CodeComplexityCoreSignals({
 
   return (
     <section
-      aria-labelledby="phase2-cc-core-signals-heading"
+      aria-labelledby="code-complexity-core-signals-heading"
       className="space-y-4"
-      id="phase2-core-signals"
+      id="code-complexity-core-signals"
     >
       <div>
         <h2
-          id="phase2-cc-core-signals-heading"
+          id="code-complexity-core-signals-heading"
           className="text-sm font-medium tracking-wide text-muted-foreground"
         >
           Core Signals

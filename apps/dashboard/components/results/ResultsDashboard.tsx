@@ -11,7 +11,6 @@ import { TestingMetricsTab } from "./rq/TestingMetricsTab";
 import { CodeQualityMetricsTab } from "./rq/CodeQualityMetricsTab";
 import { ReactComponentsMetricsTab } from "./rq/ReactComponentsMetricsTab";
 import { Phase2ComplexityTab } from "./rq/Phase2ComplexityTab";
-import { Phase3PathologyTab } from "./rq/Phase3PathologyTab";
 import { AIMaturityTab } from "./rq/AIMaturityTab";
 import { DatasetTab } from "./dataset/DatasetTab";
 import { GlobalCoachSays } from "./coach";
@@ -209,13 +208,6 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
                 </TabsTrigger>
                 <TabsTrigger
                   className={resultsTabTriggerClass}
-                  value={RESULTS_TAB.codeRisks}
-                  title="Code risks — silent failures, redundancy, and AI-related structural smells"
-                >
-                  Code Risks
-                </TabsTrigger>
-                <TabsTrigger
-                  className={resultsTabTriggerClass}
                   value={RESULTS_TAB.aiUsage}
                   title="AI usage — upload CSV from agent_stats or JSON/JSONL session exports from your coding agents"
                 >
@@ -283,9 +275,6 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
                 report={report}
                 onOpenCodeQualityTab={() => setResultsTab(RESULTS_TAB.codeQuality)}
               />
-            </TabsContent>
-            <TabsContent value={RESULTS_TAB.codeRisks} id="code-risks-panel" className="mt-6 scroll-mt-8">
-              <Phase3PathologyTab report={report} />
             </TabsContent>
             <TabsContent value={RESULTS_TAB.aiUsage} id="ai-usage-panel" className="mt-6 scroll-mt-8">
               <AIMaturityTab />

@@ -29,8 +29,8 @@ export function Phase2AdditionalSignalsSection({
   const reactPct = (summary.reactShare * 100).toFixed(1);
 
   return (
-    <section aria-labelledby="phase2-additional-signals-heading" className="space-y-4">
-      <h2 id="phase2-additional-signals-heading" className="text-lg font-semibold">
+    <section aria-labelledby="code-complexity-additional-signals-heading" className="space-y-4">
+      <h2 id="code-complexity-additional-signals-heading" className="text-lg font-semibold">
         Additional signals
       </h2>
       <div

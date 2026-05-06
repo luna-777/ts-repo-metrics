@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Upload,
-  BookOpen,
   Brain,
   CheckCircle2,
   AlertCircle,
@@ -32,10 +31,11 @@ import {
 import { CoachInsightTone } from "@/components/results/coach/CoachInsightTone";
 import { cn } from "@/lib/utils";
 import { useCoachExplain } from "@/lib/repoCoachContext";
+import { buildAiMaturityAggregateCoachPrompt } from "@/lib/aiMaturityExplainPrompts";
 import {
-  buildAiMaturityAggregateCoachPrompt,
-  buildAiMaturitySessionCoachPrompt,
-} from "@/lib/aiMaturityExplainPrompts";
+  AiUsageSignalLearnMore,
+  efficiencyBandHint,
+} from "@/components/results/rq/aiUsageSignalHelpContent";
 
 /** Left-accent callouts aligned with other results tabs (e.g. React insights). */
 const aiTraceInsightSurface = "bg-card shadow-sm ring-1 ring-border/40";
@@ -72,7 +72,6 @@ interface AUMData {
   totalToolCalls: number;
   avgIterationsPerPrompt: number;
   writeRatio: number;
-  sessionConcentration: number;
   stageScores: AUMStageScore[];
   toolMix: ToolMix[];
   isDemoData: boolean;
@@ -260,7 +259,6 @@ const DEMO_DATA: AUMData = {
   totalToolCalls: 874,
   avgIterationsPerPrompt: 4.3,
   writeRatio: 0.31,
-  sessionConcentration: 58,
   isDemoData: true,
   stageScores: STAGE_CONFIG.map((c, i) => {
     const scores = [78, 71, 38, 32, 29];
@@ -287,14 +285,16 @@ const DEMO_DATA: AUMData = {
   ],
 };
 
-function buildAiUsageProfileBrief(data: AUMData): Record<string, unknown> {
+function buildAiUsageProfileBrief(
+  data: AUMData,
+  sessionLogReport: SessionLogReport | null,
+): Record<string, unknown> {
   return {
     totalPrompts: data.totalPrompts,
     totalSessions: data.totalSessions,
     totalToolCalls: data.totalToolCalls,
     avgIterationsPerPrompt: data.avgIterationsPerPrompt,
     writeRatio: data.writeRatio,
-    sessionConcentration: data.sessionConcentration,
     isDemoData: data.isDemoData,
     stages: data.stageScores.map((s) => ({
       stage: s.stage,
@@ -305,6 +305,22 @@ function buildAiUsageProfileBrief(data: AUMData): Record<string, unknown> {
       noData: !!s.noData,
     })),
     toolMix: data.toolMix.map((t) => ({ name: t.name, pct: t.pct, count: t.count })),
+    sessionLog: sessionLogReport
+      ? {
+          scorecard: {
+            efficiency: sessionLogReport.scorecard.efficiency,
+            efficiencyBreakdown: sessionLogReport.scorecard.efficiencyBreakdown,
+            safety_compliance: sessionLogReport.scorecard.safety_compliance,
+            discovery_depth: sessionLogReport.scorecard.discovery_depth,
+          },
+          metrics: {
+            discoveryRatio: sessionLogReport.metrics.discoveryRatio,
+            readAfterWriteRate: sessionLogReport.metrics.readAfterWriteRate,
+            blindEditRate: sessionLogReport.metrics.blindEditRate,
+            verificationTestCommandRatio: sessionLogReport.metrics.verificationTestCommandRatio,
+          },
+        }
+      : null,
   };
 }
 
@@ -348,11 +364,9 @@ function CoachAiActionButton({
 function SessionLogSummaryInsight({ report }: { report: SessionLogReport }) {
   const dr = report.metrics.discoveryRatio;
   const shellTest = report.metrics.verificationTestCommandRatio;
-  const raw = report.metrics.readAfterWriteRate;
   const loops = report.metrics.stuck.totalLoops;
   const discoveryPct = dr != null ? Math.round(dr * 100) : null;
   const shellPct = shellTest != null ? Math.round(shellTest * 100) : null;
-  const rawPct = raw != null ? Math.round(raw * 100) : null;
 
   return (
     <CoachInsightTone
@@ -367,15 +381,9 @@ function SessionLogSummaryInsight({ report }: { report: SessionLogReport }) {
           <>
             Discovery-style calls are about <strong className="text-foreground">{discoveryPct}%</strong> of
             labeled discovery-and-action tool calls.{" "}
-            {discoveryPct < 25
+            {discoveryPct <= 18
               ? "That leans write-heavy — try a targeted read or search before large edits."
               : "That suggests you often ground the assistant before big changes."}{" "}
-          </>
-        ) : null}
-        {rawPct != null ? (
-          <>
-            Read-after-write on Write/Edit→Read sequences is about{" "}
-            <strong className="text-foreground">{rawPct}%</strong> in this export.{" "}
           </>
         ) : null}
         {shellPct != null ? (
@@ -450,9 +458,6 @@ function parseCSV(text: string): Partial<AUMData> {
   const totalSessionsSet = new Set<string>();
   let totalToolCalls = 0;
   const toolCounts: Record<string, number> = {};
-  let readAfterWrite = 0;
-  let totalWriteFollowed = 0;
-  let lastEventType = "";
   let currentSessionPrompts = 0;
   let currentSessionIterations = 0;
   let currentSession = "";
@@ -482,11 +487,8 @@ function parseCSV(text: string): Partial<AUMData> {
       totalToolCalls++;
       currentSessionIterations++;
       if (toolName) toolCounts[toolName] = (toolCounts[toolName] ?? 0) + 1;
-      if (toolName === "Read" && lastEventType === "Write") readAfterWrite++;
-      if (lastEventType === "Write") totalWriteFollowed++;
     }
     if (sessionId) totalSessionsSet.add(sessionId);
-    if (eventType === "tool_call" || eventType === "tool_result") lastEventType = toolName || eventType;
 
     // ── Per-session accumulation for stage classification ──
     if (!sessionId) continue;
@@ -538,26 +540,13 @@ function parseCSV(text: string): Partial<AUMData> {
       meaning: TOOL_MEANINGS[name] ?? "",
     }));
 
-  // ── Session concentration ──
+  // ── Project timeline bounds (for stage fallback when working_dir is missing) ──
   const allTimestamps = Object.values(sessionAccum).flatMap((sa) => sa.timestamps).filter((t) => t > 0);
-  let sessionConcentration = 0;
   let projectStart = 0;
   let projectEnd = 0;
-
   if (allTimestamps.length > 0) {
     projectStart = Math.min(...allTimestamps);
     projectEnd = Math.max(...allTimestamps);
-    const threshold = projectStart + (projectEnd - projectStart) * 0.8;
-    const allSessions = Object.values(sessionAccum);
-    const lateSessions = allSessions.filter((sa) => {
-      if (sa.timestamps.length === 0) return false;
-      const sorted = [...sa.timestamps].sort((a, b) => a - b);
-      const median = sorted[Math.floor(sorted.length / 2)];
-      return median > threshold;
-    }).length;
-    sessionConcentration = allSessions.length > 0
-      ? Math.round((lateSessions / allSessions.length) * 100)
-      : 0;
   }
 
   // ── Stage classification ──
@@ -619,7 +608,6 @@ function parseCSV(text: string): Partial<AUMData> {
     totalToolCalls,
     avgIterationsPerPrompt: Math.round(avgIter * 10) / 10,
     writeRatio: totalTools > 0 ? Math.round(((toolCounts["Write"] ?? 0) / totalTools) * 100) / 100 : 0,
-    sessionConcentration,
     stageScores,
     toolMix,
     isDemoData: false,
@@ -885,10 +873,9 @@ export function AIMaturityTab() {
     : 0;
   const { label: overallLabel } = aumColor(overallAUM);
 
-  const iterHighlight: "good" | "warn" | "bad" =
-    data.avgIterationsPerPrompt <= 3 ? "good" : data.avgIterationsPerPrompt <= 6 ? "warn" : "bad";
-  const writeHighlight: "good" | "warn" | "bad" =
-    data.writeRatio <= 0.2 ? "good" : data.writeRatio <= 0.35 ? "warn" : "bad";
+  const sessionLogEfficiencyHint = sessionLogReport
+    ? efficiencyBandHint(Math.round(sessionLogReport.scorecard.efficiency * 100))
+    : null;
 
   return (
     <div className="space-y-8">
@@ -947,41 +934,6 @@ export function AIMaturityTab() {
 
       {sessionLogReport && (
         <section className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Sparkles className="size-4 text-muted-foreground" aria-hidden />
-              <h2 className="text-lg font-semibold">Session log analyzer</h2>
-              <Badge variant="outline" className="text-xs font-mono">
-                v{sessionLogReport.logAnalyzerVersion}
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                {sessionLogReport.input.sessionCount} session(s) ·{" "}
-                {sessionLogReport.input.lineCount} events · {sessionLogReport.input.format}
-              </span>
-              {data.isDemoData && (
-                <Badge variant="secondary" className="text-xs">
-                  Sample session report
-                </Badge>
-              )}
-            </div>
-            <CoachAiActionButton
-              send={coachExplain}
-              tooltip="Opens Repo Coach with this session analyzer JSON and asks for sharper coaching bullets."
-              prompt={buildAiMaturitySessionCoachPrompt(sessionLogReport)}
-            >
-              <Sparkles className="size-4" aria-hidden />
-              Session → AI
-            </CoachAiActionButton>
-          </div>
-          <CoachInsightTone
-            tone="informational"
-            title="Reading your export"
-            className={aiTraceInsightSurface}
-            bodyClassName="text-foreground/90 font-normal text-sm leading-relaxed max-w-3xl"
-          >
-            The metrics below summarize what appears in your exported log: tools, tokens, loops, and verification-style
-            habits. Use them as a mirror for your next session — not a grade.
-          </CoachInsightTone>
           <SessionLogSummaryInsight report={sessionLogReport} />
           {sessionLogReport.warnings.length > 0 ? (
             <CoachInsightTone
@@ -997,187 +949,134 @@ export function AIMaturityTab() {
               </ul>
             </CoachInsightTone>
           ) : null}
+          <h2 className="text-lg font-semibold">Core signals</h2>
+          {!sessionLogReport.tokens.hasUsageData ? (
+            <Badge variant="secondary" className="text-[10px] w-fit">
+              Token usage not found in export
+            </Badge>
+          ) : null}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-2 sm:col-span-2">
+            <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Archetype</CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-sm">Input tokens</CardTitle>
+                  <AiUsageSignalLearnMore signalId="token-input" />
+                </div>
               </CardHeader>
               <CardContent>
-                <p className="text-xl font-semibold">{sessionLogReport.archetype}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Rule-based label from discovery ratio, verification proxies, and iteration density.
+                <p className="font-mono text-lg font-semibold tabular-nums">
+                  {sessionLogReport.tokens.hasUsageData ? sessionLogReport.tokens.input.toLocaleString() : "—"}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Efficiency</CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-sm">Output tokens</CardTitle>
+                  <AiUsageSignalLearnMore signalId="token-output" />
+                </div>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{Math.round(sessionLogReport.scorecard.efficiency * 100)}%</p>
+                <p className="font-mono text-lg font-semibold tabular-nums">
+                  {sessionLogReport.tokens.hasUsageData ? sessionLogReport.tokens.output.toLocaleString() : "—"}
+                </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Safety / compliance</CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-sm">Reasoning tokens</CardTitle>
+                  <AiUsageSignalLearnMore signalId="token-reasoning" />
+                </div>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{Math.round(sessionLogReport.scorecard.safety_compliance * 100)}%</p>
+                <p className="text-xs text-muted-foreground mb-1">When exported by your agent</p>
+                <p className="font-mono text-lg font-semibold tabular-nums">
+                  {sessionLogReport.tokens.reasoning !== null ? sessionLogReport.tokens.reasoning.toLocaleString() : "—"}
+                </p>
               </CardContent>
             </Card>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Discovery depth</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-lg font-semibold">{sessionLogReport.scorecard.discovery_depth}</p>
-              </CardContent>
-            </Card>
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  Tokens
-                  {!sessionLogReport.tokens.hasUsageData && (
-                    <Badge variant="secondary" className="text-[10px]">Not found in export</Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-6 text-sm">
-                <div>
-                  <span className="text-muted-foreground block text-xs">Input</span>
-                  <span className="font-mono">{sessionLogReport.tokens.hasUsageData ? sessionLogReport.tokens.input.toLocaleString() : "—"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs">Output</span>
-                  <span className="font-mono">{sessionLogReport.tokens.hasUsageData ? sessionLogReport.tokens.output.toLocaleString() : "—"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs">Reasoning (if exported)</span>
-                  <span className="font-mono">
-                    {sessionLogReport.tokens.reasoning !== null ? sessionLogReport.tokens.reasoning.toLocaleString() : "—"}
-                  </span>
-                </div>
-                {sessionLogReport.tokens.maxInputInSingleRecord != null && sessionLogReport.tokens.hasUsageData && (
-                  <div>
-                    <span className="text-muted-foreground block text-xs">Max input / turn record</span>
-                    <span className="font-mono">{sessionLogReport.tokens.maxInputInSingleRecord.toLocaleString()}</span>
+            {sessionLogReport.tokens.maxInputInSingleRecord != null && sessionLogReport.tokens.hasUsageData ? (
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-sm">Peak input tokens</CardTitle>
+                    <AiUsageSignalLearnMore signalId="token-peak" />
                   </div>
-                )}
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground mb-1">Single turn / record</p>
+                  <p className="font-mono text-lg font-semibold tabular-nums">
+                    {sessionLogReport.tokens.maxInputInSingleRecord.toLocaleString()}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+
+          <h2 className="text-lg font-semibold">Other signals</h2>
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="h-full flex flex-col">
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-sm">Efficiency</CardTitle>
+                  <AiUsageSignalLearnMore signalId="efficiency" />
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col space-y-3">
+                <p className="text-2xl font-bold">{Math.round(sessionLogReport.scorecard.efficiency * 100)}%</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  How focused each prompt is and how much exploration appears in the tool stream.
+                </p>
+                {sessionLogEfficiencyHint?.text ? (
+                  <p className={`text-sm font-medium ${sessionLogEfficiencyHint.className}`}>
+                    {sessionLogEfficiencyHint.text}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+            <Card className="h-full flex flex-col">
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-sm">Safety / compliance</CardTitle>
+                  <AiUsageSignalLearnMore signalId="safety-compliance" />
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col space-y-3">
+                <p className="text-2xl font-bold">{Math.round(sessionLogReport.scorecard.safety_compliance * 100)}%</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Combines verification-style habits (read-back after edits and/or test-like shell commands) with
+                  blind-edit pressure—not a security audit.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="h-full flex flex-col">
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-sm">Discovery ratio</CardTitle>
+                  <AiUsageSignalLearnMore signalId="discovery-ratio" />
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col space-y-3">
+                <p className="text-2xl font-bold tabular-nums">
+                  {sessionLogReport.metrics.discoveryRatio != null
+                    ? `${Math.round(sessionLogReport.metrics.discoveryRatio * 100)}%`
+                    : "—"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Discovery depth:{" "}
+                  <span className="font-medium text-foreground">
+                    {sessionLogReport.scorecard.discovery_depth.toLowerCase()}
+                  </span>
+                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Tool-call mix: exploratory vs action tools in this log.{" "}
+                  <strong className="text-foreground">Efficiency</strong> also weights exploration via its discovery
+                  component. Bands: High ≥38%, Medium 18–38%, Low ≤18%.
+                </p>
               </CardContent>
             </Card>
           </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <KpiCard
-              label="Discovery ratio"
-              value={
-                sessionLogReport.metrics.discoveryRatio != null
-                  ? `${Math.round(sessionLogReport.metrics.discoveryRatio * 100)}%`
-                  : "N/A"
-              }
-              sub="Discovery vs action taxonomy (tools in log)"
-              icon={BarChart3}
-            />
-            <KpiCard
-              label="Test cmds / shell cmds"
-              value={
-                sessionLogReport.metrics.verificationTestCommandRatio != null
-                  ? `${Math.round(sessionLogReport.metrics.verificationTestCommandRatio * 100)}%`
-                  : "N/A"
-              }
-              sub="Shell invocations matched as likely tests"
-              icon={Wrench}
-            />
-            <KpiCard
-              label="Read-after-write"
-              value={
-                sessionLogReport.metrics.readAfterWriteRate != null
-                  ? `${Math.round(sessionLogReport.metrics.readAfterWriteRate * 100)}%`
-                  : "N/A"
-              }
-              sub="Reads immediately following Write/Edit (tool-call level)"
-              icon={BookOpen}
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <CoachInsightTone
-              tone="informational"
-              title="Patterns"
-              className={aiTraceInsightSurface}
-              bodyClassName="text-foreground/90 font-normal space-y-2 text-sm"
-            >
-              {sessionLogReport.top_patterns.map((p) => (
-                <div key={p.pattern} className="flex items-center justify-between gap-4">
-                  <span className="font-medium">{p.pattern}</span>
-                  <Badge variant={p.status === "Healthy" ? "default" : "secondary"} className="shrink-0">
-                    {p.frequency} · {p.status}
-                  </Badge>
-                </div>
-              ))}
-            </CoachInsightTone>
-            <CoachInsightTone
-              tone="informational"
-              title="Stuck / friction"
-              className={aiTraceInsightSurface}
-              bodyClassName="text-foreground/90 font-normal space-y-2 text-sm"
-            >
-              <p>
-                <span className="text-muted-foreground">Loops detected: </span>
-                <span className="font-semibold text-foreground">{sessionLogReport.metrics.stuck.totalLoops}</span>
-              </p>
-              <p>
-                <span className="text-muted-foreground">Avg loop depth: </span>
-                <span className="font-semibold text-foreground">{sessionLogReport.metrics.stuck.averageLoopDepth}</span>
-              </p>
-              <p className="break-all">
-                <span className="text-muted-foreground">Top friction file: </span>
-                <span className="font-mono text-foreground">{sessionLogReport.metrics.stuck.topFrictionFile ?? "—"}</span>
-              </p>
-            </CoachInsightTone>
-          </div>
-
-          <CoachInsightTone
-            tone="informational"
-            title="Suggestions from this export"
-            className={aiTraceInsightSurface}
-            bodyClassName="text-foreground/90 font-normal space-y-3 text-sm"
-          >
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Each bullet ties a signal in your log to something you can try next time. Sparse tips usually mean the file
-              omitted usage fields, tool detail, or context this analyzer needs.
-            </p>
-            <ul className="list-disc pl-5 text-muted-foreground space-y-1.5 marker:text-foreground">
-              {sessionLogReport.ai_coaching_tips.map((t) => (
-                <li key={t} className="leading-snug">
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </CoachInsightTone>
-
-          <CoachInsightTone
-            tone="informational"
-            title="Not computed in the browser"
-            className={aiTraceInsightSurface}
-            bodyClassName="text-foreground/90 font-normal space-y-2 text-xs leading-relaxed text-muted-foreground"
-          >
-            <p>These need linking session logs to git history; they stay informational until that wiring exists.</p>
-            <p>
-              <span className="font-medium text-foreground">Token ROI:</span>{" "}
-              {sessionLogReport.metrics.enrichmentUnavailable.tokenRoi}
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Manual edits after AI:</span>{" "}
-              {sessionLogReport.metrics.enrichmentUnavailable.manualIntervention}
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Prompt → commit:</span>{" "}
-              {sessionLogReport.metrics.enrichmentUnavailable.promptToCommit}
-            </p>
-          </CoachInsightTone>
         </section>
       )}
 
@@ -1188,13 +1087,13 @@ export function AIMaturityTab() {
           <CoachAiActionButton
             send={coachExplain}
             tooltip="Send aggregate scores and stage breakdown to Repo Coach."
-            prompt={buildAiMaturityAggregateCoachPrompt(buildAiUsageProfileBrief(data))}
+            prompt={buildAiMaturityAggregateCoachPrompt(buildAiUsageProfileBrief(data, sessionLogReport))}
           >
             <Sparkles className="size-4" aria-hidden />
             Ask Coach
           </CoachAiActionButton>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <CoachInsightTone
             tone="informational"
             title="Overall score"
@@ -1220,12 +1119,6 @@ export function AIMaturityTab() {
             sub="Share of AI tool calls that generated new code."
             icon={Wrench}
           />
-          <KpiCard
-            label="Session Concentration"
-            value={`${data.sessionConcentration}%`}
-            sub="AI sessions in last 20% of project timeline."
-            icon={BarChart3}
-          />
         </div>
       </section>
 
@@ -1249,7 +1142,7 @@ export function AIMaturityTab() {
           <div className="mt-2 space-y-1 leading-relaxed">
             <p><strong>Iteration score (50%):</strong> max(0, 100 − (avg tool calls per prompt − 1) × 15). Fewer iterations = more precise prompting.</p>
             <p><strong>Verification score (50%):</strong> (Read-after-Write events ÷ Write events) × 100. Higher = better output validation before proceeding.</p>
-            <p><strong>Stage assignment:</strong> Each session's most-used working directory is matched against path patterns (e.g. <code>__tests__/</code> → Testing, <code>.github/workflows/</code> → Deployment, <code>src/</code> → Implementation). Sessions with no path fall back to their timestamp position in the project timeline.</p>
+            <p><strong>Stage assignment:</strong> Each session&apos;s most-used working directory is matched against path patterns (e.g. <code>__tests__/</code> → Testing, <code>.github/workflows/</code> → Deployment, <code>src/</code> → Implementation). Sessions with no path fall back to their timestamp position in the project timeline.</p>
           </div>
         </details>
       </section>
@@ -1323,13 +1216,6 @@ export function AIMaturityTab() {
               finding: `Your Write ratio is ${Math.round(data.writeRatio * 100)}%. Large Write shares deserve a quick read-back and lint.`,
               action:
                 "After substantive Write/Edit bursts: skim the diff, run the linter, and run targeted tests before staging.",
-            },
-            {
-              priority: 4,
-              title: "Spread assistance across the timeline",
-              finding: `${data.sessionConcentration}% of sessions fall in the final fifth of the project window — a crunch pattern.`,
-              action:
-                "Use the assistant during design and implementation, not only when deadlines pile up — smaller prompts earlier reduce thrash.",
             },
           ].map((item) => (
               <CoachInsightTone

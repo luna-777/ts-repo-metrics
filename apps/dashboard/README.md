@@ -12,13 +12,13 @@ Next.js app for analyzing GitHub repos via `@repo-metrics/engine` (same package 
 
 From repo root: `npm run dashboard` / `npm run dashboard:build`.
 
-## Phase 2 — Lexical & cognitive
+## Code Complexity tab (lexical & cognitive)
 
-The **Phase 2 — Lexical & cognitive** tab (under Results) shows per-function Halstead volume, cyclomatic complexity, cognitive complexity, GRAD-AI `MI_norm` / `MI_raw`, and React component heuristics. It includes:
+The **Code Complexity** tab under Results shows per-function Halstead volume, cyclomatic complexity, cognitive complexity, GRAD-AI `MI_norm` / `MI_raw`, and React component heuristics when `.tsx` is in scope. It includes:
 
-- **The Research Lens** — tri-metric framing and verification-gap narrative  
-- **Definitions & formulas** — collapsible glossary with KaTeX and citations  
-- **Threshold calibration** — collapsible sourced table (MI / CC / CoC bands and significance)  
+- **How we interpret complexity** — metric framing and glossary-style definitions  
+- **Definitions & formulas** — collapsible references with KaTeX and citations  
+- **Threshold calibration** — collapsible sourced table (MI / CC / cognitive bands)  
 - **Repo-level summary cards** — aggregates with methodology help icons  
 - **Traffic-light cell tinting** — `lib/phase2Traffic.ts` applies bands documented in the threshold panel  
 

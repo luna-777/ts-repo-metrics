@@ -23,7 +23,6 @@ const PRIORITY_TABS: readonly CoachSaysPriorityTab[] = [
   RESULTS_TAB.codeQuality,
   RESULTS_TAB.reactComponents,
   RESULTS_TAB.codeComplexity,
-  RESULTS_TAB.codeRisks,
   RESULTS_TAB.aiUsage,
 ] as const;
 
@@ -218,7 +217,7 @@ function validateModelCoachPayload(
 
 const COACH_SYSTEM = `You write the global “YOUR COACH SAYS” coaching card for a CSE 115A software engineering course dashboard. The repository metrics snapshot is JSON in the user message.
 
-Tab ids (for priorityTab): commit-habits | testing | code-quality | react-components | code-complexity | code-risks | ai-usage — use only values listed in allowedPriorityTabs.
+Tab ids (for priorityTab): commit-habits | testing | code-quality | react-components | code-complexity | ai-usage — use only values listed in allowedPriorityTabs.
 
 FACTS (authoritative — JSON keys):
 - commitSha, repoUrl, reactUiScope
@@ -227,7 +226,7 @@ FACTS (authoritative — JSON keys):
 - testing: score (0–100 heuristic), pctCommitsTouchingTests, testFiles, testLocRatio, testCoverageClassification
 - codeQuality: score (0–100 heuristic), maintainabilityScore, maintainabilityClassification, highComplexityFunctions, maxComplexity, duplicationPct
 - react: enabled, componentsAnalyzed, jsxDepthExceededCount, lackOfCohesionCount, score (number or null if not applicable)
-- phase2: null or { miNormMean, functionsWithPhase2 }
+- phase2 (Code Complexity — per-function lexical snapshot): null or { miNormMean, functionsWithPhase2 }
 - phase3: null or { silentFailureCount, sfd }
 
 RULES:

@@ -60,15 +60,15 @@ export function Phase2TopComplexityOutliersTable({
   return (
     <>
       <section
-        id="phase2-top-outliers"
-        aria-labelledby="phase2-top-outliers-heading"
+        id="code-complexity-top-outliers"
+        aria-labelledby="code-complexity-top-outliers-heading"
         className={cn(className)}
       >
         <Card>
           <CardHeader className="space-y-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-1">
-                <CardTitle id="phase2-top-outliers-heading" className="text-lg">
+                <CardTitle id="code-complexity-top-outliers-heading" className="text-lg">
                   Top Complexity Outliers
                 </CardTitle>
                 <p className="max-w-2xl text-sm leading-snug text-muted-foreground">

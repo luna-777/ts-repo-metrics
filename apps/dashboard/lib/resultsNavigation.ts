@@ -8,7 +8,6 @@ export const RESULTS_TAB = {
   codeQuality: "code-quality",
   reactComponents: "react-components",
   codeComplexity: "code-complexity",
-  codeRisks: "code-risks",
   aiUsage: "ai-usage",
   dataset: "dataset",
 } as const;
@@ -25,7 +24,6 @@ export const PANEL_SCROLL_IDS: Record<CoachPriorityTabId, string> = {
   [RESULTS_TAB.codeQuality]: "code-quality-panel",
   [RESULTS_TAB.reactComponents]: "react-components-panel",
   [RESULTS_TAB.codeComplexity]: "code-complexity-panel",
-  [RESULTS_TAB.codeRisks]: "code-risks-panel",
   [RESULTS_TAB.aiUsage]: "ai-usage-panel",
 };
 

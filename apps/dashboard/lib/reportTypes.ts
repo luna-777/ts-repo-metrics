@@ -29,7 +29,7 @@ export interface FunctionDetail {
   lines: number;
   maxNestingDepth: number;
   parameterCount: number;
-  /** Phase 2+; absent in older cached reports. */
+  /** Per-function lexical metrics; absent in older cached reports. */
   cyclomaticComplexity?: number;
   halstead?: HalsteadMetrics;
   cognitiveComplexity?: number;

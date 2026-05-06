@@ -28,6 +28,8 @@ describe("aiSessionLogAnalyzer", () => {
     expect(report.logAnalyzerVersion).toMatch(/^\d+\.\d+\.\d+$/);
     expect(report.metrics.discoveryRatio).not.toBeNull();
     expect(report.archetype.length).toBeGreaterThan(0);
+    expect(report.scorecard.efficiencyBreakdown).toBeDefined();
+    expect(typeof report.scorecard.efficiencyBreakdown.avgToolsPerPrompt).toBe("number");
   });
 
   it("aggregates usage blocks from nested JSON", () => {
@@ -46,9 +48,11 @@ describe("aiSessionLogAnalyzer", () => {
     expect(report.tokens.output).toBe(50);
   });
 
-  it("exposes demo session report for AI Maturity tab", () => {
+  it("exposes demo session report for AI Usage tab", () => {
     expect(DEMO_SESSION_LOG_REPORT.scorecard.efficiency).toBeGreaterThan(0);
     expect(DEMO_SESSION_LOG_REPORT.tokens.hasUsageData).toBe(true);
     expect(DEMO_SESSION_LOG_REPORT.top_patterns.length).toBeGreaterThan(0);
+    expect(DEMO_SESSION_LOG_REPORT.scorecard.efficiencyBreakdown.avgToolsPerPrompt).toBeGreaterThan(0);
+    expect(DEMO_SESSION_LOG_REPORT.scorecard.efficiencyBreakdown.iterScore).toBeGreaterThan(0);
   });
 });

@@ -57,10 +57,10 @@ export function Phase2WhatMetricsMeasure({
 
   return (
     <section
-      aria-labelledby="phase2-what-metrics-heading"
+      aria-labelledby="code-complexity-what-metrics-heading"
       className={cn("space-y-3", className)}
     >
-      <h2 id="phase2-what-metrics-heading" className="text-lg font-semibold">
+      <h2 id="code-complexity-what-metrics-heading" className="text-lg font-semibold">
         What These Metrics Measure
       </h2>
       <p className="text-xs text-muted-foreground max-w-2xl">

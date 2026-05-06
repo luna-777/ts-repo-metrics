@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export type SeverityBand = "green" | "yellow" | "red";
 
 /**
- * Solid-ish fills (dark theme leans red/amber/emerald-950) so severity reads like the Phase 2 tables.
+ * Solid-ish fills (dark theme leans red/amber/emerald-950) aligned with Code Complexity table styling.
  */
 const SEVERITY_SURFACE: Record<SeverityBand, string> = {
   green:

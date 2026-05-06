@@ -370,7 +370,8 @@ export const DATA_DICTIONARY: Record<string, DataDictionaryEntry> = {
     definition: "Count of functions flagged as React components (denominator for MCR).",
     unit: "count",
     resultsConstruct: "code-quality",
-    interpretation: "Stratify with phase2_react_component_count (Phase 2 uses functions with Halstead data).",
+    interpretation:
+      "Compare with phase2_react_component_count (counts reflect functions where Halstead volume is present).",
   },
   phase3_srs_weighted_numerator: {
     definition:

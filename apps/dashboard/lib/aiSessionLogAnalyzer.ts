@@ -39,21 +39,20 @@ export interface SessionLogReport {
       averageLoopDepth: number;
       topFrictionFile: string | null;
     };
-    enrichmentUnavailable: {
-      tokenRoi: string;
-      manualIntervention: string;
-      promptToCommit: string;
-    };
   };
   scorecard: {
     efficiency: number;
     safety_compliance: number;
     discovery_depth: "Low" | "Medium" | "High";
+    efficiencyBreakdown: {
+      avgToolsPerPrompt: number;
+      iterScore: number;
+      discoverScore: number;
+    };
   };
   archetype: string;
   contributor: string | null;
   top_patterns: Array<{ pattern: string; frequency: string; status: "Healthy" | "Improvement Needed" | "N/A" }>;
-  ai_coaching_tips: string[];
 }
 
 const DISCOVERY_TOOLS = new Set(
@@ -428,7 +427,7 @@ export function stripSyntheticUsage(events: NormalizedEvent[]): NormalizedEvent[
   return events.filter((e) => e.toolName !== "__usage__");
 }
 
-/** CSV compatible with AIMaturityTab `parseCSV` (comma-safe values avoided). */
+/** CSV compatible with `parseCSV` on the AI Usage tab (comma-safe values avoided). */
 export function normalizedEventsToCsv(events: NormalizedEvent[]): string {
   const lines = ["event_type,tool_name,session_id,working_dir,timestamp"];
   for (const e of stripSyntheticUsage(events)) {
@@ -657,32 +656,6 @@ export function computeSessionLogReport(
     },
   ];
 
-  const tips: string[] = [];
-  if (discoveryRatio !== null && discoveryRatio < 0.2) {
-    tips.push(
-      "Increase discovery work (Read, Grep, Glob) before large writes to reduce blind-edit risk."
-    );
-  }
-  if ((verificationTestCommandRatio ?? 0) < 0.2 && bashTotal > 2) {
-    tips.push(
-      "Run unit or integration tests from the shell earlier in the session to catch failures sooner."
-    );
-  }
-  if (loopCount >= 2) {
-    tips.push(
-      topFrictionFile
-        ? `Repeated tool friction detected; validate assumptions for ${topFrictionFile} before retrying.`
-        : "Repeated similar tool calls detected — narrow the task or verify inputs before looping."
-    );
-  }
-  if (!hasUsageData) {
-    tips.push(
-      'Token totals were not found in this file—export logs that include usage or usage_metadata on messages.'
-    );
-  }
-  if (tips.length === 0)
-    tips.push("Keep pairing exploratory reads with small, verifiable edits.");
-
   const report: SessionLogReport = {
     logAnalyzerVersion: LOG_ANALYZER_VERSION,
     generatedAt: new Date().toISOString(),
@@ -709,19 +682,20 @@ export function computeSessionLogReport(
         averageLoopDepth: averageLoopDepth,
         topFrictionFile,
       },
-      enrichmentUnavailable: {
-        tokenRoi: "Requires git diff joined to sessions (high enrichment difficulty).",
-        manualIntervention:
-          "Requires comparing git-authored lines to AI attribution (high enrichment difficulty).",
-        promptToCommit:
-          "Requires correlating prompts with git timestamps/commits (high enrichment difficulty).",
+    },
+    scorecard: {
+      efficiency,
+      safety_compliance,
+      discovery_depth,
+      efficiencyBreakdown: {
+        avgToolsPerPrompt: Math.round(avgIterationsProxy * 100) / 100,
+        iterScore: Math.round(iterScore * 1000) / 1000,
+        discoverScore: Math.round(discoverScore * 1000) / 1000,
       },
     },
-    scorecard: { efficiency, safety_compliance, discovery_depth },
     archetype,
     contributor: null,
     top_patterns,
-    ai_coaching_tips: tips,
   };
 
   return report;
@@ -752,7 +726,7 @@ export const DEMO_SESSION_LOG_REPORT: SessionLogReport = {
     maxInputInSingleRecord: 96_000,
   },
   metrics: {
-    discoveryRatio: 0.42,
+    discoveryRatio: 0.543,
     verificationTestCommandRatio: 0.55,
     blindEditRate: 0.04,
     readAfterWriteRate: 0.72,
@@ -761,18 +735,16 @@ export const DEMO_SESSION_LOG_REPORT: SessionLogReport = {
       averageLoopDepth: 3,
       topFrictionFile: "src/auth/middleware.ts",
     },
-    enrichmentUnavailable: {
-      tokenRoi: "Requires git diff joined to sessions (high enrichment difficulty).",
-      manualIntervention:
-        "Requires comparing git-authored lines to AI attribution (high enrichment difficulty).",
-      promptToCommit:
-        "Requires correlating prompts with git timestamps/commits (high enrichment difficulty).",
-    },
   },
   scorecard: {
     efficiency: 0.88,
     safety_compliance: 0.95,
     discovery_depth: "High",
+    efficiencyBreakdown: {
+      avgToolsPerPrompt: 1,
+      iterScore: 1,
+      discoverScore: 0.733,
+    },
   },
   archetype: "Senior Orchestrator",
   contributor: null,
@@ -787,9 +759,5 @@ export const DEMO_SESSION_LOG_REPORT: SessionLogReport = {
       frequency: "4%",
       status: "Healthy",
     },
-  ],
-  ai_coaching_tips: [
-    "Discovery: your verification and discovery signals are solid in this snapshot — keep pairing reads with small edits.",
-    "Recommendation: run your test suite earlier after substantive shell or Write activity so failures surface before late-session churn.",
   ],
 };

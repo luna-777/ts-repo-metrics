@@ -37,7 +37,7 @@ import {
 } from "./Phase2MetricDeepDiveDialog";
 import { cn } from "@/lib/utils";
 
-const PHASE2_DETAIL_PAGE_SIZE = 25;
+const CODE_COMPLEXITY_DETAIL_PAGE_SIZE = 25;
 
 type DetailSortKey =
   | "file"
@@ -162,18 +162,18 @@ export function Phase2ComplexityTab({ report, onOpenCodeQualityTab }: Phase2Comp
   }, [rows, detailSortKey, detailSortDir]);
 
   const [detailPage, setDetailPage] = useState(0);
-  const detailPageCount = Math.max(1, Math.ceil(sortedDetailRows.length / PHASE2_DETAIL_PAGE_SIZE));
+  const detailPageCount = Math.max(1, Math.ceil(sortedDetailRows.length / CODE_COMPLEXITY_DETAIL_PAGE_SIZE));
   const currentDetailPage = Math.min(detailPage, detailPageCount - 1);
   const detailPageRows = sortedDetailRows.slice(
-    currentDetailPage * PHASE2_DETAIL_PAGE_SIZE,
-    (currentDetailPage + 1) * PHASE2_DETAIL_PAGE_SIZE,
+    currentDetailPage * CODE_COMPLEXITY_DETAIL_PAGE_SIZE,
+    (currentDetailPage + 1) * CODE_COMPLEXITY_DETAIL_PAGE_SIZE,
   );
   const detailFromRow =
-    sortedDetailRows.length === 0 ? 0 : currentDetailPage * PHASE2_DETAIL_PAGE_SIZE + 1;
+    sortedDetailRows.length === 0 ? 0 : currentDetailPage * CODE_COMPLEXITY_DETAIL_PAGE_SIZE + 1;
   const detailToRow =
     sortedDetailRows.length === 0
       ? 0
-      : Math.min(sortedDetailRows.length, (currentDetailPage + 1) * PHASE2_DETAIL_PAGE_SIZE);
+      : Math.min(sortedDetailRows.length, (currentDetailPage + 1) * CODE_COMPLEXITY_DETAIL_PAGE_SIZE);
 
   function toggleDetailSort(key: DetailSortKey) {
     setDetailPage(0);
@@ -190,11 +190,11 @@ export function Phase2ComplexityTab({ report, onOpenCodeQualityTab }: Phase2Comp
   const summary = useMemo(() => tryGetPhase2Summary(report), [report]);
 
   const sortedOutliers = useMemo(() => {
-    const withP2: { file: string; fn: FunctionDetail }[] = [];
+    const withFullLexical: { file: string; fn: FunctionDetail }[] = [];
     for (const row of rows) {
-      if (hasPhase2Block(row.fn)) withP2.push(row);
+      if (hasPhase2Block(row.fn)) withFullLexical.push(row);
     }
-    return [...withP2].sort((a, b) => {
+    return [...withFullLexical].sort((a, b) => {
       const d = b.fn.cognitiveComplexity! - a.fn.cognitiveComplexity!;
       if (d !== 0) return d;
       return b.fn.halstead!.volume - a.fn.halstead!.volume;
@@ -205,11 +205,16 @@ export function Phase2ComplexityTab({ report, onOpenCodeQualityTab }: Phase2Comp
 
   if (!hasMetrics || !summary) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-6">
         <p className="max-w-2xl text-sm text-muted-foreground">
           Lexical and cognitive complexity metrics are not available for this report yet. Re-run analysis with the
           current <code className="rounded bg-muted px-1">@repo-metrics/engine</code>, or load a newer result.
         </p>
+        <Phase2ComplexityImprovementSection
+          topOutlier={null}
+          onOpenCodeQualityTab={onOpenCodeQualityTab}
+          hasPerFunctionLexicalMetrics={false}
+        />
       </div>
     );
   }
@@ -227,10 +232,6 @@ export function Phase2ComplexityTab({ report, onOpenCodeQualityTab }: Phase2Comp
         sortedOutliers={sortedOutliers}
         summary={summary}
         showReact={showReact}
-      />
-      <Phase2ComplexityImprovementSection
-        topOutlier={topOutlier}
-        onOpenCodeQualityTab={onOpenCodeQualityTab}
       />
 
       <section
@@ -361,7 +362,7 @@ export function Phase2ComplexityTab({ report, onOpenCodeQualityTab }: Phase2Comp
               </TableHeader>
               <TableBody>
                 {detailPageRows.map(({ file, fn }, i) => {
-                  const rank = currentDetailPage * PHASE2_DETAIL_PAGE_SIZE + i + 1;
+                  const rank = currentDetailPage * CODE_COMPLEXITY_DETAIL_PAGE_SIZE + i + 1;
                   return (
                     <TableRow key={`${file}:${fn.name}:${fn.startLine}`}>
                       <TableCell className="w-10 min-w-[2.25rem] px-2 text-center tabular-nums text-muted-foreground text-xs">
@@ -451,6 +452,12 @@ export function Phase2ComplexityTab({ report, onOpenCodeQualityTab }: Phase2Comp
       </details>
 
       <Phase2ReferencesFooter />
+
+      <Phase2ComplexityImprovementSection
+        topOutlier={topOutlier}
+        onOpenCodeQualityTab={onOpenCodeQualityTab}
+        hasPerFunctionLexicalMetrics
+      />
 
       <Phase2MetricDeepDiveDialog
         open={deepDive !== null}

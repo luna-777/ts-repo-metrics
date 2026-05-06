@@ -55,14 +55,6 @@ function computeCodeComplexityHealthScore(facts: {
   return roundScore(facts.phase2.miNormMean * 1.1);
 }
 
-function computeCodeRisksHealthScore(facts: {
-  phase3: { silentFailureCount: number; sfd: number | null } | null;
-}): number {
-  if (!facts.phase3) return 72;
-  const sf = facts.phase3.silentFailureCount;
-  return roundScore(100 - Math.min(80, sf * 15 + (facts.phase3.sfd ?? 0) * 12));
-}
-
 export interface CoachSaysFacts {
   commitSha: string;
   repoUrl: string;
@@ -118,11 +110,7 @@ export function allowedCoachPriorityTabs(report: RepoReport): CoachSaysPriorityT
   if (hasReactUiScope(report)) {
     tabs.push(RESULTS_TAB.reactComponents);
   }
-  tabs.push(
-    RESULTS_TAB.codeComplexity,
-    RESULTS_TAB.codeRisks,
-    RESULTS_TAB.aiUsage,
-  );
+  tabs.push(RESULTS_TAB.codeComplexity, RESULTS_TAB.aiUsage);
   return tabs;
 }
 
@@ -133,7 +121,6 @@ export function footerLabelForCoachTab(tab: CoachSaysPriorityTab): string {
     [RESULTS_TAB.codeQuality]: "+ See full Code Quality breakdown",
     [RESULTS_TAB.reactComponents]: "+ See full React Components breakdown",
     [RESULTS_TAB.codeComplexity]: "+ See full Code Complexity breakdown",
-    [RESULTS_TAB.codeRisks]: "+ See full Code Risks breakdown",
     [RESULTS_TAB.aiUsage]: "+ Open AI Usage tab",
   };
   return footerForTab[tab];
@@ -161,10 +148,6 @@ export function healthTierForCoachPriorityTab(
     case RESULTS_TAB.codeComplexity:
       return healthTierFromScore(
         computeCodeComplexityHealthScore({ phase2: facts.phase2 }),
-      );
-    case RESULTS_TAB.codeRisks:
-      return healthTierFromScore(
-        computeCodeRisksHealthScore({ phase3: facts.phase3 }),
       );
     case RESULTS_TAB.aiUsage:
       return "good";
@@ -254,11 +237,6 @@ export function buildCoachSaysFallback(facts: CoachSaysFacts): CoachSaysPayload 
     score: computeCodeComplexityHealthScore({ phase2: facts.phase2 }),
   });
 
-  tabScores.push({
-    tab: RESULTS_TAB.codeRisks,
-    score: computeCodeRisksHealthScore({ phase3: facts.phase3 }),
-  });
-
   tabScores.push({ tab: RESULTS_TAB.aiUsage, score: 72 });
 
   const allowed = new Set(facts.allowedPriorityTabs);
@@ -321,9 +299,6 @@ export function buildCoachSaysFallback(facts: CoachSaysFacts): CoachSaysPayload 
     case RESULTS_TAB.codeComplexity:
       oppBody = `Per-function lexical complexity is the clearest opportunity (${facts.phase2?.miNormMean ?? "—"} mean MI_norm across ${facts.phase2?.functionsWithPhase2 ?? 0} functions). Trimming cognitive and Halstead outliers in Code Complexity will move this score the fastest on the next run.`;
       break;
-    case RESULTS_TAB.codeRisks:
-      oppBody = `Code Risks surfaced ${facts.phase3?.silentFailureCount ?? 0} silent-failure patterns in TSX — a great place to harden error handling before the surface area grows. Small, explicit fixes here prevent painful debugging later.`;
-      break;
     case RESULTS_TAB.aiUsage:
       oppBody =
         "Optional next step: add an AI usage trace on the AI Usage tab so tool choice and session phases show up next to your git habits — it completes the picture for a single repo sprint.";
@@ -336,7 +311,6 @@ export function buildCoachSaysFallback(facts: CoachSaysFacts): CoachSaysPayload 
     [RESULTS_TAB.codeQuality]: "Code Quality",
     [RESULTS_TAB.reactComponents]: "React Components",
     [RESULTS_TAB.codeComplexity]: "Code Complexity",
-    [RESULTS_TAB.codeRisks]: "Code Risks",
     [RESULTS_TAB.aiUsage]: "AI Usage",
   };
 

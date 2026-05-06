@@ -5,7 +5,7 @@ import {
   UI_COMPLEXITY_HIGH_GT,
 } from "@/lib/uiComplexityThresholds";
 
-/** Shared layout for metric help dialogs — matches Phase 3 narrative + formula box tone. */
+/** Shared layout for metric help dialogs — matches Code Risks narrative + formula box tone. */
 export function HelpSection({
   title,
   children,

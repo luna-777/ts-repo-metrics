@@ -12,7 +12,7 @@ The analyzer:
 
 ### Out of scope for dashboard v1
 
-Binding session logs into the **`RepoReport` engine response** or embedding a live analyzer in the **analyze** API is still **deferred** until parsing and enrichment are stable. The dashboard **AI Maturity** tab supports **CSV** and **JSON/JSONL session exports** (browser-side parsing + the session report panel below); Git-enriched metrics remain client-side “N/A” stubs until wired.
+Binding session logs into the **`RepoReport` engine response** or embedding a live analyzer in the **analyze** API is still **deferred** until parsing and enrichment are stable. The dashboard **AI Usage** tab supports **CSV** and **JSON/JSONL session exports** (browser-side parsing + the session report panel below); Git-enriched metrics remain client-side “N/A” stubs until wired.
 
 ## Output summary (artifact shape)
 
@@ -25,6 +25,17 @@ Reports should be **versioned** and stable for consumers (API, UI, exports). A m
 - **Optional:** `scorecard` (efficiency, safety_compliance, discovery_depth), `archetype`, `top_patterns[]`, `stuck_analysis`, `ai_coaching_tips[]`, `narrative` (if an LLM summarizes **only** computed features).
 
 Missing **primary** JSONL fields (e.g. no `usage` records) ⇒ related metrics are **null** with a documented `reason`, not guessed.
+
+### Efficiency breakdown (`scorecard.efficiencyBreakdown`)
+
+The browser-side report includes **derived components** of `scorecard.efficiency` (0–1, shown as % in the UI):
+
+- **`avgToolsPerPrompt`** — `tool_call` count ÷ `user_prompt` count (minimum 1 prompt).
+- **`iterScore`** (0–1) — rewards fewer tools per prompt: `clamp(0, 1, 1 - max(0, avgToolsPerPrompt - 1) / 8)`.
+- **`discoverScore`** (0–1) — from discovery ratio: `min(1, discoveryRatio × 1.35)`, or `0.5` if ratio is unavailable.
+- **`efficiency`** — `0.55 × iterScore + 0.45 × discoverScore`, clamped and rounded to 2 decimal places.
+
+Bump **`logAnalyzerVersion`** if any of these formulas change.
 
 ## Data enrichment requirement
 
