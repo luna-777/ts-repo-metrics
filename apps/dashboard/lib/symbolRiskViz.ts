@@ -60,3 +60,34 @@ export function buildScatterPoints(rows: SymbolVerificationRisk[]): SymbolRiskSc
     tier: tierFromRisk(r),
   }));
 }
+
+/**
+ * Chooses an x-axis upper bound for the complexity scatter so one extreme outlier does not
+ * compress the main cluster (empty space on the right). Values above this are drawn at the
+ * right edge; see {@link SymbolRiskScatterPoint.x} in tooltips for true complexity.
+ */
+export function scatterComplexityDisplayMax(xs: number[]): { xMax: number; capped: boolean } {
+  if (xs.length === 0) return { xMax: 10, capped: false };
+  const sorted = [...xs].sort((a, b) => a - b);
+  const n = sorted.length;
+  const rawMax = sorted[n - 1]!;
+  const pick = (p: number) => sorted[Math.min(n - 1, Math.max(0, Math.floor(p * (n - 1))))]!;
+
+  if (n < 5) {
+    return { xMax: Math.max(8, rawMax), capped: false };
+  }
+
+  if (rawMax <= 18) {
+    return { xMax: Math.max(8, rawMax), capped: false };
+  }
+
+  const p90 = pick(0.9);
+  const q1 = pick(0.25);
+  const q3 = pick(0.75);
+  const iqr = Math.max(1, q3 - q1);
+  const fence = q3 + 1.5 * iqr;
+  const fromBulk = Math.max(fence, p90 * 1.12, 14);
+  const xMax = Math.min(rawMax, fromBulk);
+  const capped = xMax < rawMax - 1e-6;
+  return { xMax: Math.max(8, xMax), capped };
+}

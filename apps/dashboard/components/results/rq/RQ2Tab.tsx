@@ -2,12 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MetricCard } from "../MetricCard";
-import { VerificationLearningFooter } from "./VerificationLearningFooter";
-import { VerificationLearningIntro } from "./VerificationLearningIntro";
-import { VerificationTakeaways } from "./VerificationTakeaways";
 import { RQ2Quadrant } from "./RQ2Quadrant";
+import { SymbolRiskProximityFullPageDialog } from "./SymbolRiskProximityFullPageDialog";
 import { SymbolRiskScatter } from "./SymbolRiskScatter";
-import { SymbolRiskTable } from "./SymbolRiskTable";
 import type { RepoReport } from "@/lib/reportTypes";
 import { getRq2MetricValues } from "@/lib/rq2ScopeMetrics";
 import { RQ1_SCOPE_TEAM, type Rq1ScopeId } from "@/lib/rq1ScopeMetrics";
@@ -17,17 +14,18 @@ import {
   RQ2SymbolProximityScanBody,
   RQ2TestCoverageProxyBody,
   RQ2TestLocRatioBody,
-  RQ2TestToFeatureCommitRatioBody,
-  RQ3CyclomaticMaxBody,
-  RQ3HighComplexityCountBody,
-  RQ3LongFunctionCountBody,
 } from "./metricHelpContent";
 import { buildScatterPoints } from "@/lib/symbolRiskViz";
 import { CoachExplainButton } from "@/components/chat/CoachExplainButton";
 import { useCoachExplain } from "@/lib/repoCoachContext";
 import { RQ2_EXPLAIN_PROXIMITY, RQ2_EXPLAIN_SAFETY_NETS } from "@/lib/rq2ExplainPrompts";
+import { RQ2CoreSignalsSection } from "./RQ2CoreSignalsSection";
+import { RQ2TestingImprovementSection } from "./RQ2TestingImprovementSection";
+
 interface RQ2TabProps {
   report: RepoReport;
+  /** Switch parent results tabs to Code Quality (cyclomatic / structural metrics). */
+  onOpenCodeQualityTab?: () => void;
 }
 
 function formatNumber(n: number): string {
@@ -45,7 +43,7 @@ function capitalizeWord(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function RQ2Tab({ report }: RQ2TabProps) {
+export function RQ2Tab({ report, onOpenCodeQualityTab }: RQ2TabProps) {
   const coachExplain = useCoachExplain();
 
   const contributors = useMemo(() => report.contributors ?? [], [report.contributors]);
@@ -62,10 +60,6 @@ export function RQ2Tab({ report }: RQ2TabProps) {
     () => (symbolRiskRows?.length ? buildScatterPoints(symbolRiskRows) : []),
     [symbolRiskRows],
   );
-  const maxScatterComplexity = useMemo(() => {
-    if (!symbolRiskRows?.length) return 10;
-    return Math.max(10, ...symbolRiskRows.map((r) => r.cyclomaticComplexity));
-  }, [symbolRiskRows]);
 
   const symbolProximitySummary = useMemo(() => {
     const rows = report.symbolVerificationRisks;
@@ -111,43 +105,27 @@ export function RQ2Tab({ report }: RQ2TabProps) {
     mv.mode === "contributor"
       ? "Among this author's commits, the fraction that touches at least one path detected as a test file."
       : "Commits where any changed path is a test file.";
-  const testToFeatureTooltip =
-    mv.mode === "contributor"
-      ? "Among this author's commits: (commits that touch a test file) ÷ (commits whose diff has no test path). Shown as a decimal ratio; 0 when there were no feature-only commits (nothing to divide by)."
-      : "(Commits touching tests) ÷ (commits with only non-test paths). Decimal ratio from git history; 0 when there were no feature-only commits or every commit touched a test.";
   const refactorTooltip =
     mv.mode === "contributor"
       ? "Among this author's commits, the fraction whose subjects match refactor-style keywords."
       : "Commits whose subject matches refactor-style keywords.";
   const locSnapshotTooltip =
     "Counted across the entire repository snapshot (not split by contributor).";
-  const repoWideSmellTooltip =
-    "Found by scanning the repository tree as one pass. The analyzer does not attribute these to individual authors, so the count does not change when you pick a teammate.";
-  const emptyCatchTooltip =
-    mv.mode === "contributor"
-      ? `Catch clauses with empty body. ${repoWideSmellTooltip}`
-      : `Catch clauses with empty body. ${locSnapshotTooltip}`;
-  const consoleTooltip =
-    mv.mode === "contributor"
-      ? `console.log / warn / error calls. ${repoWideSmellTooltip}`
-      : `console.log / warn / error calls. ${locSnapshotTooltip}`;
   const gitChurnTooltip =
     "Sum of lines added + deleted (git numstat) on paths in this author’s commits, split by test vs non-test file patterns—historical churn, not current tree size.";
 
-  const sectionTitles =
-    mv.mode === "team"
-      ? { a: "Tests and safety nets", b: "Harder-to-review spots", c: "Your risk profile" }
-      : {
-          a: `Tests and safety nets (${mv.contributorDisplayName ?? "contributor"})`,
-          b: "Harder-to-review spots (whole repository)",
-          c: "Your risk profile (whole repository)",
-        };
+  const safetyNetsSectionTitle = useMemo(() => {
+    const fromGitHistory = mv.locSource === "gitChurn";
+    const label = fromGitHistory ? "Git-based test signals" : "Other Signals";
+    if (mv.mode === "team") return label;
+    return `${label} (${mv.contributorDisplayName ?? "contributor"})`;
+  }, [mv.contributorDisplayName, mv.locSource, mv.mode]);
+
+  const riskProfileTitle =
+    mv.mode === "team" ? "Your risk profile" : "Your risk profile (whole repository)";
 
   return (
     <div className="space-y-8">
-      <VerificationLearningIntro report={report} />
-      {teamOnly ? <VerificationTakeaways report={report} /> : null}
-
       {contributors.length > 0 ? (
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
@@ -175,15 +153,13 @@ export function RQ2Tab({ report }: RQ2TabProps) {
         mv.locSource === "gitChurn" ? (
           <>
             <p className="text-sm text-muted-foreground max-w-3xl">
-              The first metrics in &quot;Tests and safety nets&quot; use per-author git churn (test vs
-              non-test paths) for your selection. Complexity, hygiene counts, and the quadrant still
-              describe the whole repository scan.
+              The first metrics in this section use per-author git churn (test vs
+              non-test paths) for your selection. Complexity and the quadrant still describe the whole
+              repository scan.
             </p>
             <p className="text-sm font-medium text-foreground max-w-3xl">
-              Note: <strong>% commits touching tests</strong>,{" "}
-              <strong>Test-to-feature commit ratio</strong>, and{" "}
-              <strong>Refactor commit ratio</strong> are also computed for the selected author; empty catch
-              and console counts stay repo-wide.
+              Note: <strong>% commits touching tests</strong> and{" "}
+              <strong>Refactor commit ratio</strong> are also computed for the selected author.
             </p>
           </>
         ) : (
@@ -195,35 +171,26 @@ export function RQ2Tab({ report }: RQ2TabProps) {
               for one person.
             </p>
             <p className="text-sm font-medium text-foreground max-w-3xl">
-              Note: <strong>% commits touching tests</strong>,{" "}
-              <strong>Test-to-feature commit ratio</strong>, and{" "}
+              Note: <strong>% commits touching tests</strong> and{" "}
               <strong>Refactor commit ratio</strong> still reflect the selected teammate on this analysis.
-              <strong> Empty catch blocks</strong> and <strong>console log counts</strong> are always from the
-              full repository scan—we do not split them by author.
             </p>
           </>
         )
       ) : null}
 
+      <RQ2CoreSignalsSection mv={mv} report={report} />
+
       <section id="rq2-safety-nets">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-semibold flex-1 min-w-0">{sectionTitles.a}</h2>
+          <h2 className="text-lg font-semibold flex-1 min-w-0">{safetyNetsSectionTitle}</h2>
           <CoachExplainButton prompt={RQ2_EXPLAIN_SAFETY_NETS} send={coachExplain} />
         </div>
-        <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
-          {mv.locSource === "profile" ? (
-            <>
-              Coverage and sizing use the analyzer&apos;s snapshot of the tree. Percentages that rely on
-              git history follow the scope chosen above where available.
-            </>
-          ) : (
-            <>
-              Test/source churn and file counts below are from git history for the selected teammate
-              (add + delete lines per path). Other cards in this section still use repo-wide scan data where
-              noted.
-            </>
-          )}
-        </p>
+        {mv.locSource === "gitChurn" ? (
+          <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
+            Test/source churn and file counts below are from git history for the selected teammate (add +
+            delete lines per path). Other cards in this section still use repo-wide scan data where noted.
+          </p>
+        ) : null}
         <div key={`rq2-primary-${scopeId}`} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <MetricCard
             {...cardProps}
@@ -233,16 +200,6 @@ export function RQ2Tab({ report }: RQ2TabProps) {
               mv.locSource === "gitChurn"
                 ? `Test-path line churn (add + del). ${gitChurnTooltip}`
                 : `Lines of code in test files (*.test / *.spec). ${locSnapshotTooltip}`
-            }
-          />
-          <MetricCard
-            {...cardProps}
-            label={mv.locSource === "gitChurn" ? "Source line churn (git)" : "Source LOC"}
-            value={mv.sourceLoc}
-            tooltip={
-              mv.locSource === "gitChurn"
-                ? `Non-test-path line churn (add + del). ${gitChurnTooltip}`
-                : `Lines of code in non-test source files. ${locSnapshotTooltip}`
             }
           />
           <MetricCard
@@ -291,16 +248,6 @@ export function RQ2Tab({ report }: RQ2TabProps) {
               children: <RQ2PctCommitsTouchingTestsBody />,
             }}
           />
-          <MetricCard
-            {...cardProps}
-            label="Test-to-feature commit ratio"
-            value={formatRatio(mv.testToFeatureCommitRatio)}
-            tooltip={testToFeatureTooltip}
-            metricHelp={{
-              title: "Test-to-feature commit ratio",
-              children: <RQ2TestToFeatureCommitRatioBody />,
-            }}
-          />
           {report.testCoverageProxy ? (
             <MetricCard
               {...cardProps}
@@ -325,20 +272,6 @@ export function RQ2Tab({ report }: RQ2TabProps) {
               }}
             />
           ) : null}
-          <MetricCard
-            {...cardProps}
-            label={
-              teamOnly ? "Empty catch blocks" : "Empty catch blocks (whole codebase)"
-            }
-            value={mv.emptyCatchBlocks}
-            tooltip={emptyCatchTooltip}
-          />
-          <MetricCard
-            {...cardProps}
-            label={teamOnly ? "Console log count" : "Console log count (whole codebase)"}
-            value={mv.consoleLogCount}
-            tooltip={consoleTooltip}
-          />
           <MetricCard
             {...cardProps}
             label="Refactor commit ratio"
@@ -377,52 +310,26 @@ export function RQ2Tab({ report }: RQ2TabProps) {
             No matching rows (no qualifying functions or no paired-test layout found).
           </p>
         ) : (
-          <>
-            <SymbolRiskScatter points={scatterPoints} maxComplexity={maxScatterComplexity} />
-            <SymbolRiskTable rows={symbolRiskRows} />
-          </>
+          <div className="space-y-4">
+            <SymbolRiskScatter points={scatterPoints} />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <SymbolRiskProximityFullPageDialog
+                rows={symbolRiskRows}
+                instanceKey={`${report.analysis_timestamp ?? ""}-${scopeId}-${symbolRiskRows.length}`}
+              />
+            </div>
+          </div>
         )}
+        <p className="text-sm text-muted-foreground max-w-3xl">
+          Repo-wide <strong>high complexity</strong>, <strong>long function</strong>, and{" "}
+          <strong>max cyclomatic</strong> counts are on the{" "}
+          <span className="font-medium text-foreground">Code Quality</span> tab (Structural complexity).
+        </p>
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold mb-4">{sectionTitles.b}</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <MetricCard
-            {...cardProps}
-            label="High complexity count"
-            value={mv.highComplexityCount}
-            tooltip={`Functions with complexity > 10. ${locSnapshotTooltip}`}
-            metricHelp={{
-              title: "High complexity function count",
-              children: <RQ3HighComplexityCountBody />,
-            }}
-          />
-          <MetricCard
-            {...cardProps}
-            label="Long function count"
-            value={mv.longFunctionCount}
-            tooltip={`Functions with more than 50 lines. ${locSnapshotTooltip}`}
-            metricHelp={{
-              title: "Long function count",
-              children: <RQ3LongFunctionCountBody />,
-            }}
-          />
-          <MetricCard
-            {...cardProps}
-            label="Max complexity"
-            value={mv.maxComplexity}
-            tooltip={`Largest per-function cyclomatic value. ${locSnapshotTooltip}`}
-            metricHelp={{
-              title: "Maximum cyclomatic complexity",
-              children: <RQ3CyclomaticMaxBody />,
-            }}
-          />
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold mb-4">{sectionTitles.c}</h2>
         <RQ2Quadrant
+          sectionTitle={riskProfileTitle}
           riskIndex={riskIndex}
           verificationIndex={verificationIndex}
           riskLabel={riskLabel}
@@ -431,7 +338,7 @@ export function RQ2Tab({ report }: RQ2TabProps) {
         />
       </section>
 
-      <VerificationLearningFooter />
+      <RQ2TestingImprovementSection onOpenCodeQualityTab={onOpenCodeQualityTab} />
     </div>
   );
 }

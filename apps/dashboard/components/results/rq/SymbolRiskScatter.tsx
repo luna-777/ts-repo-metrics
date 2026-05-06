@@ -1,6 +1,10 @@
 "use client";
 
-import type { SymbolRiskScatterPoint, VerificationLane } from "@/lib/symbolRiskViz";
+import {
+  scatterComplexityDisplayMax,
+  type SymbolRiskScatterPoint,
+  type VerificationLane,
+} from "@/lib/symbolRiskViz";
 
 const W = 560;
 const H = 360;
@@ -51,16 +55,16 @@ const laneIndex: Record<VerificationLane, number> = {
 
 interface SymbolRiskScatterProps {
   points: SymbolRiskScatterPoint[];
-  maxComplexity: number;
 }
 
-export function SymbolRiskScatter({ points, maxComplexity }: SymbolRiskScatterProps) {
-  const xMax = Math.max(8, maxComplexity, 1);
+export function SymbolRiskScatter({ points }: SymbolRiskScatterProps) {
+  const xs = points.map((p) => p.x);
+  const { xMax, capped } = scatterComplexityDisplayMax(xs);
   const numLanes = LANES.length;
   const laneHeight = INNER_H / numLanes;
   const jitterScale = laneHeight * 0.38;
 
-  const scaleX = (cx: number) => PAD.l + (cx / xMax) * INNER_W;
+  const scaleX = (cx: number) => PAD.l + (Math.min(cx, xMax) / xMax) * INNER_W;
 
   /** Y for a point: lane band center + per-key jitter */
   const dotY = (p: SymbolRiskScatterPoint): number => {
@@ -77,7 +81,11 @@ export function SymbolRiskScatter({ points, maxComplexity }: SymbolRiskScatterPr
         viewBox={`0 0 ${W} ${H}`}
         className="max-w-full h-auto"
         role="img"
-        aria-label="Cyclomatic complexity by test proximity band, with risk tier colors"
+        aria-label={
+          capped
+            ? "Cyclomatic complexity by test proximity band; horizontal axis is capped so the main cluster is readable—hover points for exact complexity."
+            : "Cyclomatic complexity by test proximity band, with risk tier colors"
+        }
       >
         <text x={W / 2} y={20} textAnchor="middle" className="fill-muted-foreground text-[11px]">
           Cyclomatic complexity vs test proximity (three bands)
@@ -150,7 +158,7 @@ export function SymbolRiskScatter({ points, maxComplexity }: SymbolRiskScatterPr
           textAnchor="end"
           className="fill-muted-foreground text-[8px]"
         >
-          {Math.round(xMax)}
+          {capped ? `${Math.round(xMax)}+` : Math.round(xMax)}
         </text>
 
         {points.map((p) => (
@@ -163,13 +171,9 @@ export function SymbolRiskScatter({ points, maxComplexity }: SymbolRiskScatterPr
             opacity={0.88}
           >
             <title>
-              {`${p.labelShort} — ${
-                p.lane === "paired_only"
-                  ? "paired test only"
-                  : p.lane === "referenced"
-                    ? "referenced"
-                    : "no paired test"
-              } — tier ${p.tier}`}
+              {`${p.labelShort} — cyclomatic ${p.x}${
+                p.x > xMax ? " (shown at right edge; axis capped for readability)" : ""
+              } — ${p.lane === "paired_only" ? "paired test only" : p.lane === "referenced" ? "referenced" : "no paired test"} — tier ${p.tier}`}
             </title>
           </circle>
         ))}
@@ -193,6 +197,12 @@ export function SymbolRiskScatter({ points, maxComplexity }: SymbolRiskScatterPr
           <span className="inline-block size-2.5 rounded-full" style={{ background: tierColor.low }} />
           Low
         </span>
+        {capped ? (
+          <span className="w-full text-[10px] leading-snug sm:w-auto">
+            Axis capped for readability; values above the scale sit on the right edge—hover a dot for exact
+            complexity.
+          </span>
+        ) : null}
       </div>
     </div>
   );

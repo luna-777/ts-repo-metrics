@@ -12,12 +12,15 @@ export type CoachInsightToneKind = keyof typeof toneStyles;
 export interface CoachInsightToneProps extends React.ComponentProps<"div"> {
   tone: CoachInsightToneKind;
   title?: string;
+  /** Applied to the body wrapper (below title). */
+  bodyClassName?: string;
   children: React.ReactNode;
 }
 
 export function CoachInsightTone({
   tone,
   title,
+  bodyClassName,
   children,
   className,
   ...props
@@ -42,6 +45,7 @@ export function CoachInsightTone({
         className={cn(
           "text-pretty break-words text-sm leading-relaxed text-muted-foreground",
           title && "mt-3",
+          bodyClassName,
         )}
       >
         {children}

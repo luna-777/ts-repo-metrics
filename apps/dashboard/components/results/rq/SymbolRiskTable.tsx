@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import type { SymbolVerificationRisk } from "@/lib/reportTypes";
 import { tierAction, tierFromRisk, type RiskTier } from "@/lib/symbolRiskViz";
+import { cn } from "@/lib/utils";
 
 const ALL_TIERS: RiskTier[] = ["critical", "high", "medium", "low"];
 
@@ -29,16 +31,27 @@ const tierStyle: Record<RiskTier, string> = {
 
 interface SymbolRiskTableProps {
   rows: SymbolVerificationRisk[];
+  /** Rows per page (default 25). */
+  pageSize?: number;
+  /** Extra class on the outer wrapper. */
+  className?: string;
 }
 
-export function SymbolRiskTable({ rows }: SymbolRiskTableProps) {
+export function SymbolRiskTable({
+  rows,
+  pageSize: pageSizeProp = 25,
+  className,
+}: SymbolRiskTableProps) {
+  const pageSize = Math.max(1, pageSizeProp);
   const [sortKey, setSortKey] = useState<SortKey>("riskScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [tierFilter, setTierFilter] = useState<Set<RiskTier>>(
     () => new Set(ALL_TIERS),
   );
+  const [page, setPage] = useState(0);
 
   function toggleTier(tier: RiskTier) {
+    setPage(0);
     setTierFilter((prev) => {
       const next = new Set(prev);
       if (next.has(tier)) {
@@ -71,7 +84,15 @@ export function SymbolRiskTable({ rows }: SymbolRiskTableProps) {
     return list;
   }, [rows, sortKey, sortDir, tierFilter]);
 
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const maxPageIndex = pageCount - 1;
+  const currentPage = Math.min(page, maxPageIndex);
+  const pageRows = sorted.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+  const fromRow = sorted.length === 0 ? 0 : currentPage * pageSize + 1;
+  const toRow = sorted.length === 0 ? 0 : Math.min(sorted.length, (currentPage + 1) * pageSize);
+
   function toggle(k: SortKey) {
+    setPage(0);
     if (sortKey === k) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -84,7 +105,7 @@ export function SymbolRiskTable({ rows }: SymbolRiskTableProps) {
   const filteredCount = sorted.length;
 
   return (
-    <div className="space-y-3">
+    <div className={cn("space-y-3", className)}>
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-y-2">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -177,11 +198,11 @@ export function SymbolRiskTable({ rows }: SymbolRiskTableProps) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((r, i) => {
+              {pageRows.map((r, i) => {
                 const tier = tierFromRisk(r);
                 return (
                   <tr
-                    key={`${r.file}-${r.name}-${r.startLine}-${i}`}
+                    key={`${r.file}-${r.name}-${r.startLine}-${currentPage}-${i}`}
                     className="border-b border-border/60"
                   >
                     <td className="p-2 font-mono text-xs">{r.name}</td>
@@ -203,6 +224,41 @@ export function SymbolRiskTable({ rows }: SymbolRiskTableProps) {
           </table>
         </div>
       )}
+      {activeFilterCount > 0 && sorted.length > 0 ? (
+        <div className="flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            Rows {fromRow}–{toRow} of {sorted.length}
+            {pageCount > 1 ? ` · Page ${currentPage + 1} of ${pageCount}` : null}
+          </p>
+          {pageCount > 1 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={currentPage <= 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={currentPage >= pageCount - 1}
+                onClick={() =>
+                  setPage((p) => {
+                    const pc = Math.max(1, Math.ceil(sorted.length / pageSize));
+                    return Math.min(pc - 1, p + 1);
+                  })
+                }
+              >
+                Next
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

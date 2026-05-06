@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { RQ1Tab } from "./rq/RQ1Tab";
 import { RQ2Tab } from "./rq/RQ2Tab";
 import { RQ3Tab } from "./rq/RQ3Tab";
@@ -27,6 +28,7 @@ import { createUserSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { isBrowserSupabaseConfigured } from "@/lib/supabase/browserConfigured";
 import { RepoChat } from "@/components/chat/RepoChat";
 import { CoachExplainProvider } from "@/lib/repoCoachContext";
+import { ResultsTabPanelIntro } from "./ResultsTabPanelIntro";
 
 interface ResultsDashboardProps {
   report: RepoReport;
@@ -37,6 +39,14 @@ function reportHasGitHubSource(report: RepoReport): boolean {
   const u = report.source?.url ?? "";
   return typeof u === "string" && u.includes("github.com");
 }
+
+/** Aligned with UCSC Developer Analytics tab strip (Figma). */
+const resultsTabTriggerClass = cn(
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-none border border-transparent px-4 py-2.5 text-sm font-medium shadow-none transition-colors",
+  "text-muted-foreground hover:text-foreground",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+  "data-[state=active]:z-[1] data-[state=active]:-mb-px data-[state=active]:rounded-none data-[state=active]:border-x data-[state=active]:border-t data-[state=active]:border-border data-[state=active]:border-b-transparent data-[state=active]:bg-neutral-800/30 data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:bg-neutral-800/30",
+);
 
 export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
   const showReact = hasReactUiScope(report);
@@ -147,7 +157,7 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
         }}
         pointer={
           <>
-            → Your highest-impact improvement this quarter is Testing. Head to the Tests and risk tab
+            → Your highest-impact improvement this quarter is Testing. Head to the Testing tab
             below to see exactly what to do and how to improve your score.
           </>
         }
@@ -173,107 +183,116 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
         />
       </section>
 
-      <Tabs value={resultsTab} onValueChange={setResultsTab}>
-        <div className="w-full max-w-full overflow-x-auto rounded-lg border border-border/80 bg-muted/80 p-1 shadow-sm [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
-          <TabsList className="flex h-auto min-h-10 w-max min-w-full flex-nowrap justify-start gap-0.5 bg-transparent p-0 sm:gap-1">
+      <Tabs value={resultsTab} onValueChange={setResultsTab} className="w-full">
+        <div className="w-full max-w-full overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
+          <TabsList
+            aria-label="Result categories"
+            className="flex h-12 min-h-12 w-max min-w-full flex-nowrap items-end gap-0 rounded-none border-b border-border bg-transparent p-0"
+          >
             <TabsTrigger
-              className="shrink-0 px-2.5 sm:px-3"
+              className={resultsTabTriggerClass}
               value="rq1"
-              title="How often you commit, commit size, bursts, and churn—git habits for your team"
+              title="Commit cadence, size, bursts, and churn — engineering habits from git history"
             >
-              How we work
+              Commit Habits
             </TabsTrigger>
             <TabsTrigger
-              className="shrink-0 px-2.5 sm:px-3"
+              className={resultsTabTriggerClass}
               value="rq2"
-              title="Tests, test-heavy commits, and rough structural risk—not scores"
+              title="Testing and verification — test density, commits touching tests, structural risk signals"
             >
-              Tests and risk
+              Testing
             </TabsTrigger>
             <TabsTrigger
-              className="shrink-0 px-2.5 sm:px-3"
+              className={resultsTabTriggerClass}
               value="rq3"
-              title="Quality — complexity, maintainability, duplication"
+              title="Code quality — complexity, maintainability, duplication"
             >
-              Quality
+              Code Quality
             </TabsTrigger>
             {showReact ? (
               <TabsTrigger
-                className="shrink-0 px-2.5 sm:px-3"
+                className={resultsTabTriggerClass}
                 value="rq3-react"
-                title="React & TSX — hooks, JSX depth, cohesion heuristics"
+                title="React and TSX — hooks, JSX depth, component cohesion heuristics"
               >
-                React &amp; TSX
+                React Components
               </TabsTrigger>
             ) : null}
             <TabsTrigger
-              className="shrink-0 px-2.5 sm:px-3"
+              className={resultsTabTriggerClass}
               value="phase2-complexity"
-              title="Lexical & cognitive — Halstead, cognitive complexity, MI (per function)"
+              title="Code complexity — Halstead and cognitive complexity, maintainability index (per function)"
             >
-              Lexical
+              Code Complexity
             </TabsTrigger>
             <TabsTrigger
-              className="shrink-0 px-2.5 sm:px-3"
+              className={resultsTabTriggerClass}
               value="phase3-pathology"
-              title="AI smell & bloat — silent failures, redundancy, monolith signals"
+              title="Code risks — silent failures, redundancy, and AI-related structural smells"
             >
-              AI smells
+              Code Risks
             </TabsTrigger>
             <TabsTrigger
-              className="shrink-0 px-2.5 sm:px-3"
+              className={resultsTabTriggerClass}
               value="ai-maturity"
-              title="AI Usage Maturity — how well you use AI across the SDLC"
+              title="AI usage maturity — how consistently AI is used across the SDLC"
             >
               AI Maturity
             </TabsTrigger>
-            <TabsTrigger className="shrink-0 px-2.5 sm:px-3" value="dataset" title="Dataset export">
+            <TabsTrigger
+              className={resultsTabTriggerClass}
+              value="dataset"
+              title="Export analysis fields for research or downstream tools"
+            >
               Dataset
             </TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="rq1">
+        <div className="mt-4">
+          <ResultsTabPanelIntro activeTab={resultsTab} report={report} />
+        </div>
+        <TabsContent value="rq1" className="mt-6">
           <div className="space-y-8">
             <RQ1Tab report={report} />
             <CrossRQInsightPanel report={report} />
           </div>
         </TabsContent>
-        <TabsContent value="rq2">
+        <TabsContent value="rq2" className="mt-6">
           <div id="rq2" className="scroll-mt-8 space-y-8">
-            <RQ2Tab report={report} />
-            <CrossRQInsightPanel report={report} />
+            <RQ2Tab report={report} onOpenCodeQualityTab={() => setResultsTab("rq3")} />
           </div>
         </TabsContent>
-        <TabsContent value="rq3">
+        <TabsContent value="rq3" className="mt-6">
           <div className="space-y-8">
             <RQ3Tab report={report} />
             <CrossRQInsightPanel report={report} />
           </div>
         </TabsContent>
         {showReact ? (
-          <TabsContent value="rq3-react">
+          <TabsContent value="rq3-react" className="mt-6">
             <div className="space-y-8">
               <RQ3ReactTab report={report} />
               <CrossRQInsightPanel report={report} />
             </div>
           </TabsContent>
         ) : null}
-        <TabsContent value="phase2-complexity">
+        <TabsContent value="phase2-complexity" className="mt-6">
           <div className="space-y-8">
             <Phase2ComplexityTab report={report} />
             <CrossRQInsightPanel report={report} />
           </div>
         </TabsContent>
-        <TabsContent value="phase3-pathology">
+        <TabsContent value="phase3-pathology" className="mt-6">
           <div className="space-y-8">
             <Phase3PathologyTab report={report} />
             <CrossRQInsightPanel report={report} />
           </div>
         </TabsContent>
-        <TabsContent value="ai-maturity">
+        <TabsContent value="ai-maturity" className="mt-6">
           <AIMaturityTab />
         </TabsContent>
-        <TabsContent value="dataset">
+        <TabsContent value="dataset" className="mt-6">
           <DatasetTab report={report} resultId={resultId} />
         </TabsContent>
       </Tabs>
