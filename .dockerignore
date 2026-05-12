@@ -1,0 +1,26 @@
+# Monorepo / secrets / heavy junk (analysis clones use runtime git, not this context)
+.git
+**/.git
+.github
+
+node_modules
+**/node_modules
+
+.next
+**/.next
+**/dist
+.cache
+**/.cache
+**/.turbo
+
+coverage
+*.log
+
+.env
+.env.*
+!.env.example
+
+.cursor
+**/.vercel
+
+apps/dashboard/.env.local
