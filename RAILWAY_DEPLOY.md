@@ -25,12 +25,15 @@ Set these on the **Railway service → Variables** (same semantics as production
 | Variable | Notes |
 |----------|--------|
 | `NODE_ENV` | `production` |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (public) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (public) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role — server only |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (public; inlined at build — required for browser bundle) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (public; build + browser) |
+| `SUPABASE_URL` | **Optional on Railway:** same as project URL; **Node/server runtime** so APIs work even if `NEXT_PUBLIC_*` was empty at image build |
+| `SUPABASE_ANON_KEY` | **Optional:** same as anon key; server/middleware runtime fallback |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role — server only (runtime) |
 | `GITHUB_OAUTH_ENCRYPTION_KEY` | Secret for encrypting stored GitHub OAuth tokens |
 | `GITHUB_TOKEN` | Optional — higher GitHub API limits for guests / zipball fallback |
 | `OPENAI_API_KEY` | Optional — required for coach/chat routes that call OpenAI |
+| `APP_ORIGIN` | **Recommended:** `https://<your-service>.up.railway.app` (no trailing slash). Ensures `/auth/callback` redirects use the public URL, not `http://0.0.0.0:8080` behind the proxy. |
 
 ### Build time vs runtime (important)
 

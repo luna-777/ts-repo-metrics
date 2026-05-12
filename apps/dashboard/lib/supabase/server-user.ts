@@ -6,20 +6,21 @@
 
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import {
+  supabaseAnonKeyNode,
+  supabaseProjectUrlNode,
+} from "@/lib/supabase/projectEnv";
 
 export function isUserSupabaseConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim(),
-  );
+  return Boolean(supabaseProjectUrlNode() && supabaseAnonKeyNode());
 }
 
 export async function createUserSupabaseServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = supabaseProjectUrlNode();
+  const anonKey = supabaseAnonKeyNode();
   if (!url || !anonKey) {
     throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "Missing SUPABASE_URL / SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY",
     );
   }
 

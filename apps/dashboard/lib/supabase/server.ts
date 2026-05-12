@@ -5,14 +5,14 @@
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { supabaseProjectUrlNode } from "@/lib/supabase/projectEnv";
 
 let _supabase: SupabaseClient | null = null;
 
 /** True when both URL and service role key are set (persistence enabled). */
 export function isSupabaseConfigured(): boolean {
   return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
-      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+    supabaseProjectUrlNode() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
   );
 }
 
@@ -27,7 +27,7 @@ export function isDevReportMemoryFallback(): boolean {
 
 export function getSupabase(): SupabaseClient {
   if (!_supabase) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const url = supabaseProjectUrlNode();
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) {
       throw new Error("Missing Supabase env vars");

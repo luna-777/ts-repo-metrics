@@ -1,11 +1,15 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  supabaseAnonKeyNode,
+  supabaseProjectUrlNode,
+} from "@/lib/supabase/projectEnv";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = supabaseProjectUrlNode();
+  const anonKey = supabaseAnonKeyNode();
   if (!url || !anonKey) {
     return supabaseResponse;
   }

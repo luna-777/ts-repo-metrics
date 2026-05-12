@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (see .env.example), or run with NODE_ENV=development for in-memory dev mode.",
+            "Supabase is not configured. Set SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY on the server (see .env.example), then redeploy. On Railway, SUPABASE_URL avoids build-time inlining issues.",
           status: "failed",
         },
         { status: 503 }

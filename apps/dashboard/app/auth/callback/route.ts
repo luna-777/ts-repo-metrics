@@ -6,9 +6,15 @@ import {
   isGitHubTokenEncryptionConfigured,
 } from "@/lib/githubTokenCrypto";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/server";
+import {
+  supabaseAnonKeyNode,
+  supabaseProjectUrlNode,
+} from "@/lib/supabase/projectEnv";
+import { getPublicOriginFromRequest } from "@/lib/publicOrigin";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = getPublicOriginFromRequest(request);
   const code = searchParams.get("code");
   const nextPath = searchParams.get("next") ?? "/";
 
@@ -16,8 +22,8 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}${nextPath}`);
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = supabaseProjectUrlNode();
+  const anonKey = supabaseAnonKeyNode();
   if (!url || !anonKey) {
     return NextResponse.redirect(
       `${origin}${nextPath}?auth_error=missing_supabase`,
