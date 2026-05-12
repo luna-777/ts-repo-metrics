@@ -202,8 +202,7 @@ export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
               role="dialog"
               aria-labelledby="repo-coach-title"
               className={cn(
-                "fixed top-0 right-0 z-[45] flex h-[100dvh] w-full max-w-[440px] flex-col border-l border-border bg-background shadow-xl",
-                "max-md:pt-14",
+                "fixed top-16 right-0 z-[45] flex h-[calc(100dvh-4rem)] w-full max-w-[440px] flex-col border-l border-border bg-background shadow-xl",
               )}
               initial={{ x: "100%", opacity: 0.98 }}
               animate={{ x: 0, opacity: 1 }}
