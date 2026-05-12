@@ -436,6 +436,10 @@ export function HeaderNavClient() {
       </nav>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <span
+          id="repo-coach-header-slot"
+          className="inline-flex min-w-0 empty:hidden"
+        />
         <ThemeToggle variant="nav" />
 
         {!loading && !isBrowserSupabaseConfigured() ? (

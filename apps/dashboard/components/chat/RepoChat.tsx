@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send, Bot, User, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { MessageSquare, X, Send, Loader2 } from "lucide-react";
 import { buildReportSummary } from "@/lib/buildReportSummary";
+import {
+  buildReportJsonForCoach,
+  MAX_REPORT_JSON_CHARS_CLIENT,
+} from "@/lib/buildReportJsonForCoach";
 import type { RepoReport } from "@/lib/reportTypes";
+import { cn } from "@/lib/utils";
 
 interface Message {
   role: "user" | "assistant";
@@ -15,18 +22,17 @@ const STARTER_PROMPTS = [
   "How can I improve my test coverage?",
   "Explain my complexity score.",
   "What commit habits should I improve?",
-  "Are there AI-generated code smells in this repo?",
+  "How is the test coverage proxy different from real coverage?",
 ];
 
 interface RepoChatProps {
   report: RepoReport;
-  /** Called with a function that opens the panel and sends one user message (Repo Coach explainer). */
   onRegisterCoachSend?: (send: (userMessage: string) => void) => void;
 }
 
 export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [headerSlot, setHeaderSlot] = useState<Element | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -35,12 +41,17 @@ export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
   const reportSummary = useRef<string>("");
 
   useEffect(() => {
+    setHeaderSlot(document.getElementById("repo-coach-header-slot"));
+  }, []);
+
+  useEffect(() => {
     reportSummary.current = buildReportSummary(report);
   }, [report]);
 
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      const t = window.setTimeout(() => inputRef.current?.focus(), 100);
+      return () => window.clearTimeout(t);
     }
   }, [open]);
 
@@ -53,13 +64,17 @@ export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
       const trimmed = text.trim();
       if (!trimmed || streaming) return;
 
+      const { json: reportJson } = buildReportJsonForCoach(
+        report,
+        MAX_REPORT_JSON_CHARS_CLIENT,
+      );
+
       const userMsg: Message = { role: "user", content: trimmed };
       const nextMessages = [...messages, userMsg];
       setMessages(nextMessages);
       setInput("");
       setStreaming(true);
 
-      // Add an empty assistant message that will be filled by streaming
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       try {
@@ -69,6 +84,7 @@ export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
           body: JSON.stringify({
             messages: nextMessages,
             reportSummary: reportSummary.current,
+            reportJson: reportJson ?? undefined,
           }),
         });
 
@@ -115,12 +131,12 @@ export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
         setStreaming(false);
       }
     },
-    [messages, streaming],
+    [messages, report, streaming],
   );
 
   const coachSendFromExplainer = useCallback(
-    (text: string) => {
-      const trimmed = text.trim();
+    (t: string) => {
+      const trimmed = t.trim();
       if (!trimmed || streaming) return;
       setOpen(true);
       void sendMessage(trimmed);
@@ -144,139 +160,150 @@ export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
     report.repoPath ??
     "this repo";
 
-  return (
-    <>
-      {/* Floating button */}
+  const headerTrigger =
+    headerSlot ? createPortal(
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Close AI coach" : "Open AI coach"}
-        className="fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      >
-        {open ? (
-          <X className="size-6" aria-hidden />
-        ) : (
-          <MessageCircle className="size-6" aria-hidden />
+        aria-label={open ? "Close repo coach chat" : "Open repo coach chat"}
+        aria-expanded={open}
+        className={cn(
+          "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-[#262626] bg-transparent px-2.5 text-xs font-medium text-[#a1a1a1] transition-colors",
+          "hover:border-[#404040] hover:text-[#fafafa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         )}
-      </button>
+      >
+        <MessageSquare className="size-3.5 shrink-0 opacity-80" aria-hidden />
+        <span className="hidden sm:inline">Chat</span>
+      </button>,
+      headerSlot,
+    ) : null;
 
-      {/* Chat panel */}
-      {open && (
-        <div
-          className={[
-            "fixed z-50 flex flex-col rounded-2xl border border-border bg-background shadow-2xl transition-all duration-300",
-            expanded
-              ? "bottom-6 right-6 w-[min(720px,calc(100vw-3rem))] max-h-[calc(100vh-5rem)]"
-              : "bottom-24 right-6 w-[22rem] max-w-[calc(100vw-3rem)] sm:w-96",
-          ].join(" ")}
-        >
-          {/* Header */}
-          <div className="flex items-center gap-3 rounded-t-2xl border-b border-border bg-muted/60 px-4 py-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Bot className="size-4" aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">Repo Coach</p>
-              <p className="truncate text-xs text-muted-foreground">{repoName}</p>
-            </div>
-            <button
+  return (
+    <>
+      {headerTrigger}
+
+      <AnimatePresence>
+        {open ? (
+          <>
+            <motion.button
               type="button"
-              onClick={() => setExpanded((v) => !v)}
-              aria-label={expanded ? "Collapse chat" : "Expand chat"}
-              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              {expanded ? (
-                <Minimize2 className="size-4" aria-hidden />
-              ) : (
-                <Maximize2 className="size-4" aria-hidden />
-              )}
-            </button>
-          </div>
+              key="repo-chat-backdrop"
+              aria-label="Close chat"
+              className="fixed inset-0 z-[44] bg-black/50 md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setOpen(false)}
+            />
 
-          {/* Messages */}
-          <div
-            className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4"
-            style={{ maxHeight: expanded ? "calc(100vh - 14rem)" : "22rem" }}
-          >
-            {messages.length === 0 ? (
-              <div className="space-y-3">
-                <p className="text-center text-sm text-muted-foreground">
-                  Ask me anything about your repo analysis.
-                </p>
-                <div className={`grid gap-2 ${expanded ? "grid-cols-2" : "grid-cols-1"}`}>
-                  {STARTER_PROMPTS.map((prompt) => (
+            <motion.aside
+              key="repo-chat-panel"
+              role="dialog"
+              aria-labelledby="repo-coach-title"
+              className={cn(
+                "fixed top-0 right-0 z-[45] flex h-[100dvh] w-full max-w-[440px] flex-col border-l border-border bg-background shadow-xl",
+                "max-md:pt-14",
+              )}
+              initial={{ x: "100%", opacity: 0.98 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "100%", opacity: 0.98 }}
+              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+            >
+              <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border px-3">
+                <div className="min-w-0 flex-1">
+                  <p id="repo-coach-title" className="truncate text-sm font-medium text-foreground">
+                    Repo coach
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground" title={repoName}>
+                    {repoName}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close chat"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3">
+                  {messages.length === 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-center text-[13px] leading-relaxed text-muted-foreground">
+                        Ask about this analysis — metrics, habits, and next steps.
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {STARTER_PROMPTS.map((prompt) => (
+                          <button
+                            key={prompt}
+                            type="button"
+                            onClick={() => void sendMessage(prompt)}
+                            className="rounded-md border border-border/80 bg-muted/30 px-2.5 py-2 text-left text-[11px] leading-snug text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    messages.map((msg, i) =>
+                      msg.role === "user" ? (
+                        <div key={i} className="flex justify-end">
+                          <div className="max-w-[90%] rounded-md border border-border bg-muted/40 px-3 py-2 text-[13px] leading-relaxed text-foreground">
+                            {msg.content}
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          key={i}
+                          className="text-[13px] leading-relaxed text-foreground [&_code]:rounded [&_code]:bg-muted/80 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[12px]"
+                        >
+                          {msg.content || (
+                            <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Thinking" />
+                          )}
+                        </div>
+                      ),
+                    )
+                  )}
+                  <div ref={bottomRef} />
+                </div>
+
+                <div className="shrink-0 border-t border-border p-2">
+                  <div className="flex items-end gap-2 rounded-md border border-border bg-muted/20 p-1.5">
+                    <textarea
+                      ref={inputRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Ask about this repo analysis…"
+                      rows={2}
+                      disabled={streaming}
+                      className="max-h-32 min-h-[2.5rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+                    />
                     <button
-                      key={prompt}
                       type="button"
-                      onClick={() => void sendMessage(prompt)}
-                      className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      onClick={() => void sendMessage(input)}
+                      disabled={streaming || !input.trim()}
+                      aria-label="Send"
+                      className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
                     >
-                      {prompt}
+                      {streaming ? (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Send className="size-4" aria-hidden />
+                      )}
                     </button>
-                  ))}
+                  </div>
                 </div>
               </div>
-            ) : (
-              messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-                >
-                  <div className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    {msg.role === "user" ? (
-                      <User className="size-3" aria-hidden />
-                    ) : (
-                      <Bot className="size-3" aria-hidden />
-                    )}
-                  </div>
-                  <div
-                    className={`rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                      expanded ? "max-w-[70%]" : "max-w-[80%]"
-                    } ${
-                      msg.role === "user"
-                        ? "rounded-tr-sm bg-primary text-primary-foreground"
-                        : "rounded-tl-sm bg-muted text-foreground"
-                    }`}
-                  >
-                    {msg.content || (
-                      <Loader2 className="size-3 animate-spin" aria-label="Thinking…" />
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Input */}
-          <div className="flex items-end gap-2 rounded-b-2xl border-t border-border px-3 py-3">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask about your repo…"
-              rows={expanded ? 2 : 1}
-              disabled={streaming}
-              className="flex-1 resize-none rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-              style={{ maxHeight: "7rem", overflowY: "auto" }}
-            />
-            <button
-              type="button"
-              onClick={() => void sendMessage(input)}
-              disabled={streaming || !input.trim()}
-              aria-label="Send"
-              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-            >
-              {streaming ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <Send className="size-4" aria-hidden />
-              )}
-            </button>
-          </div>
-        </div>
-      )}
+            </motion.aside>
+          </>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

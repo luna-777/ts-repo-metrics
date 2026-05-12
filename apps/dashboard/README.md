@@ -31,3 +31,7 @@ Dashboard logic for threshold bands is covered by root Vitest: `apps/dashboard/_
 ## Deploy
 
 See [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md).
+
+## Repo coach chat
+
+On a results page, **Chat** in the header opens a side panel that streams from `/api/chat`. Requires `OPENAI_API_KEY`. The API sends a text summary plus a **valid JSON subset** of the report (size-capped and reduced in code, never naive string truncation), static **COACH_CONTEXT** (definitions / methodology), and uses a shorter summary cap when JSON is present to save tokens.
