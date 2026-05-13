@@ -17,6 +17,8 @@ interface Message {
   content: string;
 }
 
+const COACH_DISPLAY_NAME = "Cursor-style Repo Coach";
+
 const STARTER_PROMPTS = [
   "What is the biggest quality issue in this repo?",
   "How can I improve my test coverage?",
@@ -165,7 +167,9 @@ export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Close repo coach chat" : "Open repo coach chat"}
+        aria-label={
+          open ? `Close ${COACH_DISPLAY_NAME}` : `Open ${COACH_DISPLAY_NAME}`
+        }
         aria-expanded={open}
         className={cn(
           "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-[#262626] bg-transparent px-2.5 text-xs font-medium text-[#a1a1a1] transition-colors",
@@ -211,8 +215,11 @@ export function RepoChat({ report, onRegisterCoachSend }: RepoChatProps) {
             >
               <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border px-3">
                 <div className="min-w-0 flex-1">
-                  <p id="repo-coach-title" className="truncate text-sm font-medium text-foreground">
-                    Repo coach
+                  <p
+                    id="repo-coach-title"
+                    className="line-clamp-2 text-sm font-medium leading-tight text-foreground"
+                  >
+                    {COACH_DISPLAY_NAME}
                   </p>
                   <p className="truncate text-xs text-muted-foreground" title={repoName}>
                     {repoName}

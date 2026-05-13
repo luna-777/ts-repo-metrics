@@ -12,19 +12,20 @@ interface MathBlockProps {
 }
 
 export function MathBlock({ children, displayMode = true }: MathBlockProps) {
+  let html: string;
   try {
-    const html = katex.renderToString(children, {
+    html = katex.renderToString(children, {
       displayMode,
       throwOnError: false,
       strict: false,
     });
-    return (
-      <div
-        className="my-4 overflow-x-auto py-2"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
   } catch {
     return <code className="text-sm text-muted-foreground">{children}</code>;
   }
+  return (
+    <div
+      className="my-4 overflow-x-auto py-2"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }

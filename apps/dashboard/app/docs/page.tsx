@@ -1,15 +1,6 @@
-import DocsContent from "@/components/docs/DocsContent";
+import { redirect } from "next/navigation";
+import { DEFAULT_DOC_SLUG } from "@/components/docs/docsNav";
 
-export const metadata = {
-  title: "Docs | Repo Metrics",
-  description:
-    "Technical documentation: overview, architecture, metrics, data pipeline, reproducibility.",
-};
-
-export default function DocsPage() {
-  return (
-    <div className="container py-8">
-      <DocsContent />
-    </div>
-  );
+export default function DocsIndexPage() {
+  redirect(`/docs/${DEFAULT_DOC_SLUG}`);
 }
