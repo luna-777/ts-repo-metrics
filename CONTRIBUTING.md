@@ -84,7 +84,7 @@ src/
 ### Running Tests
 
 ```bash
-npm test              # Run all tests once
+npm test              # Run all tests once (engine + dashboard; see root vitest.config.ts)
 npm run test:watch    # Watch mode
 ```
 

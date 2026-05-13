@@ -10,6 +10,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { readFile, rm } from "node:fs/promises";
 import type { DuplicationMetrics } from "../types/report.js";
 import type { JscpdDuplicateJson } from "./weightedRedundancy.js";
@@ -18,6 +20,18 @@ export type { DuplicationMetrics } from "../types/report.js";
 export type { JscpdDuplicateJson } from "./weightedRedundancy.js";
 
 const execFileAsync = promisify(execFile);
+
+function resolveJscpdBin(): string | null {
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 12; i++) {
+    const candidate = path.join(dir, "node_modules", "jscpd", "bin", "jscpd");
+    if (existsSync(candidate)) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
 
 export interface DuplicationDetectionResult {
   metrics: DuplicationMetrics;
@@ -39,16 +53,10 @@ export async function detectDuplication(
 ): Promise<DuplicationDetectionResult | null> {
   const outputDir = path.join(repoPath, ".jscpd-report");
 
-  try {
-    const jscpdBin = path.join(
-      path.dirname(new URL(import.meta.url).pathname),
-      "..",
-      "..",
-      "node_modules",
-      ".bin",
-      "jscpd",
-    );
+  const jscpdBin = resolveJscpdBin();
+  if (!jscpdBin) return null;
 
+  try {
     await execFileAsync(jscpdBin, [
       repoPath,
       "--format", "typescript,tsx",

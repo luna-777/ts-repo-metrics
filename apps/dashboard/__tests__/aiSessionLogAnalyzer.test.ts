@@ -55,4 +55,16 @@ describe("aiSessionLogAnalyzer", () => {
     expect(DEMO_SESSION_LOG_REPORT.scorecard.efficiencyBreakdown.avgToolsPerPrompt).toBeGreaterThan(0);
     expect(DEMO_SESSION_LOG_REPORT.scorecard.efficiencyBreakdown.iterScore).toBeGreaterThan(0);
   });
+
+  it("warns on empty input", () => {
+    const { events, warnings } = parseSessionLogText("   \n  ");
+    expect(events.length).toBe(0);
+    expect(warnings.some((w) => /No JSON records/i.test(w))).toBe(true);
+  });
+
+  it("warns on invalid JSON", () => {
+    const { events, warnings } = parseSessionLogText("{not json");
+    expect(events.length).toBe(0);
+    expect(warnings.length).toBeGreaterThan(0);
+  });
 });

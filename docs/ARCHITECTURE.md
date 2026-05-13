@@ -88,9 +88,11 @@ Per-function extraction runs in `extract/functionMetrics.ts` (with `parsing/toke
 
 `extract/silentFailures.ts` scans **`.tsx`** try/catch nodes for empty or console-only catches. `analyzeRepo.ts` aggregates **SFD**, **MCR** (`isMonolithic` on `FunctionDetail` when `isReactComponent && lines > threshold`), and **SRS** from jscpd duplicate JSON via `collect/weightedRedundancy.ts`. The dashboard **AI smells** tab shows KPI cards and tables; optional `phase3_*` columns are emitted in `featureVector.ts` when `report.phase3` is present.
 
-## Future: AI session logs (not wired to the engine today)
+## AI session logs (dashboard AI Usage tab)
 
-A separate design for ingesting **agent session JSONL** (Claude Code–style logs), enrichment from **git** + **taxonomies**, and a **metrics bridge** lives in [planning/AI_SESSION_LOG_ANALYZER.md](planning/AI_SESSION_LOG_ANALYZER.md). It does not change the `RepoReport` pipeline until implemented.
+The dashboard **AI Usage** tab parses agent session exports **in the browser** and produces a versioned `SessionLogReport` (see [`apps/dashboard/lib/aiSessionLogAnalyzer.ts`](../apps/dashboard/lib/aiSessionLogAnalyzer.ts)). User-facing steps and privacy notes: [AI_USAGE_LOGS.md](AI_USAGE_LOGS.md).
+
+Longer-term ingestion into the **`RepoReport`** pipeline (git enrichment, metrics bridge) remains specified in [planning/AI_SESSION_LOG_ANALYZER.md](planning/AI_SESSION_LOG_ANALYZER.md) and is not required for the tab today.
 
 ## Module Responsibilities
 
