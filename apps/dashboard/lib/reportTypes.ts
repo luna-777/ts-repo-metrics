@@ -240,6 +240,13 @@ export interface RepoReport {
   phase3?: Phase3Metrics;
   /** Per-symbol complexity vs test proximity; absent in older cached reports. */
   symbolVerificationRisks?: SymbolVerificationRisk[];
+
+  /** Injected server-side when persisting course/research submissions (not from engine). */
+  _submission?: {
+    course_id?: string | null;
+    team_name?: string | null;
+    github_login?: string | null;
+  };
 }
 
 export interface ReactHookSafetyFlags {

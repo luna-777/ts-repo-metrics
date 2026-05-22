@@ -217,11 +217,15 @@ npm run dev -- batch /path/to/parent --output ./reports --csv`}
             <tbody>
               <tr className="border-b align-top">
                 <td className="py-2 pr-3 font-medium text-foreground">Minimal</td>
-                <td className="py-2 pr-3 font-mono text-[11px] sm:text-xs">(omit Supabase keys in dev)</td>
+                <td className="py-2 pr-3 font-mono text-[11px] sm:text-xs">
+                  NEXT_PUBLIC_SUPABASE_URL<br />
+                  NEXT_PUBLIC_SUPABASE_ANON_KEY
+                </td>
                 <td className="py-2">
-                  Public repo runs; development without Supabase uses in-memory persistence (
-                  <code className="rounded bg-muted px-1">isDevReportMemoryFallback</code> in{" "}
-                  <code className="rounded bg-muted px-1">lib/supabase/server.ts</code>
+                  GitHub sign-in is required before <code className="rounded bg-muted px-1">POST /api/analyze</code>{" "}
+                  runs. Omitting the{" "}
+                  <code className="rounded bg-muted px-1">SUPABASE_SERVICE_ROLE_KEY</code> in development keeps
+                  results in-memory only (<code className="rounded bg-muted px-1">isDevReportMemoryFallback</code>
                   ).
                 </td>
               </tr>

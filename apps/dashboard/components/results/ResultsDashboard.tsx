@@ -47,6 +47,12 @@ const resultsTabTriggerClass = cn(
 );
 
 export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
+  const submission = report._submission;
+  const courseIdTrim = submission?.course_id?.trim();
+  const teamTrim = submission?.team_name?.trim();
+  const courseSubmissionLabel =
+    courseIdTrim ? `${courseIdTrim}${teamTrim ? ` · ${teamTrim}` : ""}` : null;
+
   const showReact = hasReactUiScope(report);
   const commit = report?.source?.commit?.slice(0, 7) ?? "—";
   const exportFilename = `repo-metrics-${resultId}-${commit}.json`;
@@ -117,6 +123,17 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
   return (
     <CoachExplainProvider value={coachExplain}>
       <div className="space-y-8">
+        {courseSubmissionLabel ? (
+          <div className="rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3 text-sm dark:border-blue-900 dark:bg-blue-950/30">
+            <span className="font-medium text-blue-900 dark:text-blue-100">
+              Research submission
+            </span>
+            <span className="ml-2 text-blue-800 dark:text-blue-200">{courseSubmissionLabel}</span>
+            <span className="ml-4 text-blue-700 dark:text-blue-300">
+              This analysis is not used to grade individual students.
+            </span>
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">Analysis Results</h1>

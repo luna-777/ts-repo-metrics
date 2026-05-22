@@ -2,9 +2,12 @@
  * POST /api/analyze
  * Triggers repo-metrics analysis for a public GitHub repo URL.
  * Returns { status, resultId } or full result.
- * @see Story 4.1
+ * Signed-in dashboard users only (requires Supabase session when user-auth is configured).
  */
 
+import type { RepoReport as EngineRepoReport } from "@repo-metrics/engine";
+import { analyzeFromGitHubUrl } from "@repo-metrics/engine";
+import type { User } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
 import os from "node:os";
@@ -19,8 +22,9 @@ import {
   isUserSupabaseConfigured,
 } from "@/lib/supabase/server-user";
 import { getDecryptedGitHubTokenForUser } from "@/lib/userGitHubToken";
+import { ANALYZE_SIGN_IN_REQUIRED_MESSAGE } from "@/lib/analyzeConstants";
+import type { RepoReport as DashboardRepoReport } from "@/lib/reportTypes";
 import { devStoreReport } from "@/lib/devReportStore";
-import { analyzeFromGitHubUrl } from "@repo-metrics/engine";
 
 export const runtime = "nodejs";
 
@@ -49,60 +53,123 @@ function isValidGitHubUrl(input: string): boolean {
   );
 }
 
+/** Merge course/research tagging into persisted `report_json` (Option B from course epic). */
+function reportWithSubmission(
+  report: EngineRepoReport,
+  submission: {
+    course_id: string | null;
+    team_name: string | null;
+    github_login: string | null;
+  },
+): EngineRepoReport & {
+  _submission: typeof submission;
+} {
+  return {
+    ...(report as object as EngineRepoReport),
+    _submission: submission,
+  } as EngineRepoReport & {
+    _submission: typeof submission;
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
-    let userId: string | null = null;
-    let githubToken: string | undefined;
-
-    if (isUserSupabaseConfigured()) {
-      try {
-        const userSb = await createUserSupabaseServerClient();
-        const {
-          data: { user },
-        } = await userSb.auth.getUser();
-        if (user) {
-          userId = user.id;
-          if (isSupabaseConfigured()) {
-            const tok = await getDecryptedGitHubTokenForUser(user.id);
-            if (tok) githubToken = tok;
-          }
-        }
-      } catch (err) {
-        console.warn("[analyze] Could not read auth session:", err);
-      }
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body.", status: "failed" },
+        { status: 400 },
+      );
     }
 
-    const body = await request.json();
+    if (!isUserSupabaseConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            "Sign-in is not configured for this deployment. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (see .env.example).",
+          status: "failed",
+          code: "auth_unavailable",
+        },
+        { status: 503 },
+      );
+    }
+
+    let userId: string | null = null;
+    let githubToken: string | undefined;
+    let authUser: User | null = null;
+
+    try {
+      const userSb = await createUserSupabaseServerClient();
+      const {
+        data: { user },
+      } = await userSb.auth.getUser();
+      authUser = user ?? null;
+      if (authUser) {
+        userId = authUser.id;
+        if (isSupabaseConfigured()) {
+          const tok = await getDecryptedGitHubTokenForUser(authUser.id);
+          if (tok) githubToken = tok;
+        }
+      }
+    } catch (err) {
+      console.warn("[analyze] Could not read auth session:", err);
+    }
+
+    if (!authUser) {
+      return NextResponse.json(
+        {
+          error: ANALYZE_SIGN_IN_REQUIRED_MESSAGE,
+          status: "failed",
+          code: "sign_in_required",
+        },
+        { status: 401 },
+      );
+    }
+
     const url = (body?.url ?? "").toString().trim();
+
+    const courseIdRaw =
+      typeof body.course_id === "string" ? body.course_id.trim() : null;
+    const teamNameRaw =
+      typeof body.team_name === "string" ? body.team_name.trim() : null;
+    const courseIdVal = courseIdRaw || null;
+    const teamNameVal = teamNameRaw || null;
+
+    const ghName =
+      (typeof authUser.user_metadata?.user_name === "string"
+        ? authUser.user_metadata.user_name.trim()
+        : "") ||
+      (typeof authUser.user_metadata?.preferred_username === "string"
+        ? authUser.user_metadata.preferred_username.trim()
+        : "");
+    const githubLogin: string | null = ghName || null;
 
     if (!url) {
       return NextResponse.json(
         { error: "Missing url. Provide { url: string }." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!isValidGitHubUrl(url)) {
       return NextResponse.json(
         { error: "Invalid GitHub URL. Use https://github.com/owner/repo" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const normalizedUrl =
-      url.startsWith("http") ?
-        url
-      : url.includes("/") && !url.includes("github.com")
-        ? `https://github.com/${url}`
-        : `https://${url}`;
+      url.startsWith("http")
+        ? url
+        : url.includes("/") && !url.includes("github.com")
+          ? `https://github.com/${url}`
+          : `https://${url}`;
 
-    // Always clone under the OS temp dir — using process.cwd() (e.g. apps/dashboard) reused a
-    // stale .cache/ts-repo-metrics/* tree from an older repo layout (0 .tsx files) and broke profiles.
     const baseCache = path.join(os.tmpdir(), "repo-metrics-git-cache");
     const cacheDir =
-      userId && githubToken
-        ? path.join(baseCache, "u", userId)
-        : baseCache;
+      userId && githubToken ? path.join(baseCache, "u", userId) : baseCache;
 
     const report = await analyzeFromGitHubUrl(normalizedUrl, {
       useCache: true,
@@ -112,17 +179,23 @@ export async function POST(request: NextRequest) {
 
     const parsed = parseGitHubUrl(normalizedUrl);
     const commitSha = report.source?.commit ?? null;
-    
-    // Generate resultId: owner-repo-commitSha (or UUID if no commit)
+
     let resultId: string;
     if (parsed) {
-      const suffix = commitSha 
-        ? commitSha.slice(0, 12) 
-        : randomUUID().replace(/-/g, "").slice(0, 12); // Remove dashes from UUID
+      const suffix = commitSha
+        ? commitSha.slice(0, 12)
+        : randomUUID().replace(/-/g, "").slice(0, 12);
       resultId = `${parsed.owner}-${parsed.repo}-${suffix}`;
     } else {
       resultId = randomUUID();
     }
+
+    const submissionPayload = {
+      course_id: courseIdVal,
+      team_name: teamNameVal,
+      github_login: githubLogin,
+    };
+    const persistedReport = reportWithSubmission(report, submissionPayload);
 
     if (process.env.NODE_ENV === "development") {
       console.log("[analyze] Generated resultId:", resultId, "commitSha:", commitSha);
@@ -133,8 +206,11 @@ export async function POST(request: NextRequest) {
         result_id: resultId,
         repo_url: normalizedUrl,
         commit_sha: commitSha,
-        report_json: reportAsJsonObject(report),
+        report_json: reportAsJsonObject(persistedReport),
         user_id: userId,
+        course_id: courseIdVal,
+        team_name: teamNameVal,
+        github_login: githubLogin,
       };
 
       const { error } = await getSupabase()
@@ -143,12 +219,12 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error("Supabase upsert failed:", error);
-        const body: Record<string, unknown> = {
+        const respBody: Record<string, unknown> = {
           error: "Failed to save result.",
           status: "failed",
         };
         if (process.env.NODE_ENV === "development") {
-          body.debug = {
+          respBody.debug = {
             message: error.message,
             code: error.code,
             details: error.details,
@@ -158,46 +234,44 @@ export async function POST(request: NextRequest) {
             error.code === "PGRST204" &&
             String(error.message).includes("user_id")
           ) {
-            body.hint =
-              "Remote DB is missing column analyses.user_id. Run supabase/migrations in order or paste supabase/run_in_dashboard_sql_editor.sql into the Supabase SQL Editor.";
+            respBody.hint =
+              "Remote DB is missing expected columns on analyses. Run supabase/migrations in order or paste supabase/run_in_dashboard_sql_editor.sql into the Supabase SQL Editor.";
           }
         }
-        return NextResponse.json(body, { status: 500 });
+        return NextResponse.json(respBody, { status: 500 });
       }
     } else if (isDevReportMemoryFallback()) {
-      devStoreReport(resultId, report);
+      devStoreReport(resultId, persistedReport as unknown as DashboardRepoReport);
       console.warn(
-        "[analyze] Supabase not configured; result kept in server memory (dev only)."
+        "[analyze] Supabase not configured; result kept in server memory (dev only).",
       );
     } else {
       return NextResponse.json(
         {
           error:
-            "Supabase is not configured. Set SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY on the server (see .env.example), then redeploy. On Railway, SUPABASE_URL avoids build-time inlining issues.",
+            "Supabase is not configured. Set SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY on the server (see .env.example), then redeploy.",
           status: "failed",
         },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     return NextResponse.json({
       status: "done",
       resultId,
-      report,
+      course_id: courseIdVal,
+      report: persistedReport,
     });
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
       console.error("[analyze]", err);
     }
-    const message =
-      err instanceof Error ? err.message : "Analysis failed.";
+    const message = err instanceof Error ? err.message : "Analysis failed.";
     const clientMessage =
-      process.env.NODE_ENV === "production"
-        ? "Analysis failed."
-        : message;
+      process.env.NODE_ENV === "production" ? "Analysis failed." : message;
     return NextResponse.json(
       { error: clientMessage, status: "failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

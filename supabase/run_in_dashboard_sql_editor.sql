@@ -36,3 +36,13 @@ create policy "analyses_select_public_or_own"
   using (user_id is null or auth.uid() = user_id);
 
 grant select on public.analyses to anon, authenticated;
+
+-- Course / research tagging (nullable; aligns with migrations/20260522000000_analyses_course_metadata.sql)
+alter table public.analyses
+  add column if not exists course_id    text,
+  add column if not exists team_name    text,
+  add column if not exists github_login text;
+
+create index if not exists analyses_course_id_idx
+  on public.analyses (course_id)
+  where course_id is not null;
