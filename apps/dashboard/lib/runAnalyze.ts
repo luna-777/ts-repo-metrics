@@ -39,6 +39,7 @@ export async function runAnalyzeFromUrl(
     });
     let data: {
       error?: string;
+      hint?: string;
       resultId?: string;
       report?: RepoReport;
       code?: string;
@@ -55,10 +56,12 @@ export async function runAnalyzeFromUrl(
           error: data.error ?? ANALYZE_SIGN_IN_REQUIRED_MESSAGE,
         };
       }
-      return {
-        ok: false,
-        error: (data.error ?? "Analysis failed") as string,
-      };
+      const base = (data.error ?? "Analysis failed") as string;
+      const withHint =
+        typeof data.hint === "string" && data.hint.trim() ?
+          `${base} — ${data.hint}`
+        : base;
+      return { ok: false, error: withHint };
     }
     const resultId = data.resultId;
     if (!resultId || typeof resultId !== "string") {

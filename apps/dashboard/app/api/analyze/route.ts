@@ -53,6 +53,29 @@ function isValidGitHubUrl(input: string): boolean {
   );
 }
 
+/** PostgREST/Postgres cues that analyses is missing newer columns after a deploy without migration. */
+function analysesUpsertLooksLikeStaleSchema(error: {
+  message?: string;
+  code?: string | null;
+  details?: string | null;
+  hint?: string | null;
+}): boolean {
+  const blob = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
+  const lowered = blob.toLowerCase();
+  return (
+    error.code === "PGRST204" ||
+    /\bcourse_id\b/i.test(blob) ||
+    /\bteam_name\b/i.test(blob) ||
+    /\bgithub_login\b/i.test(blob) ||
+    (/\banalyses\b/.test(lowered) &&
+      /\bcolumn\b/.test(lowered) &&
+      /\b(find|exist|unknown|undefined)\b/.test(lowered))
+  );
+}
+
+const ANALYSES_MIGRATION_HINT =
+  "Add columns on public.analyses: run supabase/migrations/20260522000000_analyses_course_metadata.sql in the Supabase SQL Editor (or the full snippet in supabase/run_in_dashboard_sql_editor.sql).";
+
 /** Merge course/research tagging into persisted `report_json` (Option B from course epic). */
 function reportWithSubmission(
   report: EngineRepoReport,
@@ -218,11 +241,18 @@ export async function POST(request: NextRequest) {
         .upsert(row, { onConflict: "result_id" });
 
       if (error) {
-        console.error("Supabase upsert failed:", error);
+        console.error("[analyze] Supabase upsert failed:", error);
+        const schemaStale = analysesUpsertLooksLikeStaleSchema(error);
         const respBody: Record<string, unknown> = {
-          error: "Failed to save result.",
+          error: schemaStale
+            ? "Could not save the report: database is missing newer columns."
+            : "Failed to save result.",
           status: "failed",
         };
+        if (schemaStale) {
+          respBody.code = "analyses_schema_mismatch";
+          respBody.hint = ANALYSES_MIGRATION_HINT;
+        }
         if (process.env.NODE_ENV === "development") {
           respBody.debug = {
             message: error.message,
@@ -231,14 +261,17 @@ export async function POST(request: NextRequest) {
             hint: error.hint,
           };
           if (
-            error.code === "PGRST204" &&
-            String(error.message).includes("user_id")
+            schemaStale ||
+            (error.code === "PGRST204" &&
+              String(error.message).includes("user_id"))
           ) {
-            respBody.hint =
-              "Remote DB is missing expected columns on analyses. Run supabase/migrations in order or paste supabase/run_in_dashboard_sql_editor.sql into the Supabase SQL Editor.";
+            respBody.hintDeveloper =
+              "Run supabase/migrations in order or paste supabase/run_in_dashboard_sql_editor.sql into the Supabase SQL Editor.";
           }
         }
-        return NextResponse.json(respBody, { status: 500 });
+        return NextResponse.json(respBody, {
+          status: schemaStale ? 503 : 500,
+        });
       }
     } else if (isDevReportMemoryFallback()) {
       devStoreReport(resultId, persistedReport as unknown as DashboardRepoReport);
@@ -263,9 +296,7 @@ export async function POST(request: NextRequest) {
       report: persistedReport,
     });
   } catch (err) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[analyze]", err);
-    }
+    console.error("[analyze]", err);
     const message = err instanceof Error ? err.message : "Analysis failed.";
     const clientMessage =
       process.env.NODE_ENV === "production" ? "Analysis failed." : message;

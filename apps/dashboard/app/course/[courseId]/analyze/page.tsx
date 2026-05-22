@@ -205,6 +205,7 @@ export default function CourseAnalyzePage() {
         });
         let body: {
           error?: string;
+          hint?: string;
           resultId?: string;
           report?: RepoReport;
           code?: string;
@@ -216,7 +217,12 @@ export default function CourseAnalyzePage() {
           return;
         }
         if (!res.ok) {
-          toast.error(body.error ?? "Analysis failed.");
+          const base = body.error ?? "Analysis failed.";
+          const msg =
+            typeof body.hint === "string" && body.hint.trim() ?
+              `${base} — ${body.hint}`
+            : base;
+          toast.error(msg);
           return;
         }
         const rid = body.resultId;
