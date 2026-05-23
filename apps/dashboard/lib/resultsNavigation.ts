@@ -10,12 +10,16 @@ export const RESULTS_TAB = {
   codeComplexity: "code-complexity",
   aiUsage: "ai-usage",
   dataset: "dataset",
+  documentation: "documentation",
 } as const;
 
 export type ResultsTabId = (typeof RESULTS_TAB)[keyof typeof RESULTS_TAB];
 
-/** Tabs the global coach may point to (dataset excluded). */
-export type CoachPriorityTabId = Exclude<ResultsTabId, typeof RESULTS_TAB.dataset>;
+/** Tabs the global coach may point to (dataset + documentation excluded). */
+export type CoachPriorityTabId = Exclude<
+  ResultsTabId,
+  typeof RESULTS_TAB.dataset | typeof RESULTS_TAB.documentation
+>;
 
 /** Scroll targets for in-page navigation from coach and overview cards. */
 export const PANEL_SCROLL_IDS: Record<CoachPriorityTabId, string> = {

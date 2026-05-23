@@ -12,6 +12,7 @@ import { CodeQualityMetricsTab } from "./rq/CodeQualityMetricsTab";
 import { ReactComponentsMetricsTab } from "./rq/ReactComponentsMetricsTab";
 import { Phase2ComplexityTab } from "./rq/Phase2ComplexityTab";
 import { AIMaturityTab } from "./rq/AIMaturityTab";
+import { DocReviewTab } from "./rq/DocReviewTab";
 import { DatasetTab } from "./dataset/DatasetTab";
 import { GlobalCoachSays } from "./coach";
 import { GitHubRepositoryPanel } from "./GitHubRepositoryPanel";
@@ -232,6 +233,13 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
                 </TabsTrigger>
                 <TabsTrigger
                   className={resultsTabTriggerClass}
+                  value={RESULTS_TAB.documentation}
+                  title="Documentation review — classify and review planning docs against course rubrics"
+                >
+                  Documentation
+                </TabsTrigger>
+                <TabsTrigger
+                  className={resultsTabTriggerClass}
                   value={RESULTS_TAB.dataset}
                   title="Export analysis fields for research or downstream tools"
                 >
@@ -295,6 +303,13 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
             </TabsContent>
             <TabsContent value={RESULTS_TAB.aiUsage} id="ai-usage-panel" className="mt-6 scroll-mt-8">
               <AIMaturityTab />
+            </TabsContent>
+            <TabsContent
+              value={RESULTS_TAB.documentation}
+              id="documentation-panel"
+              className="mt-6 scroll-mt-8"
+            >
+              <DocReviewTab resultId={resultId} report={report} />
             </TabsContent>
             <TabsContent value={RESULTS_TAB.dataset} className="mt-6">
               <DatasetTab report={report} resultId={resultId} />

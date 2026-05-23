@@ -161,7 +161,7 @@ When the repo contains `.tsx` files, the report also includes **`reactMetrics`**
 A Next.js dashboard app in `apps/dashboard/` provides a web UI:
 
 - **Home:** paste a public GitHub URL, or use **Analyze ts-repo-metrics** to run the analyzer on this repository in one click.
-- **Results tabs** (plain labels, no RQ/phase codes): **Behavioral** (git workflow & churn), **Verification** (tests & risk profile), **Quality** (complexity, maintainability, duplication), **React & TSX** (hooks, JSX, cohesion heuristics), **Lexical** (per-function Halstead / cognitive / GRAD-AI MI, glossary, threshold calibration, traffic-light bands), **AI smells** (Phase 3 pathology KPIs when present), **Dataset** (metadata, feature vector, data dictionary, CSV/JSON export), **AI Usage** (upload session JSONL/JSON — client-side analysis; see [docs/AI_USAGE_LOGS.md](docs/AI_USAGE_LOGS.md)).
+- **Results tabs** (plain labels, no RQ/phase codes): **Behavioral** (git workflow & churn), **Verification** (tests & risk profile), **Quality** (complexity, maintainability, duplication), **React & TSX** (hooks, JSX, cohesion heuristics), **Lexical** (per-function Halstead / cognitive / GRAD-AI MI, glossary, threshold calibration, traffic-light bands), **AI smells** (Phase 3 pathology KPIs when present), **Dataset** (metadata, feature vector, data dictionary, CSV/JSON export), **AI Usage** (upload session JSONL/JSON — client-side analysis; see [docs/AI_USAGE_LOGS.md](docs/AI_USAGE_LOGS.md)), **Documentation** (OpenAI-powered review of student planning docs — see [docs/DOC_REVIEW_AGENT.md](docs/DOC_REVIEW_AGENT.md)).
 - **Metric help:** cards and tables include short tooltips and optional **help dialogs** (definitions and how values are computed) for derived metrics.
 
 Run with `npm run dashboard` (starts `next dev` in `apps/dashboard/`). For Vercel deployment, set `GITHUB_TOKEN` to enable API-derived git metrics when the git CLI is unavailable.
@@ -211,6 +211,7 @@ repo-metrics/
 
 - [Architecture overview](docs/ARCHITECTURE.md)
 - [AI Usage session logs (dashboard)](docs/AI_USAGE_LOGS.md)
+- [Documentation review agent (dashboard)](docs/DOC_REVIEW_AGENT.md)
 - [Full JSON schema reference](docs/SCHEMA.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Sprint planning](docs/planning/) — roadmap and epic specifications

@@ -25,32 +25,17 @@ import { getDecryptedGitHubTokenForUser } from "@/lib/userGitHubToken";
 import { ANALYZE_SIGN_IN_REQUIRED_MESSAGE } from "@/lib/analyzeConstants";
 import type { RepoReport as DashboardRepoReport } from "@/lib/reportTypes";
 import { devStoreReport } from "@/lib/devReportStore";
+import {
+  isValidGitHubUrl,
+  normalizeGitHubUrl,
+  parseGitHubUrl,
+} from "@/lib/github/parseGitHubUrl";
 
 export const runtime = "nodejs";
 
 /** Ensure report is JSON-serializable for PostgREST jsonb (strips non-JSON values). */
 function reportAsJsonObject(report: unknown): object {
   return JSON.parse(JSON.stringify(report)) as object;
-}
-
-function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
-  const trimmed = url.trim();
-  const full = trimmed.startsWith("http")
-    ? trimmed
-    : `https://github.com/${trimmed}`;
-  const m = full.match(
-    /(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/
-  );
-  if (!m) return null;
-  return { owner: m[1]!, repo: m[2]!.replace(/\.git$/, "") };
-}
-
-function isValidGitHubUrl(input: string): boolean {
-  const trimmed = input.trim();
-  if (/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(trimmed)) return true;
-  return /^(?:https?:\/\/)?(?:www\.)?github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+/.test(
-    trimmed
-  );
 }
 
 /** PostgREST/Postgres cues that analyses is missing newer columns after a deploy without migration. */
@@ -67,6 +52,7 @@ function analysesUpsertLooksLikeStaleSchema(error: {
     /\bcourse_id\b/i.test(blob) ||
     /\bteam_name\b/i.test(blob) ||
     /\bgithub_login\b/i.test(blob) ||
+    /\bdoc_review_json\b/i.test(blob) ||
     (/\banalyses\b/.test(lowered) &&
       /\bcolumn\b/.test(lowered) &&
       /\b(find|exist|unknown|undefined)\b/.test(lowered))
@@ -183,12 +169,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const normalizedUrl =
-      url.startsWith("http")
-        ? url
-        : url.includes("/") && !url.includes("github.com")
-          ? `https://github.com/${url}`
-          : `https://${url}`;
+    const normalizedUrl = normalizeGitHubUrl(url);
 
     const baseCache = path.join(os.tmpdir(), "repo-metrics-git-cache");
     const cacheDir =

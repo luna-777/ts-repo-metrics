@@ -55,6 +55,7 @@ export function DocsSectionBody({ slug }: { slug: string }) {
       {slug === "architecture" ? <ArchitectureSection /> : null}
       {slug === "git-metrics" ? <GitMetricsSection /> : null}
       {slug === "metrics-categories" ? <MetricsCategoriesSection /> : null}
+      {slug === "documentation-review" ? <DocumentationReviewSection /> : null}
       {slug === "reproducibility" ? <ReproducibilitySection /> : null}
       {slug === "limitations" ? <LimitationsSection /> : null}
       {slug === "roadmap" ? <RoadmapSection /> : null}
@@ -89,6 +90,14 @@ function IntroductionSection() {
             <li>Structural quality (complexity, duplication, maintainability)</li>
             <li>Optional Phase 3 TSX pathology summaries and AI smells tab wiring (silent-failure density, redundancy)</li>
             <li>Optional repo coach and tab insights on results when <code className="rounded bg-muted px-1">OPENAI_API_KEY</code> is set</li>
+            <li>
+              Optional{" "}
+              <Link href="/docs/documentation-review" className="text-primary underline-offset-4 hover:underline">
+                documentation review
+              </Link>{" "}
+              (classify and rubric-review student planning docs when{" "}
+              <code className="rounded bg-muted px-1">DOC_REVIEW_ENABLED=true</code>)
+            </li>
             <li>A reproducible JSON report and optional dashboard dataset export</li>
           </ul>
         </CardContent>
@@ -237,6 +246,23 @@ npm run dev -- batch /path/to/parent --output ./reports --csv`}
                   <code className="rounded bg-muted px-1">/api/coach-says</code>), and tab insight summaries (
                   <code className="rounded bg-muted px-1">/api/tab-insight</code>
                   ).
+                </td>
+              </tr>
+              <tr className="border-b align-top">
+                <td className="py-2 pr-3 font-medium text-foreground">Documentation review</td>
+                <td className="py-2 pr-3 font-mono text-[11px] sm:text-xs">
+                  OPENAI_API_KEY<br />
+                  DOC_REVIEW_ENABLED=true
+                </td>
+                <td className="py-2">
+                  Enables <code className="rounded bg-muted px-1">POST /api/doc-review</code> and the Results{" "}
+                  <strong>Documentation</strong> tab. Persists output to{" "}
+                  <code className="rounded bg-muted px-1">analyses.doc_review_json</code> when Supabase storage is
+                  configured. See{" "}
+                  <Link href="/docs/documentation-review" className="text-primary underline-offset-4 hover:underline">
+                    Documentation review
+                  </Link>
+                  .
                 </td>
               </tr>
               <tr className="border-b align-top">
@@ -692,6 +718,83 @@ function ReproducibilitySection() {
   );
 }
 
+function DocumentationReviewSection() {
+  return (
+    <Prose>
+      <p>
+        The dashboard includes a two-agent pipeline that discovers student planning documents in a
+        GitHub repository, classifies each file, and reviews it against frozen course rubrics. Output
+        is persisted on the same <code className="rounded bg-muted px-1">analyses</code> row as repo
+        metrics (<code className="rounded bg-muted px-1">doc_review_json</code>) for research joins
+        with <code className="rounded bg-muted px-1">course_id</code>,{" "}
+        <code className="rounded bg-muted px-1">team_name</code>, and{" "}
+        <code className="rounded bg-muted px-1">github_login</code>.
+      </p>
+      <Card className="not-prose">
+        <CardHeader>
+          <CardTitle className="text-base">Enable locally</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-muted-foreground">
+          <ol className="list-inside list-decimal space-y-1 text-sm">
+            <li>
+              Apply{" "}
+              <code className="rounded bg-muted px-1">
+                supabase/migrations/20260522010000_analyses_doc_review.sql
+              </code>
+            </li>
+            <li>
+              Set <code className="rounded bg-muted px-1">OPENAI_API_KEY</code> and{" "}
+              <code className="rounded bg-muted px-1">DOC_REVIEW_ENABLED=true</code> in{" "}
+              <code className="rounded bg-muted px-1">.env.local</code>
+            </li>
+            <li>Sign in with GitHub, run an analysis, open Results → Documentation</li>
+          </ol>
+        </CardContent>
+      </Card>
+      <h2 className="text-lg font-semibold text-foreground">Pipeline</h2>
+      <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+        <li>
+          <strong>Classifier</strong> (<code className="rounded bg-muted px-1">gpt-4o-mini</code>)
+          — identifies release plan, sprint plan/report, test plan, DoD, code standards
+        </li>
+        <li>
+          <strong>Reviewer</strong> (<code className="rounded bg-muted px-1">gpt-4o</code>) —
+          checklist + coach paragraph (structured docs) or strengths/improvements (holistic docs)
+        </li>
+        <li>
+          <strong>Consistency</strong> — deterministic warnings (duplicate types, language coverage
+          vs <code className="rounded bg-muted px-1">report.github.languages</code>)
+        </li>
+      </ul>
+      <h2 className="text-lg font-semibold text-foreground">Discovery</h2>
+      <p className="text-muted-foreground">
+        Docs-folder paths include{" "}
+        <code className="rounded bg-muted px-1">docs/</code>,{" "}
+        <code className="rounded bg-muted px-1">documents/</code>,{" "}
+        <code className="rounded bg-muted px-1">deliverables/</code>,{" "}
+        <code className="rounded bg-muted px-1">artifacts/</code>, and related prefixes. Other{" "}
+        <code className="rounded bg-muted px-1">.md</code>/<code className="rounded bg-muted px-1">.pdf</code>{" "}
+        files are searched repo-wide for DoD and code-standards candidates only.
+      </p>
+      <h2 className="text-lg font-semibold text-foreground">API</h2>
+      <pre className="overflow-x-auto rounded-lg bg-muted p-4 font-mono text-xs whitespace-pre">{`POST /api/doc-review
+  { "resultId": "<analysis id>", "url?": "...", "report?": { ... } }
+
+GET /api/results/[id]/doc-review`}</pre>
+      <p className="text-muted-foreground">
+        Full reference:{" "}
+        <Link
+          href={`${GITHUB_REPO}/blob/main/docs/DOC_REVIEW_AGENT.md`}
+          className="text-primary underline-offset-4 hover:underline"
+        >
+          docs/DOC_REVIEW_AGENT.md
+        </Link>
+        . Server logs must never include raw document text.
+      </p>
+    </Prose>
+  );
+}
+
 function LimitationsSection() {
   return (
     <Card>
@@ -705,6 +808,11 @@ function LimitationsSection() {
           <li>Duplication depends on jscpd runtime stability.</li>
           <li>Git-heavy proxies require tokens for credible GitHub throughput.</li>
           <li>Phase 3 and AI smells panels encode static heuristics (try/catch shape, JSX component size thresholds, jscpd-based redundancy)—not behavioral runtime observations.</li>
+          <li>
+            Documentation review supports <code className="rounded bg-muted px-1">.md</code> and{" "}
+            <code className="rounded bg-muted px-1">.pdf</code> only; cross-doc story-ID traceability and
+            test-plan vs engine cross-checks are not implemented yet.
+          </li>
         </ul>
       </CardContent>
     </Card>
@@ -719,6 +827,8 @@ function RoadmapSection() {
       </CardHeader>
       <CardContent className="text-sm text-muted-foreground">
         <ul className="list-inside list-disc space-y-1">
+          <li>Doc review: story-ID traceability across release/sprint/test plans</li>
+          <li>Doc review: unit-test claims vs engine verification cross-check</li>
           <li>Background workers for oversized repositories</li>
           <li>Expanded CSV cohort exports</li>
           <li>Collaboration metrics via PR/issue APIs</li>

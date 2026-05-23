@@ -35,6 +35,7 @@ export const DOC_GROUPS: DocsNavGroup[] = [
       { slug: "architecture", title: "Architecture" },
       { slug: "git-metrics", title: "Git metrics & ingestion" },
       { slug: "metrics-categories", title: "Dashboard metric mapping" },
+      { slug: "documentation-review", title: "Documentation review" },
       { slug: "reproducibility", title: "Reproducibility" },
       { slug: "limitations", title: "Limitations" },
       { slug: "roadmap", title: "Roadmap" },

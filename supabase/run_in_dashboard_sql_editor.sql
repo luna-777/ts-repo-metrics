@@ -46,3 +46,10 @@ alter table public.analyses
 create index if not exists analyses_course_id_idx
   on public.analyses (course_id)
   where course_id is not null;
+
+-- Doc review agent output (nullable; aligns with migrations/20260522010000_analyses_doc_review.sql)
+alter table public.analyses
+  add column if not exists doc_review_json jsonb;
+
+comment on column public.analyses.doc_review_json is
+  'Documentation review agent output (classifications, reviews, consistency). Nullable.';
