@@ -1,6 +1,7 @@
 import type OpenAI from "openai";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
 import type { ClassifiedDoc, DocType, FileWithText } from "./types";
+import { inferDocTypeFromFilename } from "./inferDocTypeFromFilename";
 
 const CLASSIFIER_SYSTEM_PROMPT = `You are a document classifier for a university software engineering course.
 Students submit project repositories containing planning and process documents.
@@ -19,6 +20,7 @@ The possible document types are:
 
 Common abbreviations and misspellings you will encounter:
   spr1.md, s2plan.md, sp3rep.md   → sprint plans/reports
+  sprint1-report.md, sprint2-report.md → sprint reports
   repot.md, sprnt2.md             → misspellings of report/sprint
   dod.md, def-done.md             → definition of done
   codestds.md, ts-stds.md         → code standards
@@ -153,13 +155,54 @@ function mergeClassification(
   };
 }
 
+function applyFilenameInference(doc: ClassifiedDoc): ClassifiedDoc {
+  if (doc.docType !== "unknown") return doc;
+  const inferred = inferDocTypeFromFilename(doc.path);
+  if (!inferred) return doc;
+  return {
+    ...doc,
+    docType: inferred.docType,
+    sprintNumber: inferred.sprintNumber ?? doc.sprintNumber ?? null,
+    language: inferred.language ?? doc.language ?? null,
+  };
+}
+
+function classifyFromFilename(
+  path: string,
+  fileByPath: Map<string, FileWithText>,
+): ClassifiedDoc | null {
+  const inferred = inferDocTypeFromFilename(path);
+  if (!inferred) return null;
+  const file = fileByPath.get(path);
+  return {
+    path,
+    docType: inferred.docType,
+    sprintNumber: inferred.sprintNumber ?? null,
+    language: inferred.language ?? null,
+    text: file?.text ?? null,
+    truncated: file?.truncated ?? false,
+  };
+}
+
 function fallbackUnknown(files: FileWithText[]): ClassifiedDoc[] {
-  return files.map((f) => ({
-    path: f.path,
-    docType: "unknown" as const,
-    text: f.text,
-    truncated: f.truncated,
-  }));
+  return files.map((f) =>
+    applyFilenameInference({
+      path: f.path,
+      docType: "unknown" as const,
+      text: f.text,
+      truncated: f.truncated,
+    }),
+  );
+}
+
+function mergePreclassifiedAndLlm(
+  allPaths: Set<string>,
+  preClassified: Map<string, ClassifiedDoc>,
+  llmDocs: ClassifiedDoc[],
+): ClassifiedDoc[] {
+  return [...allPaths]
+    .sort()
+    .map((path) => preClassified.get(path) ?? llmDocs.find((d) => d.path === path)!);
 }
 
 export async function classifyDocs(
@@ -174,6 +217,25 @@ export async function classifyDocs(
 
   if (allPaths.size === 0) return [];
 
+  const preClassified = new Map<string, ClassifiedDoc>();
+  const llmPaths: string[] = [];
+
+  for (const path of [...allPaths].sort()) {
+    const fromFilename = classifyFromFilename(path, fileByPath);
+    if (fromFilename) {
+      preClassified.set(path, fromFilename);
+    } else {
+      llmPaths.push(path);
+    }
+  }
+
+  if (llmPaths.length === 0) {
+    return [...allPaths].sort().map((path) => preClassified.get(path)!);
+  }
+
+  const llmDocsPool = docsPool.filter((p) => llmPaths.includes(p));
+  const llmRepoWide = repoWide.filter((p) => llmPaths.includes(p));
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CLASSIFIER_TIMEOUT_MS);
   const combinedSignal = signal
@@ -182,7 +244,7 @@ export async function classifyDocs(
 
   const messages: ChatCompletionMessageParam[] = [
     { role: "system", content: CLASSIFIER_SYSTEM_PROMPT },
-    { role: "user", content: buildFileListMessage(docsPool, repoWide) },
+    { role: "user", content: buildFileListMessage(llmDocsPool, llmRepoWide) },
   ];
 
   try {
@@ -244,21 +306,23 @@ export async function classifyDocs(
           }
 
           const byPath = new Map(list.map((c) => [c.path, c]));
-          const result: ClassifiedDoc[] = [];
-          for (const path of [...allPaths].sort()) {
+          const llmResult: ClassifiedDoc[] = [];
+          for (const path of llmPaths.sort()) {
             const item = byPath.get(path);
             if (item) {
-              result.push(mergeClassification(item, fileByPath));
+              llmResult.push(applyFilenameInference(mergeClassification(item, fileByPath)));
             } else {
-              result.push({
-                path,
-                docType: "unknown",
-                text: fileByPath.get(path)?.text ?? null,
-                truncated: fileByPath.get(path)?.truncated,
-              });
+              llmResult.push(
+                applyFilenameInference({
+                  path,
+                  docType: "unknown",
+                  text: fileByPath.get(path)?.text ?? null,
+                  truncated: fileByPath.get(path)?.truncated,
+                }),
+              );
             }
           }
-          return result;
+          return mergePreclassifiedAndLlm(allPaths, preClassified, llmResult);
         }
 
         messages.push({
@@ -269,10 +333,18 @@ export async function classifyDocs(
       }
     }
   } catch {
-    return fallbackUnknown(files.filter((f) => allPaths.has(f.path)));
+    return mergePreclassifiedAndLlm(
+      allPaths,
+      preClassified,
+      fallbackUnknown(files.filter((f) => llmPaths.includes(f.path))),
+    );
   } finally {
     clearTimeout(timeout);
   }
 
-  return fallbackUnknown(files.filter((f) => allPaths.has(f.path)));
+  return mergePreclassifiedAndLlm(
+    allPaths,
+    preClassified,
+    fallbackUnknown(files.filter((f) => llmPaths.includes(f.path))),
+  );
 }

@@ -34,7 +34,7 @@ export async function runDocReview(opts: {
     generatedAt: new Date().toISOString(),
     resultId,
     folder_found: false,
-    discovery: { docsPool: [], repoWide: [] },
+    discovery: { docsPool: [], repoWide: [], skippedImages: [] },
     classifications: [],
     reviews: {},
     consistency: { warnings: [] },
@@ -62,6 +62,7 @@ export async function runDocReview(opts: {
       discovery: {
         docsPool: discovery.docsPool,
         repoWide: discovery.repoWide,
+        skippedImages: discovery.skippedImages,
       },
       warnings,
       timings: {
@@ -134,6 +135,7 @@ export async function runDocReview(opts: {
     discovery: {
       docsPool: discovery.docsPool,
       repoWide: discovery.repoWide,
+      skippedImages: discovery.skippedImages,
     },
     classifications: classified,
     reviews,

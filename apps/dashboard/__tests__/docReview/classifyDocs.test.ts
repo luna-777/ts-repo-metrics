@@ -30,6 +30,43 @@ function mockOpenAiSubmit(classifications: unknown[]) {
 }
 
 describe("classifyDocs (mocked OpenAI)", () => {
+  it("pre-classifies sprint report filenames without calling OpenAI", async () => {
+    const files: FileWithText[] = [
+      {
+        path: "documentation/sprints/sprint1-report.md",
+        text: "# Sprint 1 Report",
+        bytes: 100,
+        truncated: false,
+      },
+      {
+        path: "documentation/sprints/sprint2-report.md",
+        text: "# Sprint 2 Report",
+        bytes: 100,
+        truncated: false,
+      },
+    ];
+    const openai = {
+      chat: {
+        completions: {
+          create: vi.fn(),
+        },
+      },
+    };
+
+    const result = await classifyDocs(
+      files,
+      files.map((f) => f.path),
+      [],
+      openai as never,
+    );
+
+    expect(openai.chat.completions.create).not.toHaveBeenCalled();
+    expect(result).toHaveLength(2);
+    expect(result[0]?.docType).toBe("sprint_report");
+    expect(result[0]?.sprintNumber).toBe(1);
+    expect(result[1]?.sprintNumber).toBe(2);
+  });
+
   it("classifies sprint plan abbreviations", async () => {
     const files: FileWithText[] = [
       { path: "docs/spr1.md", text: "# Sprint 1 Plan", bytes: 100, truncated: false },

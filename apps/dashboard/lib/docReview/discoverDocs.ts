@@ -6,6 +6,7 @@ import {
   SKIP_DIR_NAMES,
   isDocExtension,
   isDocsPoolPath,
+  isSkippedImageExtension,
   pathDepth,
 } from "./constants";
 
@@ -74,12 +75,19 @@ export async function discoverDocs(
   }
 
   const candidates: DiscoveredFile[] = [];
+  const skippedImages: string[] = [];
 
   for (const item of tree.tree) {
     if (item.type !== "blob") continue;
-    if (!isDocExtension(item.path)) continue;
     if (pathInSkippedDir(item.path)) continue;
     if (pathDepth(item.path) > MAX_PATH_DEPTH) continue;
+
+    if (isDocsPoolPath(item.path) && isSkippedImageExtension(item.path)) {
+      skippedImages.push(item.path);
+      continue;
+    }
+
+    if (!isDocExtension(item.path)) continue;
 
     candidates.push({
       path: item.path,
@@ -94,6 +102,16 @@ export async function discoverDocs(
   if (candidates.length > MAX_DOC_FILES) {
     warnings.push(
       `Found ${candidates.length} doc files; capped at ${MAX_DOC_FILES}.`,
+    );
+  }
+
+  if (skippedImages.length > 0) {
+    const preview = skippedImages.slice(0, 5).join(", ");
+    const extra =
+      skippedImages.length > 5 ? ` (+${skippedImages.length - 5} more)` : "";
+    warnings.push(
+      `Skipped ${skippedImages.length} image file(s) in documentation folders (only .md and .pdf are reviewed): ${preview}${extra}. ` +
+        "If release plans or code standards are PNG/JPG exports, re-export as markdown or PDF.",
     );
   }
 
@@ -113,6 +131,7 @@ export async function discoverDocs(
     docsPool,
     repoWide,
     files,
+    skippedImages,
     warnings,
   };
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isDocExtension,
   isDocsPoolPath,
+  isSkippedImageExtension,
   pathDepth,
 } from "../../lib/docReview/constants";
 
@@ -25,6 +26,14 @@ describe("isDocExtension", () => {
     expect(isDocExtension("file.MD")).toBe(true);
     expect(isDocExtension("file.PDF")).toBe(true);
     expect(isDocExtension("file.txt")).toBe(false);
+  });
+});
+
+describe("isSkippedImageExtension", () => {
+  it("detects common image extensions", () => {
+    expect(isSkippedImageExtension("documentation/sprints/Release.png")).toBe(true);
+    expect(isSkippedImageExtension("docs/CodeStandards.jpg")).toBe(true);
+    expect(isSkippedImageExtension("docs/plan.md")).toBe(false);
   });
 });
 

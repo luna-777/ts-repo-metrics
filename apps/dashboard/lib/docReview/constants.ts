@@ -37,3 +37,8 @@ export function isDocExtension(path: string): boolean {
   const lower = path.toLowerCase();
   return lower.endsWith(".md") || lower.endsWith(".pdf");
 }
+
+/** Image types sometimes used for release plans / code standards (not reviewable yet). */
+export function isSkippedImageExtension(path: string): boolean {
+  return /\.(png|jpe?g|gif|webp)$/i.test(path);
+}

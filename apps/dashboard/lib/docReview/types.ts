@@ -20,6 +20,8 @@ export interface DiscoveryResult {
   docsPool: string[];
   repoWide: string[];
   files: DiscoveredFile[];
+  /** Image paths under docs folders (png/jpg) — listed but not reviewed */
+  skippedImages?: string[];
 }
 
 export interface FileWithText {
@@ -87,6 +89,7 @@ export interface DocReviewResult {
   discovery: {
     docsPool: string[];
     repoWide: string[];
+    skippedImages?: string[];
   };
   classifications: ClassifiedDoc[];
   reviews: Record<string, DocumentReview>;
