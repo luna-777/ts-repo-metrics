@@ -62,6 +62,23 @@ function analysesUpsertLooksLikeStaleSchema(error: {
 const ANALYSES_MIGRATION_HINT =
   "Add columns on public.analyses: run supabase/migrations/20260522000000_analyses_course_metadata.sql in the Supabase SQL Editor (or the full snippet in supabase/run_in_dashboard_sql_editor.sql).";
 
+// ---------------------------------------------------------------------------
+// Course allow-list
+// Add a new entry here whenever a new course section is created.
+// course_id values must exactly match the slugs used in /course/[courseId]/analyze URLs.
+// ---------------------------------------------------------------------------
+const ALLOWED_COURSE_IDS = new Set([
+  "CSE115A-Summer26",
+  "CSE115A-Fall26-S01",
+  "CSE115A-Fall26-S02",
+  "CSE115A-Winter26",
+  "CSE115A-Spring26",
+  "CSE115B-Winter26",
+  "CSE115C-Spring26",
+  // Add future sections here, e.g.:
+  // "CSE115A-Summer27",
+]);
+
 /** Merge course/research tagging into persisted `report_json` (Option B from course epic). */
 function reportWithSubmission(
   report: EngineRepoReport,
@@ -145,6 +162,19 @@ export async function POST(request: NextRequest) {
       typeof body.team_name === "string" ? body.team_name.trim() : null;
     const courseIdVal = courseIdRaw || null;
     const teamNameVal = teamNameRaw || null;
+
+    // Reject unknown course IDs — only allow-listed sections may tag submissions.
+    // Submissions with no course_id (plain /analyze usage) pass through unchanged.
+    if (courseIdVal !== null && !ALLOWED_COURSE_IDS.has(courseIdVal)) {
+      return NextResponse.json(
+        {
+          error: `"${courseIdVal}" is not a recognised course section. Check the link you were given and try again.`,
+          status: "failed",
+          code: "invalid_course_id",
+        },
+        { status: 400 },
+      );
+    }
 
     const ghName =
       (typeof authUser.user_metadata?.user_name === "string"
