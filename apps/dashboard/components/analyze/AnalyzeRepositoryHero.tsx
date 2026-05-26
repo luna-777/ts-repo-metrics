@@ -125,8 +125,8 @@ export function AnalyzeRepositoryHero({ compact }: AnalyzeRepositoryHeroProps) {
     <div
       className={
         compact
-          ? "flex w-full max-w-[700px] flex-col items-center space-y-8"
-          : "flex min-h-[60vh] w-full max-w-[700px] flex-col items-center justify-center space-y-10"
+          ? "flex w-full max-w-3xl flex-col items-center space-y-6"
+          : "flex w-full max-w-3xl flex-col items-center space-y-6 pt-10 pb-4"
       }
     >
       <div className="flex justify-center">
@@ -136,7 +136,7 @@ export function AnalyzeRepositoryHero({ compact }: AnalyzeRepositoryHeroProps) {
       </div>
 
       <div className="space-y-4 text-center">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+        <h1 className="text-5xl font-bold tracking-tight sm:text-6xl xl:text-7xl">
           <span className="bg-gradient-to-r from-primary via-orange-400 to-amber-400 bg-clip-text text-transparent">
             Analyze your repository
           </span>

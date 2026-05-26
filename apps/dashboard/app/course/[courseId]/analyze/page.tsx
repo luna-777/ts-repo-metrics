@@ -44,6 +44,20 @@ type DashboardPayload = {
   repos: DashboardRepo[];
 };
 
+// ---------------------------------------------------------------------------
+// Course metadata — maps slug → display info
+// ---------------------------------------------------------------------------
+
+const COURSE_META: Record<string, { fullName: string; term: string; description?: string }> = {
+  "CSE115A-Summer26":    { fullName: "CSE 115A",             term: "Summer 2026" },
+  "CSE115A-Fall26-S01":  { fullName: "CSE 115A — Section 01", term: "Fall 2026" },
+  "CSE115A-Fall26-S02":  { fullName: "CSE 115A — Section 02", term: "Fall 2026" },
+  "CSE115A-Winter26":    { fullName: "CSE 115A",             term: "Winter 2026" },
+  "CSE115A-Spring26":    { fullName: "CSE 115A",             term: "Spring 2026" },
+  "CSE115B-Winter26":    { fullName: "CSE 115B",             term: "Winter 2026" },
+  "CSE115C-Spring26":    { fullName: "CSE 115C",             term: "Spring 2026" },
+};
+
 type StepNum = 1 | 2 | 3;
 
 type StoredFlow = { step?: StepNum; teamName?: string };
@@ -242,6 +256,8 @@ export default function CourseAnalyzePage() {
     [analyzingFullName, courseIdDisplay, router, teamName],
   );
 
+  const courseMeta = COURSE_META[courseIdDisplay] ?? null;
+
   const cardOuter = useMemo(
     () =>
       "mx-auto w-full max-w-xl rounded-xl border border-border bg-card p-8 shadow-sm",
@@ -260,28 +276,29 @@ export default function CourseAnalyzePage() {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-8">
       {/* Step 1 — hero style */}
       {step === 1 ? (
-        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-6 text-center py-8">
-          {/* Course badge */}
+        <div className="flex flex-col items-center gap-5 text-center pt-10 pb-4">
+          {/* Term / course badge */}
           <span className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
-            {courseIdDisplay}
+            {courseMeta ? courseMeta.term : courseIdDisplay}
           </span>
 
           {/* Gradient title */}
           <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+            <h1 className="text-5xl font-bold tracking-tight sm:text-6xl xl:text-7xl">
               <span className="bg-gradient-to-r from-primary via-orange-400 to-amber-400 bg-clip-text text-transparent">
                 Repo Analytics
               </span>
             </h1>
-            <p className="text-xl font-semibold text-muted-foreground">{courseIdDisplay}</p>
+            <p className="text-xl font-semibold text-muted-foreground">
+              {courseMeta ? courseMeta.fullName : courseIdDisplay}
+            </p>
           </div>
 
           {/* Description */}
           <p className="mx-auto max-w-xl text-base text-muted-foreground">
-            The repo analytics tool helps you reflect on your team&apos;s software engineering
-            process. After selecting your project repository, the tool will summarize
-            repository-level patterns such as development activity, code structure, testing
-            signals, and maintainability.
+            {courseMeta
+              ? `Repo Analytics helps ${courseMeta.fullName} teams reflect on their software engineering process. After selecting your project repository, the tool summarizes development activity, code structure, testing signals, and maintainability.`
+              : "The repo analytics tool helps you reflect on your team's software engineering process. After selecting your project repository, the tool will summarize repository-level patterns such as development activity, code structure, testing signals, and maintainability."}
           </p>
 
           {/* Research disclaimer */}
