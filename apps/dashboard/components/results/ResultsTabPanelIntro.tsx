@@ -423,9 +423,9 @@ function AiUsagePanelIntro({ className }: { className?: string }) {
       bodyClassName="text-foreground/90 font-normal"
     >
       <p>
-        Upload a CSV from agent_stats or a JSON/JSONL session export to chart tool traces, phase spread,
-        and a compact scorecard (efficiency, verification-style proxies, patterns). Use it as a mirror for
-        habits—not a grade.
+        Upload `ai_usage_trace.csv` from `agent_stats` to inspect student-facing AI workflow metrics:
+        token efficiency, prompt quality, workflow balance, review habits, and a fixed 40-day activity
+        view. Use it as a mirror for habits, not a grade.
       </p>
     </CoachInsightTone>
   );

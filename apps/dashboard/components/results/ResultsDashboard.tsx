@@ -227,7 +227,7 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
                 <TabsTrigger
                   className={resultsTabTriggerClass}
                   value={RESULTS_TAB.aiUsage}
-                  title="AI usage — upload CSV from agent_stats or JSON/JSONL session exports from your coding agents"
+                  title="AI usage — upload ai_usage_trace.csv from agent_stats to inspect student-facing AI workflow metrics"
                 >
                   AI Usage
                 </TabsTrigger>
@@ -302,7 +302,7 @@ export function ResultsDashboard({ report, resultId }: ResultsDashboardProps) {
               />
             </TabsContent>
             <TabsContent value={RESULTS_TAB.aiUsage} id="ai-usage-panel" className="mt-6 scroll-mt-8">
-              <AIMaturityTab />
+              <AIMaturityTab resultId={resultId} />
             </TabsContent>
             <TabsContent
               value={RESULTS_TAB.documentation}

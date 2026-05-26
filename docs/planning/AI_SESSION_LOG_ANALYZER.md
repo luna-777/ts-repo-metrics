@@ -12,7 +12,7 @@ The analyzer:
 
 ### Out of scope for dashboard v1
 
-Binding session logs into the **`RepoReport` engine response** or embedding a live analyzer in the **analyze** API is still **deferred** until parsing and enrichment are stable. The dashboard **AI Usage** tab supports **CSV** and **JSON/JSONL session exports** (browser-side parsing + the session report panel below); Git-enriched metrics remain client-side “N/A” stubs until wired.
+Binding session logs into the **`RepoReport` engine response** or embedding a live analyzer in the **analyze** API is still **deferred** until parsing and enrichment are stable. The live dashboard **AI Usage** tab now consumes persisted `ai_usage_trace.csv` uploads only; Git-enriched metrics remain client-side “N/A” stubs until wired.
 
 ## Output summary (artifact shape)
 

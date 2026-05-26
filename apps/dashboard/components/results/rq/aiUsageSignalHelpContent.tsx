@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,232 +10,273 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { CircleHelp } from "lucide-react";
 
 export type AiUsageSignalId =
-  | "efficiency"
-  | "safety-compliance"
-  | "discovery-ratio"
-  | "token-input"
-  | "token-output"
-  | "token-reasoning"
-  | "token-peak";
+  | "input-tokens"
+  | "output-tokens"
+  | "cache-hit-rate"
+  | "tokens-per-prompt"
+  | "avg-prompt-length"
+  | "detailed-prompt-rate"
+  | "short-prompt-rate"
+  | "message-capture-rate"
+  | "total-prompts"
+  | "total-tool-calls"
+  | "active-days"
+  | "prompts-per-day"
+  | "exploration-share"
+  | "generation-share"
+  | "verification-share"
+  | "workflow-diagnostic"
+  | "sessions"
+  | "avg-prompts-per-session"
+  | "avg-tools-per-session"
+  | "tool-calls-per-prompt"
+  | "write-ratio"
+  | "read-after-write-rate";
 
-const example = (lines: string[]) => (
-  <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
-    {lines.map((line) => (
-      <li key={line} className="leading-relaxed">
-        {line}
-      </li>
-    ))}
-  </ul>
-);
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      <div className="text-sm leading-relaxed text-muted-foreground">{children}</div>
+      <div className="text-sm leading-relaxed text-muted-foreground">
+        {children}
+      </div>
     </div>
   );
 }
 
-function signalBody(id: AiUsageSignalId): { title: string; content: ReactNode } {
-  switch (id) {
-    case "efficiency":
-      return {
-        title: "Efficiency",
-        content: (
-          <div className="space-y-4">
-            <Section title="What it means">
-              <p>
-                Efficiency reflects <strong className="text-foreground">workflow quality</strong> in the log: how
-                focused your turns are (tools per prompt) and how much of the session mixes{" "}
-                <strong className="text-foreground">exploration</strong> with action. It is{" "}
-                <strong className="text-foreground">not</strong> session length, typing speed, or time to finish.
-              </p>
-            </Section>
-            <Section title="How we measure it">
-              <p>
-                We combine two parts (see export docs): an{" "}
-                <strong className="text-foreground">iteration score</strong> that rewards fewer tool calls per user
-                prompt, and a <strong className="text-foreground">discovery score</strong> from your share of
-                discovery-class tools vs discovery+action tools. The dashboard shows the weighted blend as a
-                percentage.
-              </p>
-            </Section>
-            <Section title="Example prompts and habits">
-              {example([
-                "Focused: “Summarize what auth/middleware.ts does, then propose one minimal change for X.”",
-                "Vague (avoid): “Fix everything.”",
-                "Splitting work: “First list three approaches; then implement only approach B.”",
-              ])}
-            </Section>
-            <Section title="Related signals">
-              <p>
-                <strong className="text-foreground">Safety / compliance</strong> measures verification habits; it does{" "}
-                <strong className="text-foreground">not</strong> change the Efficiency formula.
-              </p>
-            </Section>
-          </div>
-        ),
-      };
-    case "safety-compliance":
-      return {
-        title: "Safety / compliance",
-        content: (
-          <div className="space-y-4">
-            <Section title="What it means">
-              <p>
-                This score summarizes <strong className="text-foreground">verification-style habits</strong> in the
-                tool stream: reading back after writes, running test-like shell commands when you use the terminal, and
-                avoiding edits with no prior read/search in the same turn. It is{" "}
-                <strong className="text-foreground">not</strong> a security audit or compliance certification.
-              </p>
-            </Section>
-            <Section title="How we measure it">
-              <p>
-                We blend read-after-write rate and test-like shell usage when both exist, fall back to whichever is
-                available, and fold in a penalty when many writes happen without a discovery tool earlier in the turn.
-              </p>
-            </Section>
-            <Section title="Example prompts and habits">
-              {example([
-                "After that edit, re-read the file and list anything that could break existing callers.",
-                "Run npm test (or your project’s test command) and paste failures before changing more code.",
-              ])}
-            </Section>
-            <Section title="Related signals">
-              <p>
-                <strong className="text-foreground">Read-after-write</strong> is one ingredient. Test-like shell
-                detection uses simple patterns (e.g. jest, pytest, npm test) on command text—only relevant when the agent
-                logs shell tools.
-              </p>
-            </Section>
-          </div>
-        ),
-      };
-    case "discovery-ratio":
-      return {
-        title: "Discovery ratio",
-        content: (
-          <div className="space-y-4">
-            <Section title="What it means">
-              <p>
-                The percentage of tool calls classified as{" "}
-                <strong className="text-foreground">discovery</strong> out of discovery +{" "}
-                <strong className="text-foreground">action</strong> calls. It describes your{" "}
-                <strong className="text-foreground">tool-call mix</strong>, not a course grade.
-              </p>
-            </Section>
-            <Section title="How we measure it">
-              <p>
-                We count tool_call events and apply the analyzer’s discovery vs action sets.{" "}
-                <strong className="text-foreground">Discovery depth</strong> (High / Medium / Low) buckets that ratio
-                (High ≥38%, Medium between 18% and 38%, Low ≤18%).
-              </p>
-            </Section>
-            <Section title="Example habits">
-              {example([
-                "Before a big Write burst, use Read or Grep to ground the change.",
-                "Ask for tradeoffs: “What are two ways to implement this?” before picking one.",
-              ])}
-            </Section>
-            <Section title="Related signals">
-              <p>
-                <strong className="text-foreground">Efficiency</strong> also uses exploration via its discovery
-                component. The dashboard shows the depth label next to this percentage.
-              </p>
-            </Section>
-          </div>
-        ),
-      };
-    case "token-input":
-      return {
-        title: "Input tokens",
-        content: (
-          <div className="space-y-4">
-            <Section title="What it means">
-              <p>
-                Sum of reported <strong className="text-foreground">input</strong> token counts from usage rows the
-                parser found in your export (often prompt/context size per turn or record).
-              </p>
-            </Section>
-            <Section title="Good exports">
-              <p>
-                Session JSON/JSONL that include <code className="rounded bg-muted px-1 text-xs">usage</code> or
-                equivalent fields on messages or synthetic <code className="rounded bg-muted px-1 text-xs">__usage__</code>{" "}
-                events will populate this tile.
-              </p>
-            </Section>
-          </div>
-        ),
-      };
-    case "token-output":
-      return {
-        title: "Output tokens",
-        content: (
-          <div className="space-y-4">
-            <Section title="What it means">
-              <p>
-                Sum of reported <strong className="text-foreground">output</strong> tokens (model completion tokens)
-                from the same usage records as input.
-              </p>
-            </Section>
-            <Section title="Good exports">
-              <p>If this stays empty, your file may omit token usage; re-export with usage enabled when your tool allows.</p>
-            </Section>
-          </div>
-        ),
-      };
-    case "token-reasoning":
-      return {
-        title: "Reasoning tokens",
-        content: (
-          <div className="space-y-4">
-            <Section title="What it means">
-              <p>
-                Some models expose a separate reasoning token count. We sum it when present; otherwise this shows “—”.
-              </p>
-            </Section>
-            <Section title="Good exports">
-              <p>
-                Depends on vendor and exporter; not all logs include reasoning splits.
-              </p>
-            </Section>
-          </div>
-        ),
-      };
-    case "token-peak":
-      return {
-        title: "Peak input tokens",
-        content: (
-          <div className="space-y-4">
-            <Section title="What it means">
-              <p>
-                The <strong className="text-foreground">largest single input token value</strong> on any one usage record
-                we parsed—the heaviest “row” in your export’s usage stream, not a second measure of totals.
-              </p>
-            </Section>
-            <Section title="How we measure it">
-              <p>
-                We scan synthetic usage events and take the max of each record’s{" "}
-                <code className="rounded bg-muted px-1 text-xs">input</code> number. Granularity matches your exporter
-                (per message, per step, etc.).
-              </p>
-            </Section>
-            <Section title="Good exports">
-              <p>
-                Useful to spot spikes in context size. If your tool does not attach per-record usage, this may be
-                missing.
-              </p>
-            </Section>
-          </div>
-        ),
-      };
-    default:
-      return { title: "Signal", content: null };
-  }
+export const AI_USAGE_METRIC_HELP: Record<
+  AiUsageSignalId,
+  { title: string; what: string; why: string; how: string }
+> = {
+  "input-tokens": {
+    title: "Input tokens",
+    what:
+      "The total amount of prompt and context text sent to the model across the uploaded CSV.",
+    why:
+      "Large inputs usually mean the model is carrying more context, which can make runs slower and more expensive.",
+    how:
+      "Keep prompts scoped to one task, avoid pasting more code than needed, and reuse focused sessions instead of reloading huge context every turn.",
+  },
+  "output-tokens": {
+    title: "Output tokens",
+    what:
+      "The total amount of model-generated text returned across the uploaded CSV.",
+    why:
+      "Large outputs can be useful when the assistant is explaining or drafting, but they often signal over-broad asks when they stay high on simple tasks.",
+    how:
+      "Ask for smaller steps, request summaries before full rewrites, and constrain the expected output format.",
+  },
+  "cache-hit-rate": {
+    title: "Cache hit rate",
+    what:
+      "The share of cache reads out of total cache-related token traffic in the upload.",
+    why:
+      "Higher cache reuse usually means faster, cheaper follow-up turns because the model can reuse prior context instead of reprocessing it from scratch.",
+    how:
+      "Work in coherent sessions, avoid restarting the same task repeatedly, and keep prompts focused so useful context stays reusable.",
+  },
+  "tokens-per-prompt": {
+    title: "Tokens per prompt",
+    what:
+      "The average total input plus output tokens consumed for each user prompt.",
+    why:
+      "This shows how expensive each interaction is on average. A rising value often means prompts are getting broader or responses are becoming less constrained.",
+    how:
+      "Shrink tasks, ask for one decision at a time, and prefer targeted file references over broad context dumps.",
+  },
+  "avg-prompt-length": {
+    title: "Average prompt length",
+    what:
+      "The average number of characters in captured user prompts when the CSV includes message text.",
+    why:
+      "Very short prompts are often vague. Longer prompts are not automatically better, but they usually carry more constraints and context.",
+    how:
+      "Name the goal, files, constraints, and success criteria instead of opening with a bare request like “fix it”.",
+  },
+  "detailed-prompt-rate": {
+    title: "Detailed prompt rate",
+    what:
+      "The share of captured prompts that are at least 200 characters long.",
+    why:
+      "This helps show how often the team gives the assistant enough room for context, constraints, and acceptance criteria.",
+    how:
+      "For larger tasks, include relevant files, expected behavior, and boundaries so the assistant is not forced to guess intent.",
+  },
+  "short-prompt-rate": {
+    title: "Short prompt rate",
+    what:
+      "The share of captured prompts shorter than 50 characters.",
+    why:
+      "A high rate usually means the assistant is being asked to infer too much from minimal direction, which tends to create rework.",
+    how:
+      "Turn one-line asks into scoped requests with constraints, target files, and a clear definition of done.",
+  },
+  "message-capture-rate": {
+    title: "Prompt capture rate",
+    what:
+      "The share of prompts in the CSV that include a captured message body.",
+    why:
+      "Prompt-quality metrics only reflect prompts that were actually exported. A low capture rate means the prompt section is incomplete.",
+    how:
+      "Re-export the CSV with --messages so the dashboard can analyze prompt detail and quality reliably.",
+  },
+  "total-prompts": {
+    title: "Total prompts",
+    what:
+      "The number of user prompts recorded in the uploaded CSV.",
+    why:
+      "It gives basic scale: how much the team interacted with the assistant during the captured period.",
+    how:
+      "Treat this as context, not a target. Focus on better prompts and healthier workflow patterns rather than trying to maximize prompt count.",
+  },
+  "total-tool-calls": {
+    title: "Total tool calls",
+    what:
+      "The number of tool-call events in the uploaded CSV.",
+    why:
+      "This shows how agentic the workflow was. Too many tool calls per task can mean churn, but too few can mean shallow use.",
+    how:
+      "Use tools deliberately: read/search before edits, then verify after bigger changes instead of bouncing through many unfocused steps.",
+  },
+  "active-days": {
+    title: "Active days",
+    what:
+      "The number of days with at least one prompt in the 40-day activity window shown on the tab.",
+    why:
+      "It shows how consistently the team is using AI across the working period instead of clustering all usage into one burst.",
+    how:
+      "Use AI in smaller, repeatable sessions during the week rather than relying only on last-minute marathons.",
+  },
+  "prompts-per-day": {
+    title: "Prompts per active day",
+    what:
+      "The average number of prompts on days when the team used AI in the 40-day window.",
+    why:
+      "This helps distinguish steady use from intense bursts. Very high values can indicate cramming or noisy sessions.",
+    how:
+      "Break work into shorter sessions, define the next subtask before prompting, and stop when the assistant drifts from the current goal.",
+  },
+  "exploration-share": {
+    title: "Exploration share",
+    what:
+      "The percentage of tool calls grouped as exploration, such as reads and searches.",
+    why:
+      "Exploration is how the assistant gets grounded in the codebase before making changes. Too little exploration often means context-free edits.",
+    how:
+      "Before asking for a change, point the assistant at the right files or ask it to inspect and summarize relevant code first.",
+  },
+  "generation-share": {
+    title: "Generation share",
+    what:
+      "The percentage of tool calls grouped as writes and edits.",
+    why:
+      "Generation is the part of the workflow where the assistant changes code or docs. A very high share often means the team is trusting output too quickly.",
+    how:
+      "Reduce broad rewrite requests, review generated diffs carefully, and add more exploration or verification around larger edits.",
+  },
+  "verification-share": {
+    title: "Verification / execution share",
+    what:
+      "The percentage of tool calls grouped as execution or review steps, such as shell commands.",
+    why:
+      "This is a proxy for how often the workflow includes checking work instead of only generating it.",
+    how:
+      "After larger edits, run the relevant checks, tests, or review commands before moving on to the next change.",
+  },
+  "workflow-diagnostic": {
+    title: "Workflow diagnostic",
+    what:
+      "A short interpretation of the grouped exploration, generation, and verification shares.",
+    why:
+      "Students usually need meaning more than raw percentages. This diagnostic turns the mix into a habit-level readout.",
+    how:
+      "Use the warning text as the next-session goal: add more exploration when edits are context-free, or more verification when changes are not being checked.",
+  },
+  sessions: {
+    title: "Sessions",
+    what:
+      "The number of distinct session IDs captured in the uploaded CSV.",
+    why:
+      "This shows how the work was spread across separate AI-assisted sessions instead of one continuous run.",
+    how:
+      "Prefer clear session boundaries: start a new session when switching tasks, and keep each session focused on one problem area.",
+  },
+  "avg-prompts-per-session": {
+    title: "Average prompts per session",
+    what:
+      "The average number of user prompts inside each recorded session.",
+    why:
+      "This helps show whether sessions are short and focused or long and possibly drifting.",
+    how:
+      "Break large tasks into smaller sessions and restart with a clearer scoped prompt when a session becomes noisy or unfocused.",
+  },
+  "avg-tools-per-session": {
+    title: "Average tool calls per session",
+    what:
+      "The average number of tool-call events inside each recorded session.",
+    why:
+      "This is a rough proxy for how deeply the assistant operated during a session.",
+    how:
+      "If this climbs too high, tighten prompt scope and reduce repeated exploratory loops before editing.",
+  },
+  "tool-calls-per-prompt": {
+    title: "Tool calls per prompt",
+    what:
+      "The average number of tool calls that happen for each user prompt.",
+    why:
+      "High values can mean the assistant needs many steps to resolve a request, which often reflects vague prompts or over-broad tasks.",
+    how:
+      "State the goal, files, and success criteria up front so the assistant needs fewer discovery and repair cycles.",
+  },
+  "write-ratio": {
+    title: "Write ratio",
+    what:
+      "The share of all tool calls that are direct code-changing actions such as Write, Edit, MultiEdit, or ApplyPatch.",
+    why:
+      "A high write ratio is not automatically bad, but it increases the need for review and verification because more of the trace is making changes.",
+    how:
+      "Pair write-heavy sessions with more read/search grounding and more explicit review steps before accepting the output.",
+  },
+  "read-after-write-rate": {
+    title: "Read-after-write rate",
+    what:
+      "The share of write-followed events where the next tool call is a Read.",
+    why:
+      "This is a simple proxy for whether the workflow checks generated edits before moving on.",
+    how:
+      "After a major write or edit, immediately re-read the changed file or diff and verify the change against the original request.",
+  },
+};
+
+function signalBody(signalId: AiUsageSignalId): {
+  title: string;
+  content: ReactNode;
+} {
+  const entry = AI_USAGE_METRIC_HELP[signalId];
+  return {
+    title: entry.title,
+    content: (
+      <div className="space-y-4">
+        <Section title="What is this data?">
+          <p>{entry.what}</p>
+        </Section>
+        <Section title="Why is it important?">
+          <p>{entry.why}</p>
+        </Section>
+        <Section title="How do I improve it?">
+          <p>{entry.how}</p>
+        </Section>
+      </div>
+    ),
+  };
 }
 
 export function AiUsageSignalLearnMore({
@@ -252,7 +294,10 @@ export function AiUsageSignalLearnMore({
           type="button"
           variant="ghost"
           size="icon-xs"
-          className={className ?? "size-7 shrink-0 text-muted-foreground hover:text-foreground"}
+          className={
+            className ??
+            "size-7 shrink-0 text-muted-foreground hover:text-foreground"
+          }
           aria-label={`Learn more: ${title}`}
         >
           <CircleHelp className="size-3.5" aria-hidden />
@@ -266,24 +311,4 @@ export function AiUsageSignalLearnMore({
       </DialogContent>
     </Dialog>
   );
-}
-
-/** Short coaching line under Efficiency % (rounded 0–100). */
-export function efficiencyBandHint(efficiencyPct: number): { className: string; text: string } {
-  if (efficiencyPct > 75) {
-    return {
-      className: "",
-      text: "",
-    };
-  }
-  if (efficiencyPct >= 50) {
-    return {
-      className: "text-amber-600 dark:text-amber-400",
-      text: "Room to sharpen prompts or balance exploration—see Learn more for ideas.",
-    };
-  }
-  return {
-    className: "text-red-600 dark:text-red-400",
-    text: "Try smaller asks and more read/search before big writes; see Learn more.",
-  };
 }

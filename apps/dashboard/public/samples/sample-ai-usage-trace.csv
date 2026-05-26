@@ -1,0 +1,11 @@
+timestamp,event_type,coding_agent,tool_name,execution_time,working_dir,session_id,message_text,input_tokens,output_tokens,cache_creation_tokens,cache_read_tokens,model
+2026-05-12T14:00:00.000Z,user_prompt,claude_code,,,/sample-repo,session-1,"Inspect auth flow and propose one minimal fix.",,,,,gpt-4o
+2026-05-12T14:00:05.000Z,tool_call,claude_code,Read,0.2,/sample-repo,session-1,,,,,,gpt-4o
+2026-05-12T14:00:09.000Z,tool_call,claude_code,Grep,0.1,/sample-repo,session-1,,,,,,gpt-4o
+2026-05-12T14:00:16.000Z,tool_call,claude_code,Write,0.4,/sample-repo,session-1,,,,,,gpt-4o
+2026-05-12T14:00:24.000Z,tool_call,claude_code,Read,0.1,/sample-repo,session-1,,,,,,gpt-4o
+2026-05-12T14:00:31.000Z,tool_call,claude_code,Bash,0.6,/sample-repo,session-1,,,,,,gpt-4o
+2026-05-12T14:00:32.000Z,assistant_response,claude_code,,0.0,/sample-repo,session-1,,1400,320,120,480,gpt-4o
+2026-05-18T09:20:00.000Z,user_prompt,claude_code,,,/sample-repo,session-2,"fix login",,,,,gpt-4o
+2026-05-18T09:20:04.000Z,tool_call,claude_code,Edit,0.2,/sample-repo,session-2,,,,,,gpt-4o
+2026-05-18T09:20:10.000Z,assistant_response,claude_code,,0.0,/sample-repo,session-2,,900,180,60,260,gpt-4o
