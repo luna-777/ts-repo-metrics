@@ -187,84 +187,79 @@ export function AnalyzeRepositoryHero({ compact }: AnalyzeRepositoryHeroProps) {
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="w-full">
-        <div
-          className={
-            "flex h-[60px] w-full overflow-hidden rounded-xl border border-neutral-200 bg-white focus-within:ring-2 focus-within:ring-neutral-400 focus-within:ring-offset-2 focus-within:ring-offset-background dark:border-neutral-700 dark:bg-neutral-900/50 dark:focus-within:ring-neutral-600 " +
-            (gated ? "opacity-60" : "")
-          }
-        >
-          <div className="flex items-center justify-center pl-4 text-neutral-400">
-            <Github className="size-5" />
-          </div>
-          <input
-            type="text"
-            placeholder="https://github.com/owner/repo"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="min-w-0 flex-1 bg-transparent px-3 py-0 text-base outline-none placeholder:text-neutral-400 disabled:opacity-50"
-            disabled={loading || gated}
-          />
-          <button
-            type="submit"
-            disabled={!valid || loading || gated}
-            title={gated ? ANALYZE_SIGN_IN_REQUIRED_MESSAGE : undefined}
-            className="flex h-full shrink-0 items-center justify-center gap-2 bg-neutral-900 px-6 font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
-          >
-            {loading ? "Analyzing…" : "Go"}
-            <ArrowRight className="size-4" />
-          </button>
-        </div>
-      </form>
+      {/* URL input form — only shown when signed in */}
+      {signedIn === true ? (
+        <>
+          <form onSubmit={handleSubmit} className="w-full">
+            <div className="flex h-[60px] w-full overflow-hidden rounded-xl border border-neutral-200 bg-white focus-within:ring-2 focus-within:ring-neutral-400 focus-within:ring-offset-2 focus-within:ring-offset-background dark:border-neutral-700 dark:bg-neutral-900/50 dark:focus-within:ring-neutral-600">
+              <div className="flex items-center justify-center pl-4 text-neutral-400">
+                <Github className="size-5" />
+              </div>
+              <input
+                type="text"
+                placeholder="https://github.com/owner/repo"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent px-3 py-0 text-base outline-none placeholder:text-neutral-400"
+                disabled={loading}
+              />
+              <button
+                type="submit"
+                disabled={!valid || loading}
+                className="flex h-full shrink-0 items-center justify-center gap-2 bg-neutral-900 px-6 font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+              >
+                {loading ? "Analyzing…" : "Go"}
+                <ArrowRight className="size-4" />
+              </button>
+            </div>
+          </form>
 
-      <div className="flex flex-col items-center gap-2 text-center">
-        <p className="text-sm text-muted-foreground">or try an example</p>
-        <button
-          type="button"
-          disabled={loading || gated}
-          onClick={() => {
-            setUrl(EXAMPLE_GITHUB_REPO);
-            void runAnalysisForUrl(EXAMPLE_GITHUB_REPO);
-          }}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
-        >
-          <Github className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <span>Try sample repo</span>
-        </button>
-      </div>
-
-      <p className="text-center text-sm text-muted-foreground">
-        After signing in, open <strong className="text-foreground">My Repos</strong> to pick from
-        your GitHub repositories.
-      </p>
-
-      {url && !valid && (
-        <p className="text-center text-sm text-destructive">
-          Enter a valid GitHub repository URL
-        </p>
-      )}
-
-      {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-          <p className="text-sm text-destructive">{error}</p>
-          {error !== ANALYZE_SIGN_IN_REQUIRED_MESSAGE ? (
+          <div className="flex flex-col items-center gap-2 text-center">
+            <p className="text-sm text-muted-foreground">or try an example</p>
             <button
               type="button"
+              disabled={loading}
               onClick={() => {
-                setError(null);
-                runAnalysis();
+                setUrl(EXAMPLE_GITHUB_REPO);
+                void runAnalysisForUrl(EXAMPLE_GITHUB_REPO);
               }}
-              className="mt-2 text-sm font-medium underline hover:no-underline"
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
             >
-              Retry
+              <Github className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span>Try sample repo</span>
             </button>
-          ) : (
-            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={handleSignIn}>
-              Sign in with GitHub
-            </Button>
+          </div>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Or open <strong className="text-foreground">My Repos</strong> to pick from your GitHub
+            repositories.
+          </p>
+
+          {url && !valid && (
+            <p className="text-center text-sm text-destructive">
+              Enter a valid GitHub repository URL
+            </p>
           )}
-        </div>
-      )}
+
+          {error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
+              <p className="text-sm text-destructive">{error}</p>
+              {error !== ANALYZE_SIGN_IN_REQUIRED_MESSAGE ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    runAnalysis();
+                  }}
+                  className="mt-2 text-sm font-medium underline hover:no-underline"
+                >
+                  Retry
+                </button>
+              ) : null}
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

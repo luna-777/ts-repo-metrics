@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,6 +42,7 @@ export default function RootLayout({
           <main className="flex-1 flex flex-col items-center justify-start py-12 px-4 sm:px-6 bg-dot-grid min-h-[calc(100vh-4rem)]">
             <TooltipProvider>{children}</TooltipProvider>
           </main>
+          <SiteFooter />
           <Toaster richColors position="top-center" />
         </ThemeProvider>
       </body>

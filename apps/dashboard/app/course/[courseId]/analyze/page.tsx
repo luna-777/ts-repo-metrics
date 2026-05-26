@@ -258,19 +258,34 @@ export default function CourseAnalyzePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-8">
-      {/* Step 1 */}
+      {/* Step 1 — hero style */}
       {step === 1 ? (
-        <div className={cardOuter}>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Repo Analytics — {courseIdDisplay}
-          </h1>
-          <p className="mt-4 text-sm text-muted-foreground">
+        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-6 text-center py-8">
+          {/* Course badge */}
+          <span className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
+            {courseIdDisplay}
+          </span>
+
+          {/* Gradient title */}
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+              <span className="bg-gradient-to-r from-primary via-orange-400 to-amber-400 bg-clip-text text-transparent">
+                Repo Analytics
+              </span>
+            </h1>
+            <p className="text-xl font-semibold text-muted-foreground">{courseIdDisplay}</p>
+          </div>
+
+          {/* Description */}
+          <p className="mx-auto max-w-xl text-base text-muted-foreground">
             The repo analytics tool helps you reflect on your team&apos;s software engineering
             process. After selecting your project repository, the tool will summarize
             repository-level patterns such as development activity, code structure, testing
             signals, and maintainability.
           </p>
-          <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 text-sm dark:text-blue-200">
+
+          {/* Research disclaimer */}
+          <div className="w-full max-w-xl rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 text-sm text-left">
             <p className="font-medium text-blue-900 dark:text-blue-100">
               This tool is part of research on AI-assisted software engineering education.
             </p>
@@ -281,7 +296,8 @@ export default function CourseAnalyzePage() {
               </strong>
             </p>
           </div>
-          <Button className="mt-8 w-full sm:w-auto" onClick={() => setStep(2)} type="button">
+
+          <Button className="w-full max-w-xs" onClick={() => setStep(2)} type="button">
             I understand — continue
           </Button>
         </div>
