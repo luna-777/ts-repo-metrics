@@ -1,30 +1,34 @@
 "use client";
 
 /**
- * Main landing page — VS Code-style hero + dashboard preview.
+ * Main landing page — hero + dashboard preview + feature sections.
  */
 
 import { AnalyzeRepositoryHero } from "@/components/analyze/AnalyzeRepositoryHero";
+import { FeatureSections } from "@/components/landing/FeatureSections";
 
 // ---------------------------------------------------------------------------
 // Inline dashboard preview (no image file required)
 // ---------------------------------------------------------------------------
 
 const PREVIEW_METRICS = [
-  { label: "Code Complexity", score: 77, rating: "Strong", color: "text-green-400" },
-  { label: "Commit Habits",   score: 70, rating: "Strong", color: "text-green-400" },
-  { label: "Testing",         score: 69, rating: "Good",   color: "text-green-400" },
+  { label: "Code Complexity", score: 77, rating: "Strong",     color: "text-green-400" },
+  { label: "Commit Habits",   score: 70, rating: "Strong",     color: "text-green-400" },
+  { label: "Testing",         score: 69, rating: "Good",       color: "text-green-400" },
   { label: "Code Quality",    score: 40, rating: "Needs Work", color: "text-amber-400" },
-  { label: "React",           score: 18, rating: "Critical",   color: "text-red-400" },
+  { label: "React",           score: 18, rating: "Critical",   color: "text-red-400"   },
 ] as const;
 
 const PREVIEW_CARDS = [
-  { label: "Total Commits",     value: "114",   rating: "Strong",     sub: "114 commits — solid volume for review rhythm" },
-  { label: "Commits Per Week",  value: "5.30",  rating: "Strong",     sub: "Consistent cadence, steady integration" },
-  { label: "Large Commit Ratio",value: "34.2%", rating: "Needs Work", sub: "Split work where you can to ease review" },
+  { label: "Total Commits",      value: "114",   rating: "Strong",     sub: "114 commits — solid volume for review rhythm" },
+  { label: "Commits Per Week",   value: "5.30",  rating: "Strong",     sub: "Consistent cadence, steady integration" },
+  { label: "Large Commit Ratio", value: "34.2%", rating: "Needs Work", sub: "Split work where you can to ease review" },
 ] as const;
 
-const PREVIEW_TABS = ["Commit Habits", "Testing", "Code Quality", "React Components", "AI Usage", "Documentation"] as const;
+const PREVIEW_TABS = [
+  "Commit Habits", "Testing", "Code Quality",
+  "React Components", "AI Usage", "Documentation",
+] as const;
 
 function DashboardPreview() {
   return (
@@ -41,12 +45,11 @@ function DashboardPreview() {
         </div>
       </div>
 
-      {/* Dashboard body */}
       <div className="space-y-5 p-5">
         {/* Top metric chips */}
         <div className="grid grid-cols-5 gap-3">
           {PREVIEW_METRICS.map((m) => (
-            <div key={m.label} className="rounded-lg border border-border bg-background/60 p-3 space-y-1">
+            <div key={m.label} className="space-y-1 rounded-lg border border-border bg-background/60 p-3">
               <p className="truncate text-[10px] text-muted-foreground">{m.label}</p>
               <p className={`text-[10px] font-medium ${m.color}`}>{m.rating}</p>
               <p className="text-xl font-bold">{m.score}</p>
@@ -55,14 +58,12 @@ function DashboardPreview() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-0 border-b border-border overflow-x-auto">
+        <div className="flex gap-0 overflow-x-auto border-b border-border">
           {PREVIEW_TABS.map((tab, i) => (
             <div
               key={tab}
               className={`shrink-0 px-3 py-2 text-[11px] font-medium ${
-                i === 0
-                  ? "border-b-2 border-foreground text-foreground"
-                  : "text-muted-foreground"
+                i === 0 ? "border-b-2 border-foreground text-foreground" : "text-muted-foreground"
               }`}
             >
               {tab}
@@ -70,16 +71,16 @@ function DashboardPreview() {
           ))}
         </div>
 
-        {/* Metric cards */}
+        {/* Metric detail cards */}
         <div className="grid grid-cols-3 gap-3">
           {PREVIEW_CARDS.map((m) => (
-            <div key={m.label} className="rounded-lg border border-border bg-background/40 p-4 space-y-1">
+            <div key={m.label} className="space-y-1 rounded-lg border border-border bg-background/40 p-4">
               <p className="text-[11px] text-muted-foreground">{m.label}</p>
               <p className={`text-[10px] font-medium ${m.rating === "Strong" ? "text-green-400" : "text-amber-400"}`}>
                 {m.rating}
               </p>
               <p className="text-2xl font-bold">{m.value}</p>
-              <p className="text-[10px] text-muted-foreground leading-snug">{m.sub}</p>
+              <p className="text-[10px] leading-snug text-muted-foreground">{m.sub}</p>
             </div>
           ))}
         </div>
@@ -94,15 +95,20 @@ function DashboardPreview() {
 
 export default function HomePage() {
   return (
-    <div className="w-full space-y-16 pb-8">
+    <div className="w-full pb-16">
       {/* Hero */}
       <div className="flex justify-center">
         <AnalyzeRepositoryHero />
       </div>
 
-      {/* Product preview */}
-      <div className="mx-auto w-full max-w-5xl">
+      {/* Dashboard preview */}
+      <div className="mx-auto mt-12 w-full max-w-5xl">
         <DashboardPreview />
+      </div>
+
+      {/* Feature sections */}
+      <div className="mt-4">
+        <FeatureSections />
       </div>
     </div>
   );
