@@ -867,9 +867,17 @@ export function AIMaturityTab({ resultId }: { resultId: string }) {
                 </summary>
                 <div className="mt-3 space-y-2">
                   {data.toolMix.map((tool) => (
-                    <div key={tool.name} className="flex items-center gap-3 text-sm">
-                      <span className="w-24 font-medium">{tool.name}</span>
-                      <div className="h-1.5 flex-1 rounded-full bg-muted">
+                    <div
+                      key={tool.name}
+                      className="grid min-w-0 grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3rem] items-center gap-3 text-sm lg:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_3rem_minmax(0,20rem)]"
+                    >
+                      <span
+                        className="truncate font-medium"
+                        title={tool.name}
+                      >
+                        {tool.name}
+                      </span>
+                      <div className="h-1.5 min-w-0 rounded-full bg-muted">
                         <div
                           className="h-1.5 rounded-full bg-foreground/70"
                           style={{ width: `${tool.pct}%` }}
@@ -878,7 +886,10 @@ export function AIMaturityTab({ resultId }: { resultId: string }) {
                       <span className="w-12 text-right tabular-nums text-muted-foreground">
                         {tool.pct}%
                       </span>
-                      <span className="hidden text-xs text-muted-foreground sm:block">
+                      <span
+                        className="hidden truncate text-xs text-muted-foreground lg:block"
+                        title={`${tool.count.toLocaleString()} calls · ${tool.meaning}`}
+                      >
                         {tool.count.toLocaleString()} calls · {tool.meaning}
                       </span>
                     </div>
