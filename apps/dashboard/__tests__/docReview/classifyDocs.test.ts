@@ -104,4 +104,24 @@ describe("classifyDocs (filename matching)", () => {
     expect(result[2]?.docType).toBe("release_plan");
     expect(result[3]?.docType).toBe("unknown");
   });
+
+  it("preserves extracted text and truncation for review", async () => {
+    const result = await classifyDocs(
+      [
+        {
+          path: "documentation/sprint-1-plan.md",
+          text: "# Sprint 1 Plan\n\nStory content",
+          bytes: 123,
+          truncated: true,
+        },
+      ],
+      [],
+      [],
+      null as never,
+    );
+
+    expect(result[0]?.docType).toBe("sprint_plan");
+    expect(result[0]?.text).toContain("Story content");
+    expect(result[0]?.truncated).toBe(true);
+  });
 });
