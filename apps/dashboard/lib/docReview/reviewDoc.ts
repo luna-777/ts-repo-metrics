@@ -276,9 +276,11 @@ export async function reviewDoc(
     const isTimeout =
       err instanceof Error &&
       (err.name === "AbortError" || err.message.includes("aborted"));
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[reviewDoc] error reviewing ${doc.path}:`, errMsg);
     return {
       ...base,
-      error: isTimeout ? "timeout" : "review_failed",
+      error: isTimeout ? "timeout" : `review_failed: ${errMsg}`,
       reviewMs: Date.now() - start,
     };
   } finally {
