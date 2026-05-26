@@ -554,6 +554,31 @@ function formatDocType(docType: string): string {
   return docType.replace(/_/g, " ");
 }
 
+function formatDocTitle(doc: ClassifiedDoc): string {
+  if (doc.sprintNumber) {
+    if (doc.docType === "sprint_plan") return `Sprint ${doc.sprintNumber} Plan`;
+    if (doc.docType === "sprint_report") return `Sprint ${doc.sprintNumber} Report`;
+  }
+  return formatDocType(doc.docType);
+}
+
+function sortClassifications(classifications: ClassifiedDoc[]): ClassifiedDoc[] {
+  const ORDER: Record<string, number> = {
+    release_plan: 0,
+    sprint_plan: 1,
+    sprint_report: 2,
+    test_plan: 3,
+    definition_of_done: 4,
+    code_standards: 5,
+    unknown: 6,
+  };
+  return [...classifications].sort((a, b) => {
+    const typeDiff = (ORDER[a.docType] ?? 6) - (ORDER[b.docType] ?? 6);
+    if (typeDiff !== 0) return typeDiff;
+    return (a.sprintNumber ?? 0) - (b.sprintNumber ?? 0);
+  });
+}
+
 function formatChecklistKey(key: string): string {
   return key
     .split("_")
@@ -731,9 +756,6 @@ function ChecklistBreakdown({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">
-        Checklist: {passed}/{entries.length} criteria met
-      </p>
       <ul className="space-y-1">
         {entries.map(([key, value]) => (
           <li key={key} className="flex items-start gap-2 text-sm">
@@ -764,6 +786,98 @@ function ChecklistBreakdown({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Metric chip
+// ---------------------------------------------------------------------------
+
+function MetricChip({ label, value }: { label: string; value: string | number | null | undefined }) {
+  return (
+    <div className="inline-flex flex-col items-center rounded-md border border-border bg-muted/40 px-3 py-1.5 text-center min-w-[80px]">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-sm font-semibold">{value ?? "—"}</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Burnup chart
+// ---------------------------------------------------------------------------
+
+function BurnupChart({ data }: { data: Array<{ day: number; completed: number; ideal: number }> }) {
+  if (!data || data.length === 0) return null;
+
+  const width = 480;
+  const height = 200;
+  const paddingLeft = 40;
+  const paddingBottom = 30;
+  const paddingTop = 10;
+  const paddingRight = 16;
+
+  const chartW = width - paddingLeft - paddingRight;
+  const chartH = height - paddingBottom - paddingTop;
+
+  const maxDay = Math.max(...data.map(d => d.day));
+  const maxVal = Math.max(...data.map(d => Math.max(d.completed, d.ideal)), 1);
+
+  const xScale = (day: number) => paddingLeft + (day / maxDay) * chartW;
+  const yScale = (val: number) => paddingTop + chartH - (val / maxVal) * chartH;
+
+  const toPath = (points: Array<{ x: number; y: number }>) =>
+    points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+
+  const actualPoints = data.map(d => ({ x: xScale(d.day), y: yScale(d.completed) }));
+  const idealPoints = data.map(d => ({ x: xScale(d.day), y: yScale(d.ideal) }));
+
+  // Y-axis ticks
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => ({ val: Math.round(t * maxVal), y: yScale(t * maxVal) }));
+  // X-axis ticks — show every other day if many days
+  const step = maxDay > 10 ? 2 : 1;
+  const xTicks = data.filter(d => d.day % step === 0 || d.day === maxDay);
+
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-medium text-muted-foreground">Burnup Chart</p>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full max-w-lg rounded-md border border-border bg-muted/20"
+        aria-label="Burnup chart"
+      >
+        {/* Grid lines */}
+        {yTicks.map(t => (
+          <line key={t.val} x1={paddingLeft} y1={t.y} x2={width - paddingRight} y2={t.y}
+            stroke="currentColor" strokeOpacity={0.1} strokeWidth={1} />
+        ))}
+        {/* Ideal trend line (dashed) */}
+        <path d={toPath(idealPoints)} fill="none" stroke="currentColor" strokeOpacity={0.35}
+          strokeWidth={1.5} strokeDasharray="4 3" />
+        {/* Actual completed line */}
+        <path d={toPath(actualPoints)} fill="none" stroke="#3b82f6" strokeWidth={2} />
+        {/* Actual dots */}
+        {actualPoints.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={3} fill="#3b82f6" />
+        ))}
+        {/* Y-axis labels */}
+        {yTicks.map(t => (
+          <text key={t.val} x={paddingLeft - 4} y={t.y + 4} textAnchor="end"
+            fontSize={9} fill="currentColor" opacity={0.5}>{t.val}h</text>
+        ))}
+        {/* X-axis labels */}
+        {xTicks.map(d => (
+          <text key={d.day} x={xScale(d.day)} y={height - 4} textAnchor="middle"
+            fontSize={9} fill="currentColor" opacity={0.5}>D{d.day}</text>
+        ))}
+        {/* Legend */}
+        <line x1={paddingLeft + 4} y1={paddingTop + 8} x2={paddingLeft + 18} y2={paddingTop + 8}
+          stroke="#3b82f6" strokeWidth={2} />
+        <text x={paddingLeft + 22} y={paddingTop + 12} fontSize={9} fill="currentColor" opacity={0.7}>Actual</text>
+        <line x1={paddingLeft + 56} y1={paddingTop + 8} x2={paddingLeft + 70} y2={paddingTop + 8}
+          stroke="currentColor" strokeOpacity={0.4} strokeWidth={1.5} strokeDasharray="4 3" />
+        <text x={paddingLeft + 74} y={paddingTop + 12} fontSize={9} fill="currentColor" opacity={0.7}>Ideal</text>
+      </svg>
     </div>
   );
 }
@@ -809,8 +923,7 @@ function ReviewCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-base font-medium capitalize">
-          {formatDocType(doc.docType)}
-          {doc.sprintNumber ? ` · Sprint ${doc.sprintNumber}` : ""}
+          {formatDocTitle(doc)}
           {doc.duplicate ? (
             <span className="ml-2 text-xs font-normal text-amber-600 dark:text-amber-400">
               duplicate
@@ -855,21 +968,37 @@ function ReviewCard({
             <div className="space-y-2">
               {review.structured ? (
                 <>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    {review.structured.userStoryCount != null ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-xs">
-                        <span className="font-semibold text-foreground">
-                          {review.structured.userStoryCount}
-                        </span>
-                        user stories
-                      </span>
-                    ) : null}
-                    {total > 0 ? (
-                      <span>
-                        <span className="font-medium text-foreground">Checklist: </span>
-                        {passed}/{total} criteria met
-                      </span>
-                    ) : null}
+                  {/* Metrics row */}
+                  <div className="flex flex-wrap gap-2">
+                    {/* Always show checklist score */}
+                    {review.structured.checklist && (() => {
+                      const entries = Object.entries(review.structured.checklist);
+                      const passedCount = entries.filter(([, v]) => v).length;
+                      return <MetricChip label="Checklist" value={`${passedCount}/${entries.length}`} />;
+                    })()}
+                    {/* Sprint Plan metrics */}
+                    {doc.docType === "sprint_plan" && (
+                      <>
+                        <MetricChip label="User Stories" value={review.structured.userStoryCount ?? "—"} />
+                        <MetricChip label="Tasks" value={review.structured.taskCount ?? "—"} />
+                        <MetricChip label="Hours" value={review.structured.totalHoursCommitted != null ? `${review.structured.totalHoursCommitted}h` : "—"} />
+                      </>
+                    )}
+                    {/* Sprint Report metrics */}
+                    {doc.docType === "sprint_report" && (
+                      <>
+                        {review.structured.completedStoryCount != null && review.structured.totalStoryCount != null ? (
+                          <MetricChip
+                            label="Completed"
+                            value={`${review.structured.completedStoryCount}/${review.structured.totalStoryCount} (${Math.round((review.structured.completedStoryCount / review.structured.totalStoryCount) * 100)}%)`}
+                          />
+                        ) : (
+                          <MetricChip label="Completed" value="unknown" />
+                        )}
+                        <MetricChip label="Stories/day" value={review.structured.storiesPerDay != null ? review.structured.storiesPerDay.toFixed(1) : "unknown"} />
+                        <MetricChip label="Hours/day" value={review.structured.hoursPerDay != null ? `${review.structured.hoursPerDay.toFixed(1)}h` : "unknown"} />
+                      </>
+                    )}
                   </div>
                   {summaryText ? (
                     <p className="text-muted-foreground">
@@ -915,6 +1044,10 @@ function ReviewCard({
                   <div className="space-y-3 border-t border-border/60 px-4 py-4">
                     {review.structured ? (
                       <>
+                        {/* Burnup chart — sprint_report only */}
+                        {doc.docType === "sprint_report" && review.structured.burnupData && review.structured.burnupData.length > 0 && (
+                          <BurnupChart data={review.structured.burnupData} />
+                        )}
                         <ChecklistBreakdown review={review} onExplain={onExplain} />
                         {review.structured.coach ? (
                           <div>
@@ -1288,7 +1421,7 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
             {docReview.classifications.length > 0 ? (
               <div className="space-y-4">
                 <h3 className="text-sm font-medium">Document reviews</h3>
-                {docReview.classifications.map((c) => (
+                {sortClassifications(docReview.classifications).map((c) => (
                   <ReviewCard
                     key={c.path}
                     doc={c}

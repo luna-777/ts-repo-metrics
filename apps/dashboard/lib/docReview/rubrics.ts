@@ -57,7 +57,10 @@ Checklist criteria — evaluate each independently:
     prompt: `
 Checklist criteria — evaluate each independently. For each key return true (pass) or false (fail).
 
-Also count the total number of user stories in the document and return it as user_story_count.
+Also extract these numeric metrics from the document and return them in the tool call:
+- user_story_count: total number of user stories
+- task_count: total number of tasks across all user stories
+- total_hours_committed: total ideal hours committed across all tasks
 
 - heading_complete: Heading contains document name ("Sprint N Plan"), product name, team name, sprint completion date, revision number, revision date. PASS: "Sprint 1 Plan | Team Rocket | Due: May 15 | Rev 1.0 | 2026-04-01". FAIL: Just a title with no metadata.
 - sprint_goal_present: A sprint goal section exists with 1–2 sentences describing the objective. PASS: "Sprint Goal: Deliver user login and profile creation." FAIL: No sprint goal section, or goal is missing.
@@ -98,6 +101,15 @@ Also count the total number of user stories in the document and return it as use
     ],
     prompt: `
 Checklist criteria:
+
+Also extract these numeric metrics and return them in the tool call:
+- completed_story_count: number of stories completed this sprint
+- total_story_count: total stories planned for this sprint
+- stories_per_day: velocity in stories per day (if stated or calculable)
+- hours_per_day: velocity in ideal hours per day (if stated or calculable)
+- burnup_data: if a day-by-day data table exists, extract it as [{day, completed, ideal}] array
+
+Evaluate each criterion independently:
 - heading_complete: Heading contains document name ("Sprint N Report"), product name,
   team name, date
 - stop_section_present: An "actions to stop doing" section exists

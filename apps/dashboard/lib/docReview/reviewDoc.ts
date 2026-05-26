@@ -100,6 +100,43 @@ export const REVIEWER_TOOLS: ChatCompletionTool[] = [
             type: "number",
             description: "Total number of user stories found in the document. Only populate for sprint_plan documents.",
           },
+          task_count: {
+            type: "number",
+            description: "Total number of tasks across all user stories. Only for sprint_plan documents."
+          },
+          total_hours_committed: {
+            type: "number",
+            description: "Total ideal hours committed across all tasks. Only for sprint_plan documents."
+          },
+          completed_story_count: {
+            type: "number",
+            description: "Number of user stories completed this sprint. Only for sprint_report documents."
+          },
+          total_story_count: {
+            type: "number",
+            description: "Total number of user stories planned for this sprint. Only for sprint_report documents."
+          },
+          stories_per_day: {
+            type: "number",
+            description: "Velocity in stories per day. Only for sprint_report documents."
+          },
+          hours_per_day: {
+            type: "number",
+            description: "Velocity in ideal hours per day. Only for sprint_report documents."
+          },
+          burnup_data: {
+            type: "array",
+            description: "Day-by-day burnup data extracted from the data table in the sprint report. Only populate if a data table exists. Each entry has day (integer), completed (ideal hours completed as of that day), ideal (expected hours as of that day).",
+            items: {
+              type: "object",
+              properties: {
+                day: { type: "number" },
+                completed: { type: "number" },
+                ideal: { type: "number" }
+              },
+              required: ["day", "completed", "ideal"]
+            }
+          },
         },
       },
     },
@@ -263,9 +300,17 @@ export async function reviewDoc(
               typeof args.user_story_count === "number"
                 ? args.user_story_count
                 : null;
+            const structured = { ...normalized.payload, userStoryCount };
+            structured.taskCount = typeof args.task_count === "number" ? args.task_count : null;
+            structured.totalHoursCommitted = typeof args.total_hours_committed === "number" ? args.total_hours_committed : null;
+            structured.completedStoryCount = typeof args.completed_story_count === "number" ? args.completed_story_count : null;
+            structured.totalStoryCount = typeof args.total_story_count === "number" ? args.total_story_count : null;
+            structured.storiesPerDay = typeof args.stories_per_day === "number" ? args.stories_per_day : null;
+            structured.hoursPerDay = typeof args.hours_per_day === "number" ? args.hours_per_day : null;
+            structured.burnupData = Array.isArray(args.burnup_data) ? args.burnup_data as Array<{ day: number; completed: number; ideal: number }> : null;
             return {
               ...base,
-              structured: { ...normalized.payload, userStoryCount },
+              structured,
               reviewMs: Date.now() - start,
             };
           }

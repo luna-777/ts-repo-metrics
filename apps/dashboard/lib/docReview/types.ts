@@ -49,6 +49,16 @@ export interface StructuredReviewPayload {
   checklist: Record<string, boolean>;
   coach: string;
   userStoryCount?: number | null;
+  // Numeric extractions (sprint_plan)
+  taskCount?: number | null;
+  totalHoursCommitted?: number | null;
+  // Numeric extractions (sprint_report)
+  completedStoryCount?: number | null;
+  totalStoryCount?: number | null;
+  storiesPerDay?: number | null;
+  hoursPerDay?: number | null;
+  // Burnup chart data (sprint_report)
+  burnupData?: Array<{ day: number; completed: number; ideal: number }> | null;
 }
 
 export interface HolisticReviewPayload {
