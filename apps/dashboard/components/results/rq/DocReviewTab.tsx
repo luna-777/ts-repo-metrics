@@ -551,7 +551,9 @@ Generic advice that doesn't mention your stack is weak. Every rule should make s
 // ---------------------------------------------------------------------------
 
 function formatDocType(docType: string): string {
-  return docType.replace(/_/g, " ");
+  return docType
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function formatDocTitle(doc: ClassifiedDoc): string {
@@ -563,20 +565,17 @@ function formatDocTitle(doc: ClassifiedDoc): string {
 }
 
 function sortClassifications(classifications: ClassifiedDoc[]): ClassifiedDoc[] {
-  const ORDER: Record<string, number> = {
-    release_plan: 0,
-    sprint_plan: 1,
-    sprint_report: 2,
-    test_plan: 3,
-    definition_of_done: 4,
-    code_standards: 5,
-    unknown: 6,
-  };
-  return [...classifications].sort((a, b) => {
-    const typeDiff = (ORDER[a.docType] ?? 6) - (ORDER[b.docType] ?? 6);
-    if (typeDiff !== 0) return typeDiff;
-    return (a.sprintNumber ?? 0) - (b.sprintNumber ?? 0);
-  });
+  // Interleaved order: release → S1 plan → S1 report → S2 plan → S2 report → ... → test → dod → code standards
+  function sortKey(c: ClassifiedDoc): string {
+    if (c.docType === "release_plan") return "0_0_0";
+    if (c.docType === "sprint_plan")  return `1_${c.sprintNumber ?? 0}_0`;
+    if (c.docType === "sprint_report") return `1_${c.sprintNumber ?? 0}_1`;
+    if (c.docType === "test_plan")        return "2_0_0";
+    if (c.docType === "definition_of_done") return "3_0_0";
+    if (c.docType === "code_standards")   return "4_0_0";
+    return "9_0_0";
+  }
+  return [...classifications].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
 }
 
 function formatChecklistKey(key: string): string {
@@ -665,76 +664,60 @@ function RequiredDocsTable({
   reviews,
   repoUrl,
   onLabelClick,
+  onRerun,
+  running,
 }: {
   classifications: ClassifiedDoc[];
   reviews: Record<string, DocumentReview>;
   repoUrl: string | null;
   onLabelClick: (docType: string) => void;
+  onRerun: () => void;
+  running: boolean;
 }) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Required Documents</CardTitle>
-        <CardDescription>All 12 required course documents and their status.</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <div>
+          <CardTitle className="text-base">Required Documents</CardTitle>
+          <CardDescription>All 12 required course documents and their status.</CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={onRerun} disabled={running} className="shrink-0">
+          {running ? "Re-running…" : "Re-run review"}
+        </Button>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <table className="w-full min-w-[28rem] text-sm">
-          <thead>
-            <tr className="border-b text-left text-muted-foreground">
-              <th className="pb-2 pr-3 font-medium">Document</th>
-              <th className="pb-2 pr-3 font-medium">Status</th>
-              <th className="pb-2 font-medium">Path</th>
-            </tr>
-          </thead>
-          <tbody>
-            {REQUIRED_DOCS.map((req) => {
-              // Find matching classified doc
-              const match = classifications.find((c) => {
-                if (c.docType !== req.docType) return false;
-                if (req.sprintNumber !== null) return c.sprintNumber === req.sprintNumber;
-                return true;
-              });
-              const review = match ? reviews[match.path] : undefined;
-              const status = getRequiredDocStatus(match, review);
-              const githubUrl = match ? buildGithubUrl(repoUrl, match.path) : null;
+      <CardContent>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-0 text-sm">
+          {REQUIRED_DOCS.map((req) => {
+            const match = classifications.find((c) => {
+              if (c.docType !== req.docType) return false;
+              if (req.sprintNumber !== null) return c.sprintNumber === req.sprintNumber;
+              return true;
+            });
+            const review = match ? reviews[match.path] : undefined;
+            const status = getRequiredDocStatus(match, review);
+            const githubUrl = match ? buildGithubUrl(repoUrl, match.path) : null;
 
-              return (
-                <tr key={req.label} className="border-b border-border/60 last:border-0">
-                  <td className="py-2 pr-3 align-top">
-                    <button
-                      type="button"
-                      className="text-left font-medium hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() => onLabelClick(req.docType)}
+            return (
+              <div key={req.label} className="flex items-center justify-between gap-3 border-b border-border/40 py-2 last:border-0">
+                <span className="font-medium">
+                  {githubUrl ? (
+                    <a
+                      href={githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline"
                     >
                       {req.label}
-                    </button>
-                  </td>
-                  <td className="py-2 pr-3 align-top">
-                    <StatusChip status={status} />
-                  </td>
-                  <td className="py-2 align-top font-mono text-xs text-muted-foreground">
-                    {match ? (
-                      githubUrl ? (
-                        <a
-                          href={githubUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          {match.path}
-                        </a>
-                      ) : (
-                        match.path
-                      )
-                    ) : (
-                      <span className="italic text-muted-foreground/60">not found</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </a>
+                  ) : (
+                    req.label
+                  )}
+                </span>
+                <StatusChip status={status} />
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
@@ -1384,46 +1367,15 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
 
         {docReview && stats ? (
           <>
-            {/* 4. Required Documents table */}
+            {/* 4. Required Documents table (Re-run button lives here) */}
             <RequiredDocsTable
               classifications={docReview.classifications}
               reviews={docReview.reviews}
               repoUrl={repoUrl}
               onLabelClick={(docType) => setTemplateDocType(docType)}
+              onRerun={() => void runReview()}
+              running={running}
             />
-
-            {/* 5. Stats info cards + re-run button */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-2">
-                <p className="text-sm font-medium">
-                  {docReview.folder_found
-                    ? "Documentation folder found"
-                    : "No documentation/ folder found"}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <StatCard value={stats.discovered} label="docs found" />
-                  <StatCard value={stats.classified} label="classified" />
-                  <StatCard value={stats.reviewed} label="reviewed" />
-                  {docReview.timings ? (
-                    <StatCard
-                      value={`${(docReview.timings.totalMs / 1000).toFixed(1)}s`}
-                      label="run time"
-                    />
-                  ) : null}
-                  {stats.skippedImages > 0 ? (
-                    <StatCard value={stats.skippedImages} label="images skipped" />
-                  ) : null}
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void runReview()}
-                disabled={running}
-              >
-                {running ? "Re-running…" : "Re-run review"}
-              </Button>
-            </div>
 
             {/* 6. Document reviews */}
             {docReview.classifications.length > 0 ? (
