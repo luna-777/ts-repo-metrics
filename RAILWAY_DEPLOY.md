@@ -61,6 +61,7 @@ See [`apps/dashboard/VERCEL_DEPLOY.md`](apps/dashboard/VERCEL_DEPLOY.md) for the
 4. Under **Settings → Deploy → Healthcheck**, set path **`/api/health`**, method **GET**.
 5. Increase **timeouts** / **instance size** if **`POST /api/analyze`** fails on larger repos (clone + analysis is heavy).
 6. **Smoke test:** run Analyze on a public repo; confirm **`gitMetricsV2`** exists and Commit Habits “Additional Signals” look populated. Test **Sign in with GitHub** on the **Railway URL** after updating Supabase redirect URLs.
+7. **Auto-redeploy:** pushes to the tracked branch should trigger a new Railway deployment when GitHub auto-deploy is enabled for the service.
 
 ## Ephemeral clone cache
 
