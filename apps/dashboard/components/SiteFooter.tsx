@@ -33,7 +33,7 @@ export function SiteFooter() {
             Docs
           </Link>
           <Link href="/support" className="hover:text-foreground transition-colors">
-            Support
+            Report an Issue
           </Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors">
             Privacy
