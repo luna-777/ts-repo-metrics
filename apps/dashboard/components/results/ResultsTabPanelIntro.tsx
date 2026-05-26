@@ -423,9 +423,11 @@ function AiUsagePanelIntro({ className }: { className?: string }) {
       bodyClassName="text-foreground/90 font-normal"
     >
       <p>
-        Upload `ai_usage_trace.csv` from `agent_stats` to inspect student-facing AI workflow metrics:
-        token efficiency, prompt quality, workflow balance, review habits, and a fixed 40-day activity
-        view. Use it as a mirror for habits, not a grade.
+        Choose the student's AI platform, copy the `agent_stats` prompt, run it in that same
+        coding-agent project, and upload the resulting `ai_usage_trace.csv` to inspect
+        student-facing workflow metrics: token efficiency, prompt quality, workflow balance,
+        review habits, and a fixed 40-day activity view. Use it as a mirror for habits, not a
+        grade.
       </p>
     </CoachInsightTone>
   );

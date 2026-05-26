@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CoachInsightTone } from "@/components/results/coach/CoachInsightTone";
+import { AiUsagePlatformLogo } from "@/components/results/rq/AiUsagePlatformLogo";
 import { cn } from "@/lib/utils";
 import {
   AI_USAGE_ACTIVE_WINDOW_DAYS,
@@ -11,12 +13,19 @@ import {
   type AiUsageData,
 } from "@/lib/aiUsageCsv";
 import {
+  AGENT_STATS_REPO_URL,
+  AI_USAGE_DESKTOP_CSV_PATH,
+  AI_USAGE_PROMPT_PLATFORMS,
+  buildAiUsagePrompt,
+  type AiUsagePromptPlatform,
+} from "@/lib/aiUsagePromptTemplates";
+import {
   AiUsageSignalLearnMore,
   type AiUsageSignalId,
 } from "@/components/results/rq/aiUsageSignalHelpContent";
+import { Check, Copy } from "lucide-react";
 
 const aiTraceInsightSurface = "bg-card shadow-sm ring-1 ring-border/40";
-const AGENT_STATS_REPO_URL = "https://github.com/masc-ucsc/agent_stats";
 
 const WEEKDAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"] as const;
 const WEEKDAY_NAMES = [
@@ -231,11 +240,10 @@ function UploadZone({
       />
       <p className="text-sm font-semibold">Upload `ai_usage_trace.csv`</p>
       <p className="mx-auto mt-2 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-        Export from `agent_stats` with
+        Use the copied platform prompt above to generate the CSV on your Desktop, then upload it
+        here. If you run `agent_stats` manually, include `--messages --tokens --csv`
         {" "}
-        <code className="rounded bg-muted px-1 py-0.5">
-          ./ai_usage_stats.py --filter your-repo-slug --messages --tokens
-        </code>
+        <code className="rounded bg-muted px-1 py-0.5">{AI_USAGE_DESKTOP_CSV_PATH}</code>
         . The CSV is parsed locally, then saved on this analysis so it reloads with the result.
       </p>
     </div>
@@ -243,42 +251,107 @@ function UploadZone({
 }
 
 function AgentStatsExportInsight() {
+  const [selectedPlatform, setSelectedPlatform] =
+    useState<AiUsagePromptPlatform>("claude");
+  const [copiedPlatform, setCopiedPlatform] =
+    useState<AiUsagePromptPlatform | null>(null);
+
+  async function handleCopyPrompt(platform: AiUsagePromptPlatform) {
+    try {
+      await navigator.clipboard.writeText(buildAiUsagePrompt(platform));
+      setCopiedPlatform(platform);
+      window.setTimeout(() => {
+        setCopiedPlatform((current) => (current === platform ? null : current));
+      }, 2000);
+    } catch {
+      setCopiedPlatform(null);
+    }
+  }
+
   return (
-    <div className="space-y-3">
-      <CoachInsightTone
-        tone="informational"
-        title="Get a CSV from your AI coding logs"
-        className={aiTraceInsightSurface}
-        bodyClassName="space-y-3 text-sm font-normal text-foreground/90 leading-relaxed"
+    <CoachInsightTone
+      tone="informational"
+      title="Generate your CSV with a copyable prompt"
+      className={aiTraceInsightSurface}
+      bodyClassName="space-y-4 text-sm font-normal text-foreground/90 leading-relaxed"
+    >
+      <p>
+        Choose the coding agent the student used, copy the matching prompt, run it inside that same
+        project, and then upload the generated
+        {" "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+          ai_usage_trace.csv
+        </code>
+        . The copied prompt tells the agent to infer the best `--filter`, update or clone
+        `agent_stats`, and save the CSV on the Desktop.
+      </p>
+
+      <Tabs
+        value={selectedPlatform}
+        onValueChange={(value) => setSelectedPlatform(value as AiUsagePromptPlatform)}
+        className="space-y-4"
       >
-        <p>
-          This tab now uses the raw
-          {" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
-            ai_usage_trace.csv
-          </code>
-          {" "}
-          export from `agent_stats`.
-        </p>
-        <ol className="list-decimal space-y-2 pl-5 text-muted-foreground">
-          <li>Clone the `masc-ucsc/agent_stats` repo and open a terminal there.</li>
-          <li>
-            Run
-            {" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
-              ./ai_usage_stats.py --filter your-repo-slug --messages --tokens
-            </code>
-            .
-          </li>
-          <li>Upload the generated CSV below. The dashboard will save that raw CSV on this analysis.</li>
-        </ol>
-      </CoachInsightTone>
-      <Button asChild variant="secondary" size="sm">
-        <a href={AGENT_STATS_REPO_URL} target="_blank" rel="noopener noreferrer">
-          Open agent_stats on GitHub
-        </a>
-      </Button>
-    </div>
+        <TabsList className="h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0">
+          {AI_USAGE_PROMPT_PLATFORMS.map((platform) => (
+            <TabsTrigger
+              key={platform.id}
+              value={platform.id}
+              className="h-auto gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:shadow-none"
+            >
+              <AiUsagePlatformLogo platform={platform.id} />
+              <span>{platform.label}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {AI_USAGE_PROMPT_PLATFORMS.map((platform) => {
+          const prompt = buildAiUsagePrompt(platform.id);
+          const copied = copiedPlatform === platform.id;
+
+          return (
+            <TabsContent key={platform.id} value={platform.id} className="mt-0">
+              <div className="space-y-3 rounded-xl border border-border/60 bg-background/60 p-4">
+                <p className="text-sm text-muted-foreground">
+                  Run this prompt inside the same
+                  {" "}
+                  <span className="font-medium text-foreground">{platform.label}</span>
+                  {" "}
+                  project so the agent can infer the right `--filter`, limit collection to that
+                  platform's log files, and write the CSV to your Desktop.
+                </p>
+
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted/70 p-4 text-xs leading-6 text-foreground">
+                  {prompt}
+                </pre>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void handleCopyPrompt(platform.id)}
+                  >
+                    {copied ? (
+                      <Check className="mr-2 size-4" />
+                    ) : (
+                      <Copy className="mr-2 size-4" />
+                    )}
+                    {copied
+                      ? `${platform.shortLabel} prompt copied`
+                      : `Copy ${platform.shortLabel} prompt`}
+                  </Button>
+
+                  <Button asChild variant="secondary" size="sm">
+                    <a href={AGENT_STATS_REPO_URL} target="_blank" rel="noopener noreferrer">
+                      Open agent_stats on GitHub
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+    </CoachInsightTone>
   );
 }
 
@@ -478,9 +551,9 @@ export function AIMaturityTab({ resultId }: { resultId: string }) {
           bodyClassName="text-sm font-normal text-foreground/90"
         >
           <p>
-            This tab no longer shows demo data. Upload an `ai_usage_trace.csv`
-            export to populate token efficiency, prompt quality, workflow
-            patterns, and activity metrics for this analysis.
+            This tab no longer shows demo data. Copy a platform prompt above, run it in the same
+            agent project, and upload the resulting `ai_usage_trace.csv` to populate token
+            efficiency, prompt quality, workflow patterns, and activity metrics for this analysis.
           </p>
         </CoachInsightTone>
       ) : (
