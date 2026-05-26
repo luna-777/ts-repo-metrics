@@ -419,6 +419,12 @@ export function HeaderNavClient() {
           Docs
         </Link>
         <Link
+          href="/resources"
+          className={navLinkClass(pathname === "/resources")}
+        >
+          Resources
+        </Link>
+        <Link
           href="/research"
           className={navLinkClass(pathname === "/research")}
         >

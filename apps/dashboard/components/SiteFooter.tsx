@@ -32,6 +32,9 @@ export function SiteFooter() {
           <Link href="/docs" className="hover:text-foreground transition-colors">
             Docs
           </Link>
+          <Link href="/resources" className="hover:text-foreground transition-colors">
+            Resources
+          </Link>
           <Link href="/support" className="hover:text-foreground transition-colors">
             Report an Issue
           </Link>
