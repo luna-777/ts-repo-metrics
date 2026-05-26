@@ -331,14 +331,94 @@ const TOOL_MEANINGS: Record<string, string> = {
   Grep: "Code search — AI scanning for patterns",
 };
 
-function parseCSV(text: string): Partial<AUMData> {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return {};
+/**
+ * RFC 4180-compliant CSV parser.
+ *
+ * Handles:
+ *   - Double-quoted fields (outer quotes stripped)
+ *   - Commas inside quoted fields (not treated as delimiters)
+ *   - Newlines inside quoted fields (kept verbatim; parser advances past them)
+ *   - Doubled double-quotes ("") as an escaped quote character inside a field
+ *   - Unquoted fields (leading/trailing whitespace trimmed)
+ */
+function parseCSVText(text: string): Record<string, string>[] {
+  const results: Record<string, string>[] = [];
+  let pos = 0;
+  const len = text.length;
 
-  const headers = lines[0].split(",").map((h) => h.trim());
-  const rows = lines.slice(1).map((l) =>
-    Object.fromEntries(l.split(",").map((v, i) => [headers[i], v.trim()]))
-  );
+  function parseField(): string {
+    if (pos < len && text[pos] === '"') {
+      // Quoted field
+      pos++; // skip opening quote
+      let value = "";
+      while (pos < len) {
+        if (text[pos] === '"') {
+          if (pos + 1 < len && text[pos + 1] === '"') {
+            // Escaped double-quote
+            value += '"';
+            pos += 2;
+          } else {
+            // Closing quote
+            pos++;
+            break;
+          }
+        } else {
+          value += text[pos];
+          pos++;
+        }
+      }
+      return value;
+    } else {
+      // Unquoted field — read until comma or newline
+      const start = pos;
+      while (pos < len && text[pos] !== "," && text[pos] !== "\n" && text[pos] !== "\r") {
+        pos++;
+      }
+      return text.slice(start, pos).trim();
+    }
+  }
+
+  function parseRow(): string[] | null {
+    if (pos >= len) return null;
+    // Skip a leading \r\n or \n that ended the previous row
+    if (text[pos] === "\r") pos++;
+    if (pos < len && text[pos] === "\n") pos++;
+    if (pos >= len) return null;
+
+    const fields: string[] = [];
+    while (true) {
+      fields.push(parseField());
+      if (pos >= len || text[pos] === "\n" || text[pos] === "\r") break;
+      if (text[pos] === ",") { pos++; continue; }
+      break;
+    }
+    return fields;
+  }
+
+  // Parse header row
+  const headerRow = parseRow();
+  if (!headerRow) return results;
+  const headers = headerRow;
+
+  // Parse data rows
+  while (pos < len) {
+    const row = parseRow();
+    if (!row) break;
+    // Skip entirely blank rows (single empty field)
+    if (row.length === 1 && row[0] === "") continue;
+    const obj: Record<string, string> = {};
+    for (let i = 0; i < headers.length; i++) {
+      obj[headers[i]] = row[i] ?? "";
+    }
+    results.push(obj);
+  }
+
+  return results;
+}
+
+function parseCSV(text: string): Partial<AUMData> {
+  const rows = parseCSVText(text);
+  if (rows.length === 0) return {};
 
   // Global counters (existing logic preserved)
   let totalPrompts = 0;
@@ -494,7 +574,11 @@ function parseCSV(text: string): Partial<AUMData> {
     totalSessions: totalSessionsSet.size,
     totalToolCalls,
     avgIterationsPerPrompt: Math.round(avgIter * 10) / 10,
-    writeRatio: totalTools > 0 ? Math.round(((toolCounts["Write"] ?? 0) / totalTools) * 100) / 100 : 0,
+    writeRatio: totalTools > 0
+      ? Math.round(
+          (((toolCounts["Write"] ?? 0) + (toolCounts["Edit"] ?? 0) + (toolCounts["MultiEdit"] ?? 0) + (toolCounts["ApplyPatch"] ?? 0)) / totalTools) * 100
+        ) / 100
+      : 0,
     stageScores,
     toolMix,
     isDemoData: false,
