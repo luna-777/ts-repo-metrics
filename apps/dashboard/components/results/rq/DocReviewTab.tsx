@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DOCS_POOL_PREFIXES } from "@/lib/docReview/constants";
 import type {
   ClassifiedDoc,
   DocReviewResult,
@@ -44,6 +45,8 @@ const REQUIRED_DOCS = [
   { label: "Definition of Done", filename: "definition-of-done.md",  docType: "definition_of_done", sprintNumber: null },
   { label: "Code Standards",     filename: "code-standards.md",      docType: "code_standards",     sprintNumber: null },
 ] as const;
+
+const EXPECTED_DOC_FOLDER = DOCS_POOL_PREFIXES[0] ?? "documentation/";
 
 // ---------------------------------------------------------------------------
 // Checklist explanations
@@ -656,6 +659,67 @@ function StatusChip({ status }: { status: RequiredDocStatus }) {
       <Check className="size-3" aria-hidden />
       OK
     </span>
+  );
+}
+
+function ExpectedFilenamesCard() {
+  const projectWideDocs = REQUIRED_DOCS.filter((doc) => doc.sprintNumber == null);
+  const sprintPlanDocs = REQUIRED_DOCS.filter((doc) => doc.docType === "sprint_plan");
+  const sprintReportDocs = REQUIRED_DOCS.filter((doc) => doc.docType === "sprint_report");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Expected file naming convention</CardTitle>
+        <CardDescription>
+          Put the course documents inside
+          <span className="mx-1 font-mono text-xs">{EXPECTED_DOC_FOLDER}</span>
+          using lowercase, hyphenated markdown filenames.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        <p className="text-muted-foreground">
+          The reviewer looks for `.md` files in
+          <span className="mx-1 font-mono text-xs">{EXPECTED_DOC_FOLDER}</span>
+          and expects the standard names below.
+        </p>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <h3 className="font-medium text-foreground">Project-wide files</h3>
+            <ul className="space-y-1 text-muted-foreground">
+              {projectWideDocs.map((doc) => (
+                <li key={doc.filename}>
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">{doc.filename}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-medium text-foreground">Sprint plans</h3>
+            <ul className="space-y-1 text-muted-foreground">
+              {sprintPlanDocs.map((doc) => (
+                <li key={doc.filename}>
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">{doc.filename}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-medium text-foreground">Sprint reports</h3>
+            <ul className="space-y-1 text-muted-foreground">
+              {sprintReportDocs.map((doc) => (
+                <li key={doc.filename}>
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">{doc.filename}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1337,7 +1401,10 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
           </p>
         ) : null}
 
-        {/* 3. Run/Re-run CTA (when no docReview yet) */}
+        {/* 3. Expected naming conventions */}
+        <ExpectedFilenamesCard />
+
+        {/* 4. Run/Re-run CTA (when no docReview yet) */}
         {!docReview ? (
           <Card>
             <CardHeader>
@@ -1367,7 +1434,7 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
 
         {docReview && stats ? (
           <>
-            {/* 4. Required Documents table (Re-run button lives here) */}
+            {/* 5. Required Documents table (Re-run button lives here) */}
             <RequiredDocsTable
               classifications={docReview.classifications}
               reviews={docReview.reviews}
