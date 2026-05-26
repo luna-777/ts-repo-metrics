@@ -891,11 +891,13 @@ function ReviewCard({
   review,
   repoUrl,
   onExplain,
+  onTemplateClick,
 }: {
   doc: ClassifiedDoc;
   review?: DocumentReview;
   repoUrl: string | null;
   onExplain: (key: string) => void;
+  onTemplateClick: (docType: string) => void;
 }) {
   const isUnknown = doc.docType === "unknown";
   const [expanded, setExpanded] = useState(false);
@@ -930,18 +932,24 @@ function ReviewCard({
             </span>
           ) : null}
         </CardTitle>
-        <CardDescription className="font-mono text-xs">
+        <CardDescription className="flex items-center gap-3 text-xs">
+          <button
+            onClick={() => onTemplateClick(doc.docType)}
+            className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+          >
+            {formatDocTitle(doc)} Template
+          </button>
           {githubUrl ? (
             <a
               href={githubUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline"
+              className="font-mono text-muted-foreground hover:underline"
             >
               {doc.path}
             </a>
           ) : (
-            doc.path
+            <span className="font-mono text-muted-foreground">{doc.path}</span>
           )}
         </CardDescription>
       </CardHeader>
@@ -1428,6 +1436,7 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
                     review={docReview.reviews[c.path]}
                     repoUrl={repoUrl}
                     onExplain={(key) => setExplanationKey(key)}
+                    onTemplateClick={(docType) => setTemplateDocType(docType)}
                   />
                 ))}
               </div>
