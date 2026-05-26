@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Loader2, Minus, X } from "lucide-react";
+import { Check, ChevronDown, Loader2, Minus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,10 +30,24 @@ function formatChecklistKey(key: string): string {
   return key.replace(/_/g, " ");
 }
 
+function checklistSummary(review?: DocumentReview) {
+  const entries = review?.structured?.checklist
+    ? Object.entries(review.structured.checklist)
+    : [];
+  const passed = entries.filter(([, value]) => value).length;
+  return { entries, passed, total: entries.length };
+}
+
+function previewText(text: string | undefined, max = 180): string {
+  if (!text) return "";
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max - 1).trimEnd()}…`;
+}
+
 function ChecklistBreakdown({ review }: { review: DocumentReview }) {
   if (!review.structured?.checklist) return null;
-  const entries = Object.entries(review.structured.checklist);
-  const passed = entries.filter(([, v]) => v).length;
+  const { entries, passed } = checklistSummary(review);
 
   return (
     <div className="space-y-2">
@@ -86,6 +100,24 @@ function ReviewCard({
   review?: DocumentReview;
 }) {
   const isUnknown = doc.docType === "unknown";
+  const [expanded, setExpanded] = useState(false);
+  const { passed, total } = checklistSummary(review);
+  const summaryText = review?.structured?.coach
+    ? previewText(review.structured.coach)
+    : review?.holistic?.strengths
+      ? previewText(review.holistic.strengths)
+      : "";
+  const suggestionPreview = review?.holistic?.improvements
+    ? previewText(review.holistic.improvements)
+    : "";
+  const hasDetails = Boolean(
+    review &&
+      !review.error &&
+      (review.structured?.checklist ||
+        review.structured?.coach ||
+        review.holistic?.strengths ||
+        review.holistic?.improvements),
+  );
 
   return (
     <Card>
@@ -119,32 +151,99 @@ function ReviewCard({
           <p className="text-muted-foreground">No review result stored for this file.</p>
         ) : null}
 
-        {review?.structured?.userStoryCount != null ? (
-          <p className="text-sm">
-            <span className="font-medium">User stories: </span>
-            {review.structured.userStoryCount}
-          </p>
-        ) : null}
+        {review && !review.error ? (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              {review.structured ? (
+                <>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    {review.structured.userStoryCount != null ? (
+                      <span>
+                        <span className="font-medium text-foreground">User stories: </span>
+                        {review.structured.userStoryCount}
+                      </span>
+                    ) : null}
+                    {total > 0 ? (
+                      <span>
+                        <span className="font-medium text-foreground">Checklist: </span>
+                        {passed}/{total} criteria met
+                      </span>
+                    ) : null}
+                  </div>
+                  {summaryText ? (
+                    <p className="text-muted-foreground">
+                      <span className="font-medium text-foreground">Initial feedback: </span>
+                      {summaryText}
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
 
-        {review && !review.error ? <ChecklistBreakdown review={review} /> : null}
+              {review.holistic ? (
+                <div className="space-y-1 text-muted-foreground">
+                  {summaryText ? (
+                    <p>
+                      <span className="font-medium text-foreground">Strengths: </span>
+                      {summaryText}
+                    </p>
+                  ) : null}
+                  {suggestionPreview ? (
+                    <p>
+                      <span className="font-medium text-foreground">Suggestions: </span>
+                      {suggestionPreview}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
 
-        {review?.structured?.coach ? (
-          <div>
-            <p className="mb-1 font-medium">Coach feedback</p>
-            <p className="leading-relaxed text-muted-foreground">{review.structured.coach}</p>
-          </div>
-        ) : null}
+            {hasDetails ? (
+              <div className="rounded-lg border border-border/60">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium"
+                  onClick={() => setExpanded((value) => !value)}
+                >
+                  <span>{expanded ? "Hide detailed feedback" : "Show detailed feedback"}</span>
+                  <ChevronDown
+                    className={`size-4 text-muted-foreground transition-transform ${
+                      expanded ? "rotate-180" : ""
+                    }`}
+                    aria-hidden
+                  />
+                </button>
+                {expanded ? (
+                  <div className="space-y-3 border-t border-border/60 px-4 py-4">
+                    {review.structured ? (
+                      <>
+                        <ChecklistBreakdown review={review} />
+                        {review.structured.coach ? (
+                          <div>
+                            <p className="mb-1 font-medium">Coach feedback</p>
+                            <p className="leading-relaxed text-muted-foreground">
+                              {review.structured.coach}
+                            </p>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
 
-        {review?.holistic ? (
-          <div className="space-y-2 text-muted-foreground">
-            <p>
-              <span className="font-medium text-foreground">Strengths: </span>
-              {review.holistic.strengths}
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Suggestions: </span>
-              {review.holistic.improvements}
-            </p>
+                    {review.holistic ? (
+                      <div className="space-y-2 text-muted-foreground">
+                        <p>
+                          <span className="font-medium text-foreground">Strengths: </span>
+                          {review.holistic.strengths}
+                        </p>
+                        <p>
+                          <span className="font-medium text-foreground">Suggestions: </span>
+                          {review.holistic.improvements}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </CardContent>
@@ -260,8 +359,10 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
           <CardHeader>
             <CardTitle>Review project documentation</CardTitle>
             <CardDescription>
-              Classify and review planning documents (.md / .pdf) in this repository against
-              course rubrics. PNG and JPG files in docs folders are listed but not reviewed.
+              Classify and review planning documents (.md) in this repository against
+              course rubrics. Use the standard filenames inside the
+              <span className="mx-1 font-mono text-xs">documentation/</span>
+              folder.
               Typical run ~1 minute; requires sign-in and OpenAI configuration.
             </CardDescription>
           </CardHeader>
@@ -352,7 +453,7 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
               <CardHeader>
                 <CardTitle className="text-base">Classifications</CardTitle>
                 <CardDescription>
-                  Every discovered .md/.pdf file and how the classifier labeled it.
+                  Every discovered markdown file and how the classifier labeled it.
                 </CardDescription>
               </CardHeader>
               <CardContent className="overflow-x-auto">
@@ -380,8 +481,9 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p>
-                  No .md or .pdf files were found to classify. If planning docs exist as PNG or
-                  JPG screenshots, they appear under skipped images or pipeline notes above.
+                  No markdown files were found to classify in the
+                  <span className="mx-1 font-mono text-xs">documentation/</span>
+                  folder.
                 </p>
                 {(docReview.discovery.skippedImages?.length ?? 0) > 0 ? (
                   <p>
@@ -420,8 +522,9 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
               <CardHeader>
                 <CardTitle className="text-base">Skipped image files</CardTitle>
                 <CardDescription>
-                  Only markdown and PDF are reviewed. Export release plans and code standards as
-                  .md or .pdf if you want rubric feedback.
+                  Only markdown files are reviewed. Export release plans and code standards as
+                  <span className="mx-1 font-mono text-xs">.md</span>
+                  if you want rubric feedback.
                 </CardDescription>
               </CardHeader>
               <CardContent>

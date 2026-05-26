@@ -34,7 +34,9 @@ IMPORTANT — what you must NOT do:
 - Do not invent criteria not in the checklist
 - Do not mark a criterion false unless you are confident it is absent
 - Do not reference other teams or compare to other submissions
-- Do not speculate about why something is missing`;
+- Do not speculate about why something is missing
+
+You MUST finish by calling the submit_review tool. Do not reply with plain text.`;
 
 const HOLISTIC_SYSTEM_PROMPT = `You are a senior software engineer reviewing a student team's project documentation
 for a university software engineering course.
@@ -55,7 +57,9 @@ Tone rules:
 - Do not comment on spelling or grammar
 - Do not suggest adding content that serves no practical purpose
 - For code_standards: comment on whether standards are specific enough to be enforceable
-- For definition_of_done: comment on whether criteria are testable and specific`;
+- For definition_of_done: comment on whether criteria are testable and specific
+
+You MUST finish by calling the submit_review tool. Do not reply with plain text.`;
 
 export const REVIEWER_TOOLS: ChatCompletionTool[] = [
   {
@@ -104,6 +108,9 @@ export const REVIEWER_TOOLS: ChatCompletionTool[] = [
 
 const MAX_REVIEW_ITERATIONS = 5;
 const REVIEW_TIMEOUT_MS = 30_000;
+const SUBMIT_REVIEW_REMINDER =
+  "Do not answer in plain text. Call submit_review now. " +
+  "Only call read_more_content if the document was truncated and you need another chunk.";
 
 function buildReviewMessage(doc: ClassifiedDoc, rubric: string): string {
   return [
@@ -201,7 +208,7 @@ export async function reviewDoc(
           max_tokens: isHolistic ? 512 : 1024,
           messages,
           tools: REVIEWER_TOOLS,
-          tool_choice: "auto",
+          tool_choice: "required",
         },
         { signal: combinedSignal },
       );
@@ -211,7 +218,13 @@ export async function reviewDoc(
       messages.push(choice.message);
 
       const toolCalls = choice.message.tool_calls;
-      if (!toolCalls?.length) break;
+      if (!toolCalls?.length) {
+        messages.push({
+          role: "user",
+          content: SUBMIT_REVIEW_REMINDER,
+        });
+        continue;
+      }
 
       for (const call of toolCalls) {
         if (call.type !== "function") continue;
