@@ -287,10 +287,10 @@ export function DocReviewTab({ resultId, report }: DocReviewTabProps) {
               <p className="text-sm font-medium">
                 {docReview.folder_found
                   ? "Documentation folder found"
-                  : "No dedicated docs folder — searched repo-wide"}
+                  : "No documentation/ folder found"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {stats.discovered} .md/.pdf discovered
+                {stats.discovered} .md discovered
                 {stats.skippedImages > 0
                   ? ` · ${stats.skippedImages} image(s) skipped`
                   : ""}
