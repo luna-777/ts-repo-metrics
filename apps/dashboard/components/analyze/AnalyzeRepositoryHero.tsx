@@ -168,8 +168,10 @@ export function AnalyzeRepositoryHero({ compact }: AnalyzeRepositoryHeroProps) {
       {supabaseOk && signedIn === false ? (
         <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-xl border border-border bg-card p-6 text-center shadow-sm">
           <p className="text-sm text-muted-foreground">
-            Sign in with GitHub to analyze a repository. We use your session to run the analyzer
-            and save results.
+            Sign in with GitHub to analyze a repository. By using Repo Metrics, you agree to its{" "}
+            <a href="/license" className="underline underline-offset-4 hover:text-foreground">license</a>{" "}
+            and{" "}
+            <a href="/privacy" className="underline underline-offset-4 hover:text-foreground">privacy statement</a>.
           </p>
           <Button
             type="button"
