@@ -409,12 +409,11 @@ export function HeaderNavClient() {
         className="flex min-w-0 flex-1 items-center gap-x-5 gap-y-2 overflow-x-auto sm:gap-x-6 lg:gap-x-8 [&::-webkit-scrollbar]:h-1"
         aria-label="Main"
       >
-        <Link href="/" className={navLinkClass(pathname === "/")}>
-          Analyze
-        </Link>
-        <Link href="/repos" className={navLinkClass(pathname === "/repos")}>
-          My Repos
-        </Link>
+        {signedIn ? (
+          <Link href="/repos" className={navLinkClass(pathname === "/repos")}>
+            My Repos
+          </Link>
+        ) : null}
         <Link href="/docs" className={navLinkClass(pathname === "/docs")}>
           Docs
         </Link>
