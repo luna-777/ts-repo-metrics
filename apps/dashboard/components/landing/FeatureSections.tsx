@@ -346,24 +346,50 @@ function DocumentationMock() {
 // Feature section wrapper
 // ---------------------------------------------------------------------------
 
+type Bullet = { label: string; href?: string; text: string };
+
 function FeatureSection({
   title,
-  description,
+  lead,
+  bullets,
   mock,
   reversed = false,
 }: {
   title: string;
-  description: string;
+  lead: string;
+  bullets?: Bullet[];
   mock: React.ReactNode;
   reversed?: boolean;
 }) {
+  // Text column is always the narrower (2fr); mock is always the wider (3fr).
+  // When reversed: swap visual order while keeping column widths correct.
+  const gridCols = reversed ? "lg:grid-cols-[3fr_2fr]" : "lg:grid-cols-[2fr_3fr]";
+
   return (
     <div className="w-full border-t border-border/40 py-16 sm:py-20">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
-        <div className={`space-y-4 ${reversed ? "lg:order-2" : ""}`}>
+      <div className={`mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 lg:gap-20 ${gridCols}`}>
+        {/* Text — order-2 when reversed so it sits in the right column */}
+        <div className={`space-y-5 ${reversed ? "lg:order-2" : ""}`}>
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
-          <p className="leading-relaxed text-muted-foreground">{description}</p>
+          <p className="leading-relaxed text-muted-foreground">{lead}</p>
+          {bullets?.map((b) => (
+            <p key={b.label} className="leading-relaxed text-muted-foreground">
+              {b.href ? (
+                <a
+                  href={b.href}
+                  className="font-semibold text-primary underline-offset-4 hover:underline"
+                >
+                  {b.label}
+                </a>
+              ) : (
+                <strong className="font-semibold text-foreground">{b.label}</strong>
+              )}{" "}
+              {b.text}
+            </p>
+          ))}
         </div>
+
+        {/* Mock — order-1 when reversed so it sits in the left column */}
         <div className={reversed ? "lg:order-1" : ""}>{mock}</div>
       </div>
     </div>
@@ -379,34 +405,63 @@ export function FeatureSections() {
     <div className="w-full">
       <FeatureSection
         title="Map complexity against test coverage"
-        description="The scatter plot reveals exactly which functions carry the highest risk — complex code with no paired tests. Focus your testing effort where it matters most and watch your risk profile improve sprint over sprint."
+        lead="Complexity alone does not tell the full story. The scatter plot pairs cyclomatic complexity with test proximity so you can see which functions are both hard to understand and unprotected by tests."
+        bullets={[
+          { label: "Test proximity bands", text: "rank every function as name-paired (score 1.0), file-paired (score 0.3), or untested (score 0) — giving you a concrete priority order, not a coverage percentage." },
+          { label: "Risk tiers", text: "colour each dot Critical, High, Medium, or Low so high-complexity untested functions jump out immediately, even in a codebase with thousands of functions." },
+        ]}
         mock={<ScatterChartMock />}
       />
+
       <FeatureSection
         title="Understand your structural risk profile"
-        description="See at a glance whether your codebase is in a safe or dangerous zone. High structural risk combined with low verification density is the combination to address first — before shipping new features."
+        lead="The risk matrix combines structural complexity with verification density into a single quadrant view. You can see at a glance whether your team is in a safe zone or heading toward a maintenance crisis."
+        bullets={[
+          { label: "Structural risk score", text: "counts high-complexity and long functions as a ratio — independent of test coverage tooling, so it works on any language or stack." },
+          { label: "Verification score", text: "measures how much of your source is test code. Reaching the top-right 'Ideal' quadrant means your testing effort is proportional to your complexity burden." },
+        ]}
         mock={<RiskProfileMock />}
         reversed
       />
+
       <FeatureSection
         title="Find complexity hotspots instantly"
-        description="Complexity concentration shows where refactoring will have the biggest impact. When over half your complexity burden sits in 10% of your files, fixing those hotspots moves the overall score more than broad incremental cleanup."
+        lead="Most complexity is not spread evenly — it clusters. The distribution view shows what share of your total complexity burden lives in your busiest files so you know exactly where to focus a refactor."
+        bullets={[
+          { label: "Concentration metric", text: "tells you what percentage of high-complexity functions sit in the top 10% of files by function count. A high number means a small set of targeted refactors can move the overall score significantly." },
+          { label: "Outlier table", text: "lists the functions with the highest Halstead volume and cognitive complexity so you can start with the most impactful changes, not the most recent ones." },
+        ]}
         mock={<ComplexityMock />}
       />
+
       <FeatureSection
         title="Spot oversized React components"
-        description="The largest components by source line span are the hardest to maintain and test. Components over 200 SLOC are strong signals to split before layering new behavior — start here when code quality starts slipping."
+        lead="Large components accumulate state, side effects, and rendering logic until they become unmaintainable. The oversized components table surfaces the files that most need splitting before new behaviour is layered on top."
+        bullets={[
+          { label: "SLOC threshold", text: "components above 100 lines deserve a splitting review; above 200 is a strong signal. The table sorts by SLOC descending so the worst offenders are always at the top." },
+          { label: "JSX depth and hook count", text: "give additional signals — deep nesting and many hooks in one component often indicate mixed concerns that belong in separate files." },
+        ]}
         mock={<ReactComponentsMock />}
         reversed
       />
+
       <FeatureSection
         title="Track AI-assisted development"
-        description="Understand how AI tools are contributing to your codebase over time. Monitor the week-over-week balance between AI-generated and human-authored commits and see where AI usage is accelerating delivery."
+        lead="As AI tools become part of everyday development, understanding how they are being used matters. The AI usage view shows the week-over-week balance between AI-assisted and human-authored commits."
+        bullets={[
+          { label: "Trend over time", text: "makes it easy to see whether AI adoption is growing, plateauing, or concentrated in particular sprints — useful context when reviewing velocity changes." },
+          { label: "Per-author breakdown", text: "lets instructors and team leads understand individual contribution patterns without conflating AI-generated output with human engineering effort." },
+        ]}
         mock={<AIUsageMock />}
       />
+
       <FeatureSection
         title="Automated documentation review"
-        description="Classify sprint plans, reports, and standards against course rubrics automatically. See which of the 12 required documents are complete, missing, or need attention — all driven by filename matching, no manual tagging required."
+        lead="The documentation tab classifies every file in the repository's documentation folder against fixed course rubrics — no manual tagging or configuration required. Results are stored alongside the code metrics so they are always one click away."
+        bullets={[
+          { label: "Required documents checklist", text: "tracks all 12 course documents — release plan, four sprint plans, four sprint reports, test plan, definition of done, and code standards — and shows OK, Missing, or Needs Attention at a glance." },
+          { label: "Rubric-driven feedback", text: "each document type has a tailored checklist of pass/fail criteria drawn from course slides, plus a coach feedback field with concrete suggestions for improvement." },
+        ]}
         mock={<DocumentationMock />}
         reversed
       />
