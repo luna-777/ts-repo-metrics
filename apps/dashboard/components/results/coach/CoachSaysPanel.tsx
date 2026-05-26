@@ -40,7 +40,7 @@ export function CoachSaysPanel({
   footerLink,
 }: CoachSaysPanelProps) {
   return (
-    <CoachSaysSurface className={cn("flex flex-col gap-4 sm:gap-5", className)} showAccent>
+    <CoachSaysSurface className={cn("flex flex-col gap-4 sm:gap-5", className)} showAccent={false}>
       {eyebrow ? <CoachSaysEyebrow>{eyebrow}</CoachSaysEyebrow> : null}
       <CoachInsightTone tone="positive" title={positive.title}>
         {positive.body}

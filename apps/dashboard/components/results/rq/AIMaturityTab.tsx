@@ -3,6 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CoachInsightTone } from "@/components/results/coach/CoachInsightTone";
 import { AiUsagePlatformLogo } from "@/components/results/rq/AiUsagePlatformLogo";
@@ -11,6 +19,7 @@ import {
   AI_USAGE_ACTIVE_WINDOW_DAYS,
   analyzeAiUsageCsv,
   type AiUsageData,
+  type ToolMixItem,
 } from "@/lib/aiUsageCsv";
 import {
   AGENT_STATS_REPO_URL,
@@ -23,7 +32,7 @@ import {
   AiUsageSignalLearnMore,
   type AiUsageSignalId,
 } from "@/components/results/rq/aiUsageSignalHelpContent";
-import { Check, Copy } from "lucide-react";
+import { Check, CircleHelp, Copy } from "lucide-react";
 
 const aiTraceInsightSurface = "bg-card shadow-sm ring-1 ring-border/40";
 
@@ -51,10 +60,11 @@ const MONTH_SHORT = [
   "Nov",
   "Dec",
 ] as const;
-const HEATMAP_GAP = "gap-0.5 sm:gap-1";
-const HEATMAP_CELL = "size-4 shrink-0 rounded-[3px] sm:size-5";
+const HEATMAP_GAP = "gap-1 sm:gap-1.5";
+const HEATMAP_CELL = "size-5 shrink-0 rounded-[4px] sm:size-6 md:size-7";
 const HEATMAP_LABEL_COL =
-  "w-5 shrink-0 text-right text-[10px] text-muted-foreground sm:w-6 sm:text-xs";
+  "w-8 shrink-0 text-right text-xs text-muted-foreground sm:w-10 sm:text-sm";
+const HEATMAP_MONTH_W = "flex w-5 shrink-0 justify-center sm:w-6 md:w-7";
 
 function formatPct(value: number | null): string {
   if (value == null) return "—";
@@ -184,6 +194,45 @@ function MetricCard({
   );
 }
 
+function ToolMeaningDialog({ tool }: { tool: ToolMixItem }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+          aria-label={`Explain ${tool.name}`}
+        >
+          <CircleHelp className="size-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{tool.name}</DialogTitle>
+          <DialogDescription>
+            {tool.count.toLocaleString()} calls, {tool.pct}% of all recorded tool activity.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 text-sm leading-relaxed">
+          <div className="space-y-1">
+            <h3 className="font-semibold text-foreground">What this means</h3>
+            <p className="text-muted-foreground">{tool.meaning}</p>
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-semibold text-foreground">Why it matters</h3>
+            <p className="text-muted-foreground">
+              This tool contributes to the workflow balance shown above. Use it to understand
+              whether the trace leans more toward exploration, generation, or verification.
+            </p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function UploadZone({
   onFileSelected,
   disabled,
@@ -272,7 +321,7 @@ function AgentStatsExportInsight() {
     <CoachInsightTone
       tone="informational"
       title="Generate your CSV with a copyable prompt"
-      className={aiTraceInsightSurface}
+      className={cn(aiTraceInsightSurface, "border-l-0")}
       bodyClassName="space-y-4 text-sm font-normal text-foreground/90 leading-relaxed"
     >
       <p>
@@ -456,6 +505,21 @@ export function AIMaturityTab({ resultId }: { resultId: string }) {
   const monthLabels = activityGrid
     ? getMonthLabels(activityGrid.columnWeekStarts)
     : [];
+  const activityLegendMax = Math.max(activityGrid?.maxCount ?? 0, 1);
+  const toolMixGroups = useMemo(
+    () =>
+      data
+        ? data.behavioralMix.map((bucket) => ({
+            key: bucket.key,
+            label: bucket.label,
+            summary: bucket.summary,
+            pct: bucket.pct,
+            count: bucket.count,
+            tools: data.toolMix.filter((tool) => tool.bucket === bucket.key),
+          }))
+        : [],
+    [data],
+  );
 
   async function persistCsv(csvText: string) {
     const response = await fetch("/api/ai-usage", {
@@ -733,16 +797,16 @@ export function AIMaturityTab({ resultId }: { resultId: string }) {
             </div>
 
             {activityGrid ? (
-              <div className="rounded-xl border border-border bg-card p-4 shadow-sm ring-1 ring-border/40 sm:p-6">
-                <div className="mb-4 space-y-1">
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm ring-1 ring-border/40 sm:p-8">
+                <div className="space-y-1">
                   <h3 className="text-base font-semibold">AI active days</h3>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm">
                     Fixed {AI_USAGE_ACTIVE_WINDOW_DAYS}-day view ending on{" "}
                     {data.activeDaysWindowEnd ?? "—"}. Darker cells mean more
                     prompts on that day.
                   </p>
                 </div>
-                <div className="overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch]">
+                <div className="mt-6 overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch]">
                   <div
                     className={cn("inline-flex min-w-0 flex-col", HEATMAP_GAP)}
                     role="img"
@@ -753,9 +817,9 @@ export function AIMaturityTab({ resultId }: { resultId: string }) {
                       {activityGrid.columnWeekStarts.map((_, weekIndex) => (
                         <div
                           key={`month-${weekIndex}`}
-                          className="w-4 shrink-0 sm:w-5"
+                          className={HEATMAP_MONTH_W}
                         >
-                          <span className="text-[10px] font-medium leading-none text-muted-foreground">
+                          <span className="text-xs font-medium leading-none text-muted-foreground sm:text-sm">
                             {monthLabels[weekIndex] ?? ""}
                           </span>
                         </div>
@@ -783,7 +847,24 @@ export function AIMaturityTab({ resultId }: { resultId: string }) {
                     ))}
                   </div>
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground tabular-nums">
+
+                <div className="mt-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
+                  <span>Less</span>
+                  <div className={cn("flex", HEATMAP_GAP)}>
+                    {[0.1, 0.35, 0.55, 0.8, 1].map((tier, index) => (
+                      <div
+                        key={index}
+                        className={cn(
+                          "size-5 rounded-[3px] sm:size-6",
+                          heatClass(Math.ceil(tier * activityLegendMax), activityLegendMax),
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <span>More</span>
+                </div>
+
+                <p className="mt-4 text-sm text-muted-foreground tabular-nums">
                   {data.uniqueDays} active days · {data.avgPromptsPerDay.toFixed(1)} prompts/day
                   {data.busiestDay ? ` · Busiest: ${data.busiestDay}` : ""}
                 </p>
@@ -865,33 +946,54 @@ export function AIMaturityTab({ resultId }: { resultId: string }) {
                 <summary className="cursor-pointer text-sm font-medium text-foreground">
                   Raw tool breakdown
                 </summary>
-                <div className="mt-3 space-y-2">
-                  {data.toolMix.map((tool) => (
-                    <div
-                      key={tool.name}
-                      className="grid min-w-0 grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3rem] items-center gap-3 text-sm lg:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_3rem_minmax(0,20rem)]"
-                    >
-                      <span
-                        className="truncate font-medium"
-                        title={tool.name}
-                      >
-                        {tool.name}
-                      </span>
-                      <div className="h-1.5 min-w-0 rounded-full bg-muted">
-                        <div
-                          className="h-1.5 rounded-full bg-foreground/70"
-                          style={{ width: `${tool.pct}%` }}
-                        />
+                <div className="mt-3 space-y-5">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Tools are grouped into the same workflow categories used above so students can
+                    see which individual actions count as exploration, generation, or verification
+                    / execution.
+                  </p>
+                  {toolMixGroups.map((group) => (
+                    <div key={group.key} className="space-y-2">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-2">
+                        <div>
+                          <h4 className="text-sm font-semibold text-foreground">
+                            {group.label}
+                          </h4>
+                          <p className="text-xs text-muted-foreground">{group.summary}</p>
+                        </div>
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          {group.pct}% · {group.count.toLocaleString()} calls
+                        </div>
                       </div>
-                      <span className="w-12 text-right tabular-nums text-muted-foreground">
-                        {tool.pct}%
-                      </span>
-                      <span
-                        className="hidden truncate text-xs text-muted-foreground lg:block"
-                        title={`${tool.count.toLocaleString()} calls · ${tool.meaning}`}
-                      >
-                        {tool.count.toLocaleString()} calls · {tool.meaning}
-                      </span>
+
+                      <div className="space-y-2">
+                        {group.tools.map((tool) => (
+                          <div
+                            key={`${group.key}-${tool.name}`}
+                            className="grid min-w-0 grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3rem_auto] items-center gap-3 text-sm lg:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_3rem_auto]"
+                          >
+                            <span
+                              className="truncate font-medium"
+                              title={tool.name}
+                            >
+                              {tool.name}
+                            </span>
+                            <div className="h-1.5 min-w-0 rounded-full bg-muted">
+                              <div
+                                className="h-1.5 rounded-full bg-foreground/70"
+                                style={{ width: `${tool.pct}%` }}
+                              />
+                            </div>
+                            <span className="w-12 text-right tabular-nums text-muted-foreground">
+                              {tool.pct}%
+                            </span>
+                            <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                              <span className="tabular-nums">{tool.count.toLocaleString()} calls</span>
+                              <ToolMeaningDialog tool={tool} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -955,13 +1057,7 @@ export function AIMaturityTab({ resultId }: { resultId: string }) {
                 value={formatPct(data.globalVerificationRatio)}
                 sub="How often the next tool call after a write is a read."
                 helpId="read-after-write-rate"
-                highlight={
-                  data.globalVerificationRatio >= 0.6
-                    ? "good"
-                    : data.globalVerificationRatio < 0.25
-                      ? "warn"
-                      : undefined
-                }
+                highlight={data.globalVerificationRatio >= 0.6 ? "good" : undefined}
               />
             </div>
           </section>
