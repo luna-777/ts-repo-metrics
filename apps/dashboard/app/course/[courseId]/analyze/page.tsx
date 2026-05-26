@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { GitFork, Github, Loader2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { DashboardPreview } from "@/components/landing/DashboardPreview";
+import { FeatureSections } from "@/components/landing/FeatureSections";
 import { writeReportToSessionStorage } from "@/lib/reportLocalCache";
 import type { RepoReport } from "@/lib/reportTypes";
 import { createUserSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -273,55 +275,56 @@ export default function CourseAnalyzePage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-8">
-      {/* Step 1 — hero style */}
+    <div className="w-full">
+      {/* Step 1 — hero + landing sections */}
       {step === 1 ? (
-        <div className="flex flex-col items-center gap-5 text-center pt-10 pb-4">
-          {/* Term / course badge */}
-          <span className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
-            {courseMeta ? courseMeta.term : courseIdDisplay}
-          </span>
+        <div className="w-full pb-16">
+          {/* Hero content */}
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 pt-10 pb-4 text-center">
+            {/* Term / course badge */}
+            <span className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
+              {courseMeta ? courseMeta.term : courseIdDisplay}
+            </span>
 
-          {/* Gradient title */}
-          <div className="space-y-2">
-            <h1 className="text-5xl font-bold tracking-tight sm:text-6xl xl:text-7xl">
-              <span className="bg-gradient-to-r from-primary via-orange-400 to-amber-400 bg-clip-text text-transparent">
-                Repo Analytics
-              </span>
-            </h1>
-            <p className="text-xl font-semibold text-muted-foreground">
-              {courseMeta ? courseMeta.fullName : courseIdDisplay}
+            {/* Gradient title */}
+            <div className="space-y-2">
+              <h1 className="text-5xl font-bold tracking-tight sm:text-6xl xl:text-7xl">
+                <span className="bg-gradient-to-r from-primary via-orange-400 to-amber-400 bg-clip-text text-transparent">
+                  Repo Analytics
+                </span>
+              </h1>
+              <p className="text-xl font-semibold text-muted-foreground">
+                {courseMeta ? courseMeta.fullName : courseIdDisplay}
+              </p>
+            </div>
+
+            {/* Description */}
+            <p className="mx-auto max-w-xl text-base text-muted-foreground">
+              {courseMeta
+                ? `Repo Analytics helps ${courseMeta.fullName} teams reflect on their software engineering process. After selecting your project repository, the tool summarizes development activity, code structure, testing signals, and maintainability.`
+                : "The repo analytics tool helps you reflect on your team's software engineering process. After selecting your project repository, the tool will summarize repository-level patterns such as development activity, code structure, testing signals, and maintainability."}
             </p>
+
+            <Button className="w-full max-w-xs" onClick={() => setStep(2)} type="button">
+              Get started
+            </Button>
           </div>
 
-          {/* Description */}
-          <p className="mx-auto max-w-xl text-base text-muted-foreground">
-            {courseMeta
-              ? `Repo Analytics helps ${courseMeta.fullName} teams reflect on their software engineering process. After selecting your project repository, the tool summarizes development activity, code structure, testing signals, and maintainability.`
-              : "The repo analytics tool helps you reflect on your team's software engineering process. After selecting your project repository, the tool will summarize repository-level patterns such as development activity, code structure, testing signals, and maintainability."}
-          </p>
-
-          {/* Research disclaimer */}
-          <div className="w-full max-w-xl rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 p-4 text-sm text-left">
-            <p className="font-medium text-blue-900 dark:text-blue-100">
-              This tool is part of research on AI-assisted software engineering education.
-            </p>
-            <p className="mt-2 text-blue-800 dark:text-blue-200">
-              Repository-level metrics from this analysis may be used in anonymized research.{" "}
-              <strong className="text-foreground">
-                This analysis is not used to grade individual students.
-              </strong>
-            </p>
+          {/* Dashboard preview */}
+          <div className="mx-auto mt-12 w-full max-w-5xl">
+            <DashboardPreview />
           </div>
 
-          <Button className="w-full max-w-xs" onClick={() => setStep(2)} type="button">
-            I understand — continue
-          </Button>
+          {/* Feature sections */}
+          <div className="mt-4">
+            <FeatureSections />
+          </div>
         </div>
       ) : null}
 
       {/* Step 2 */}
       {step === 2 ? (
+        <div className="mx-auto w-full max-w-4xl py-8">
         <div className={cardOuter}>
           <h2 className="text-lg font-semibold">Enter your team name</h2>
           <label className="mt-4 block text-sm font-medium" htmlFor="team-name-field">
@@ -350,10 +353,12 @@ export default function CourseAnalyzePage() {
             </Button>
           </div>
         </div>
+        </div>
       ) : null}
 
       {/* Step 3 */}
       {step === 3 ? (
+        <div className="mx-auto w-full max-w-4xl py-8">
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
             <span>
@@ -373,13 +378,16 @@ export default function CourseAnalyzePage() {
           </div>
 
           {dashUnauthorized ? (
-            <div className={cardOuter}>
-              <p className="text-center text-muted-foreground text-sm">
-                Sign in with GitHub to continue.
+            <div className="flex w-full max-w-md mx-auto flex-col items-center gap-4 rounded-xl border border-border bg-card p-6 text-center shadow-sm">
+              <p className="text-sm text-muted-foreground">
+                Sign in with GitHub to analyze your repository. By using Repo Metrics, you agree to its{" "}
+                <a href="/license" className="underline underline-offset-4 hover:text-foreground">license</a>{" "}
+                and{" "}
+                <a href="/privacy" className="underline underline-offset-4 hover:text-foreground">privacy statement</a>.
               </p>
               <Button
                 type="button"
-                className="mt-4 w-full gap-2"
+                className="gap-2"
                 disabled={signingIn}
                 onClick={() => void handleGitHubOAuth()}
               >
@@ -511,6 +519,7 @@ export default function CourseAnalyzePage() {
               </section>
             </div>
           ) : null}
+        </div>
         </div>
       ) : null}
     </div>
