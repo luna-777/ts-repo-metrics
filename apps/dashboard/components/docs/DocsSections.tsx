@@ -95,11 +95,37 @@ function IntroductionSection() {
               <Link href="/docs/documentation-review" className="text-primary underline-offset-4 hover:underline">
                 documentation review
               </Link>{" "}
-              (classify and rubric-review student planning docs when{" "}
+              — filename-based classification + rubric review of student planning docs (
               <code className="rounded bg-muted px-1">DOC_REVIEW_ENABLED=true</code>)
             </li>
             <li>A reproducible JSON report and optional dashboard dataset export</li>
           </ul>
+        </CardContent>
+      </Card>
+      <Card className="not-prose">
+        <CardHeader>
+          <CardTitle className="text-base">Course-specific URLs</CardTitle>
+          <CardDescription>Instructor-provided entry points for CSE 115 sections</CardDescription>
+        </CardHeader>
+        <CardContent className="text-muted-foreground text-sm space-y-2">
+          <p>
+            Instructors can share a pre-configured URL such as{" "}
+            <code className="rounded bg-muted px-1">/course/CSE115A-Summer26/analyze</code>. Students
+            arrive at a landing page personalized with the course name and term, then complete a
+            three-step flow: consent → team name → repo selection. The{" "}
+            <code className="rounded bg-muted px-1">course_id</code> and{" "}
+            <code className="rounded bg-muted px-1">team_name</code> are persisted on the{" "}
+            <code className="rounded bg-muted px-1">analyses</code> row for research aggregation.
+            An allow-list in <code className="rounded bg-muted px-1">/api/analyze</code> rejects
+            unknown course slugs.
+          </p>
+          <p>
+            Documentation templates for students are available at{" "}
+            <Link href="/resources" className="text-primary underline-offset-4 hover:underline">
+              /resources
+            </Link>
+            .
+          </p>
         </CardContent>
       </Card>
       <p className="text-muted-foreground">
@@ -722,11 +748,11 @@ function DocumentationReviewSection() {
   return (
     <Prose>
       <p>
-        The dashboard includes a two-agent pipeline that discovers student planning documents in a
-        GitHub repository, classifies each file, and reviews it against frozen course rubrics. Output
-        is persisted on the same <code className="rounded bg-muted px-1">analyses</code> row as repo
-        metrics (<code className="rounded bg-muted px-1">doc_review_json</code>) for research joins
-        with <code className="rounded bg-muted px-1">course_id</code>,{" "}
+        The dashboard discovers student planning documents in a GitHub repository, classifies
+        each file by filename, and reviews it against frozen course rubrics. Output is persisted
+        on the same <code className="rounded bg-muted px-1">analyses</code> row as repo metrics
+        (<code className="rounded bg-muted px-1">doc_review_json</code>) for research joins with{" "}
+        <code className="rounded bg-muted px-1">course_id</code>,{" "}
         <code className="rounded bg-muted px-1">team_name</code>, and{" "}
         <code className="rounded bg-muted px-1">github_login</code>.
       </p>
@@ -751,31 +777,100 @@ function DocumentationReviewSection() {
           </ol>
         </CardContent>
       </Card>
-      <h2 className="text-lg font-semibold text-foreground">Pipeline</h2>
-      <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-        <li>
-          <strong>Classifier</strong> (<code className="rounded bg-muted px-1">gpt-4o-mini</code>)
-          — identifies release plan, sprint plan/report, test plan, DoD, code standards
-        </li>
-        <li>
-          <strong>Reviewer</strong> (<code className="rounded bg-muted px-1">gpt-4o</code>) —
-          checklist + coach paragraph (structured docs) or strengths/improvements (holistic docs)
-        </li>
-        <li>
-          <strong>Consistency</strong> — deterministic warnings (duplicate types, language coverage
-          vs <code className="rounded bg-muted px-1">report.github.languages</code>)
-        </li>
-      </ul>
+
       <h2 className="text-lg font-semibold text-foreground">Discovery</h2>
       <p className="text-muted-foreground">
-        Docs-folder paths include{" "}
-        <code className="rounded bg-muted px-1">docs/</code>,{" "}
-        <code className="rounded bg-muted px-1">documents/</code>,{" "}
-        <code className="rounded bg-muted px-1">deliverables/</code>,{" "}
-        <code className="rounded bg-muted px-1">artifacts/</code>, and related prefixes. Other{" "}
-        <code className="rounded bg-muted px-1">.md</code>/<code className="rounded bg-muted px-1">.pdf</code>{" "}
-        files are searched repo-wide for DoD and code-standards candidates only.
+        Only the <code className="rounded bg-muted px-1">documentation/</code> folder at the
+        repository root is searched. Files in subdirectories are included. Only{" "}
+        <code className="rounded bg-muted px-1">.md</code> files are supported.
       </p>
+
+      <h2 className="text-lg font-semibold text-foreground">Classification</h2>
+      <p className="text-muted-foreground">
+        Classification is a pure filename match — no AI classifier. The filename (case-insensitive)
+        determines the document type:
+      </p>
+      <Card className="not-prose">
+        <CardContent className="overflow-x-auto pt-4">
+          <table className="w-full border-collapse text-xs font-mono text-muted-foreground">
+            <thead>
+              <tr className="border-b text-left">
+                <th className="py-1.5 pr-4 font-semibold text-foreground">Filename</th>
+                <th className="py-1.5 font-semibold text-foreground">Doc type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["sprint-{n}-plan.md", "sprint_plan (sprintNumber = n)"],
+                ["sprint-{n}-report.md", "sprint_report (sprintNumber = n)"],
+                ["release-plan.md", "release_plan"],
+                ["test-plan.md", "test_plan"],
+                ["definition-of-done.md", "definition_of_done"],
+                ["code-standards.md", "code_standards"],
+                ["anything else", "unknown (not reviewed)"],
+              ].map(([file, type]) => (
+                <tr key={file} className="border-b last:border-0">
+                  <td className="py-1.5 pr-4">{file}</td>
+                  <td className="py-1.5 text-muted-foreground">{type}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+      <p className="text-muted-foreground">
+        Students should name their files exactly. Download example templates from{" "}
+        <Link href="/resources" className="text-primary underline-offset-4 hover:underline">
+          /resources
+        </Link>
+        .
+      </p>
+
+      <h2 className="text-lg font-semibold text-foreground">Review pipeline</h2>
+      <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+        <li>
+          <strong>Reviewer</strong> (<code className="rounded bg-muted px-1">gpt-4o</code>) —
+          checklist + coach paragraph for structured docs, holistic strengths/improvements for DoD
+          and code standards
+        </li>
+        <li>
+          <strong>Consistency</strong> — deterministic warnings: missing required docs, duplicate
+          doc keys, language coverage vs{" "}
+          <code className="rounded bg-muted px-1">report.github.languages</code>
+        </li>
+      </ul>
+
+      <h2 className="text-lg font-semibold text-foreground">Rubrics</h2>
+      <Card className="not-prose">
+        <CardContent className="overflow-x-auto pt-4">
+          <table className="w-full border-collapse text-sm text-muted-foreground">
+            <thead>
+              <tr className="border-b text-left">
+                <th className="py-1.5 pr-4 font-medium text-foreground">Document type</th>
+                <th className="py-1.5 pr-4 font-medium text-foreground">Mode</th>
+                <th className="py-1.5 font-medium text-foreground">Keys / notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["Sprint Plan", "checklist", "17 keys — includes capacity buffer, acceptance criteria, user story quality, no epics, specific tasks. Also emits userStoryCount (numeric)."],
+                ["Sprint Report", "checklist", "14 keys — includes burnup_chart_present and burnup_data_present as independent signals."],
+                ["Release Plan", "checklist", "10 keys"],
+                ["Test Plan", "checklist", "9 keys — Given/When/Then scenarios, unit test results"],
+                ["Definition of Done", "holistic", "Strengths + improvements across 5 dimensions (coverage, specificity, simplicity, applicability, key categories)."],
+                ["Code Standards", "holistic", "Strengths + improvements — style guide citation, naming, formatting, best practices, language-specificity."],
+              ].map(([doc, mode, notes]) => (
+                <tr key={doc} className="border-b last:border-0 align-top">
+                  <td className="py-2 pr-4 font-medium text-foreground">{doc}</td>
+                  <td className="py-2 pr-4 font-mono text-xs">{mode}</td>
+                  <td className="py-2">{notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
       <h2 className="text-lg font-semibold text-foreground">API</h2>
       <pre className="overflow-x-auto rounded-lg bg-muted p-4 font-mono text-xs whitespace-pre">{`POST /api/doc-review
   { "resultId": "<analysis id>", "url?": "...", "report?": { ... } }
@@ -807,11 +902,17 @@ function LimitationsSection() {
           <li>Large repos may hit serverless CPU/memory ceilings.</li>
           <li>Duplication depends on jscpd runtime stability.</li>
           <li>Git-heavy proxies require tokens for credible GitHub throughput.</li>
-          <li>Phase 3 and AI smells panels encode static heuristics (try/catch shape, JSX component size thresholds, jscpd-based redundancy)—not behavioral runtime observations.</li>
+          <li>Phase 3 and AI smells panels encode static heuristics (try/catch shape, JSX component size thresholds, jscpd-based redundancy) — not behavioral runtime observations.</li>
           <li>
-            Documentation review supports <code className="rounded bg-muted px-1">.md</code> and{" "}
-            <code className="rounded bg-muted px-1">.pdf</code> only; cross-doc story-ID traceability and
-            test-plan vs engine cross-checks are not implemented yet.
+            Documentation review supports <code className="rounded bg-muted px-1">.md</code> only
+            (PDF dropped). Classification is filename-exact — files with non-standard names are
+            classified as <code className="rounded bg-muted px-1">unknown</code> and not reviewed.
+            Cross-doc story-ID traceability and test-plan vs engine cross-checks are not implemented.
+          </li>
+          <li>
+            Course allow-list is hard-coded in{" "}
+            <code className="rounded bg-muted px-1">/api/analyze</code> — adding a new course
+            section requires a code change and redeploy.
           </li>
         </ul>
       </CardContent>
@@ -821,20 +922,55 @@ function LimitationsSection() {
 
 function RoadmapSection() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Roadmap ideas</CardTitle>
-      </CardHeader>
-      <CardContent className="text-sm text-muted-foreground">
-        <ul className="list-inside list-disc space-y-1">
-          <li>Doc review: story-ID traceability across release/sprint/test plans</li>
-          <li>Doc review: unit-test claims vs engine verification cross-check</li>
-          <li>Background workers for oversized repositories</li>
-          <li>Expanded CSV cohort exports</li>
-          <li>Collaboration metrics via PR/issue APIs</li>
-          <li>Tighter coupling between survey constructs and repo-derived panels</li>
-        </ul>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Recently shipped</CardTitle>
+          <CardDescription>Changes landed in May 2026</CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          <ul className="list-inside list-disc space-y-1">
+            <li>
+              Doc review classifier replaced with pure filename matching — faster, deterministic,
+              no gpt-4o-mini cost
+            </li>
+            <li>
+              Sprint Plan rubric expanded from 12 → 17 keys (capacity buffer, acceptance criteria,
+              user story quality, no epics, specific tasks)
+            </li>
+            <li>Sprint Report rubric: added <code className="rounded bg-muted px-1">burnup_data_present</code> (13 → 14 keys)</li>
+            <li>
+              <code className="rounded bg-muted px-1">userStoryCount</code> numeric field on Sprint
+              Plan reviews
+            </li>
+            <li>Doc review UI: checklist always expanded, review cards above consistency warnings</li>
+            <li>Course-specific landing pages with term/section personalization (CSE 115A/B/C)</li>
+            <li>Course allow-list enforcement in <code className="rounded bg-muted px-1">/api/analyze</code></li>
+            <li>
+              Resources page (<Link href="/resources" className="text-primary underline-offset-4 hover:underline">/resources</Link>)
+              with downloadable example templates for all 6 doc types
+            </li>
+            <li>Legal pages: Privacy, Terms of Use, License, Report an Issue</li>
+            <li>Site footer with research disclaimer on every page</li>
+          </ul>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Roadmap ideas</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          <ul className="list-inside list-disc space-y-1">
+            <li>Doc review: story-ID traceability across release/sprint/test plans</li>
+            <li>Doc review: unit-test claims vs engine verification cross-check</li>
+            <li>Course allow-list driven from database instead of hard-coded set</li>
+            <li>Background workers for oversized repositories</li>
+            <li>Expanded CSV cohort exports</li>
+            <li>Collaboration metrics via PR/issue APIs</li>
+            <li>Tighter coupling between survey constructs and repo-derived panels</li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
