@@ -11,8 +11,9 @@ import type { SourceInfo } from "../types/report.js";
 
 const CACHE_DIR = ".cache/ts-repo-metrics";
 
-function cacheKey(parsed: ParsedGitHubUrl): string {
-  return `${parsed.owner}-${parsed.repo}`;
+function cacheKey(parsed: ParsedGitHubUrl, commitSha?: string): string {
+  const base = `${parsed.owner}-${parsed.repo}`;
+  return commitSha ? `${base}-${commitSha.slice(0, 12)}` : base;
 }
 
 function githubApiHeaders(token?: string): Record<string, string> {
@@ -69,16 +70,19 @@ export async function getSourceFromGitHubApi(
 /**
  * Download repo as zipball and extract to cache dir. Returns path to repo root.
  * Zipball has one top-level dir (owner-repo-sha); we flatten so repo root is fullPath.
- * If useCache is true and fullPath already exists (from a prior run), returns it.
+ * When commitSha is provided, the cache is keyed by commit and the zipball of
+ * that exact ref is downloaded, so a new push can never reuse a stale snapshot.
  * @param githubToken - Optional PAT for private repository zipball download.
+ * @param commitSha - Latest commit SHA of the default branch (from getSourceFromGitHubApi).
  */
 export async function downloadZipball(
   parsed: ParsedGitHubUrl,
   baseDir: string,
   useCache: boolean = true,
   githubToken?: string,
+  commitSha?: string,
 ): Promise<string> {
-  const fullPath = path.resolve(baseDir, CACHE_DIR, cacheKey(parsed));
+  const fullPath = path.resolve(baseDir, CACHE_DIR, cacheKey(parsed, commitSha));
 
   const parentDir = path.dirname(fullPath);
   mkdirSync(parentDir, { recursive: true });
@@ -96,7 +100,9 @@ export async function downloadZipball(
     rmSync(fullPath, { recursive: true });
   }
 
-  const zipUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/zipball`;
+  const zipUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/zipball${
+    commitSha ? `/${commitSha}` : ""
+  }`;
   const res = await fetch(zipUrl, {
     redirect: "follow",
     headers: githubApiHeaders(githubToken),

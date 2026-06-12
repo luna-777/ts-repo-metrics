@@ -2,7 +2,8 @@
  * Git clone module for GitHub public repos.
  *
  * Clones into .cache/ts-repo-metrics/<owner-repo> with full history.
- * Reuses cache unless --no-cache.
+ * Reuses cache unless --no-cache; reused clones are fetched and reset to the
+ * remote default branch so reanalysis picks up new commits.
  */
 
 import { existsSync, mkdirSync, rmSync } from "node:fs";
@@ -25,7 +26,41 @@ function authenticatedCloneUrl(
 }
 
 /**
- * Clone a GitHub repo or return cached path.
+ * Sync an existing clone with the remote default branch (HEAD).
+ *
+ * First compares the remote tip SHA (ls-remote) with the local HEAD and
+ * returns without touching the tree when they match. Otherwise fetches from
+ * the remote URL directly so a token rotated since the original clone still
+ * works. Reset + clean rather than pull: force-pushed branches must still
+ * converge, and files deleted upstream must leave the tree.
+ *
+ * @param repoPath - Absolute path to the cached clone.
+ * @param remote - Clone URL (possibly token-authenticated; never logged).
+ */
+async function syncCloneWithRemote(
+  repoPath: string,
+  remote: string,
+): Promise<void> {
+  const repo = simpleGit(repoPath);
+  const remoteHead = (await repo.raw(["ls-remote", remote, "HEAD"]))
+    .trim()
+    .split(/\s+/)[0];
+  const localHead = (await repo.revparse(["HEAD"])).trim();
+  if (remoteHead && remoteHead === localHead) {
+    return;
+  }
+  await repo.raw(["fetch", remote, "HEAD"]);
+  await repo.raw(["reset", "--hard", "FETCH_HEAD"]);
+  await repo.raw(["clean", "-fd"]);
+}
+
+/**
+ * Clone a GitHub repo or reuse the cached clone.
+ *
+ * A reused clone is first synced with the remote default branch so new
+ * commits are picked up; if the sync fails (unreachable remote, diverged
+ * refs), the cache is discarded and the repo is cloned fresh rather than
+ * returning a stale tree.
  *
  * @param parsed - Parsed GitHub URL.
  * @param useCache - If false, clone fresh (removes cache first).
@@ -40,6 +75,9 @@ export async function cloneOrUseCache(
   githubToken?: string,
 ): Promise<string> {
   const fullPath = path.resolve(baseDir, CACHE_DIR, cacheKey(parsed));
+
+  const cloneRemote =
+    githubToken?.trim() ? authenticatedCloneUrl(parsed, githubToken.trim()) : parsed.url;
 
   // A previous run may have left a partial tree (e.g. interrupted clone: `.git` without HEAD).
   // Reusing that path skips clone and yields 0 source files — all metrics zero.
@@ -56,7 +94,12 @@ export async function cloneOrUseCache(
   }
 
   if (useCache && existsSync(fullPath)) {
-    return fullPath;
+    try {
+      await syncCloneWithRemote(fullPath, cloneRemote);
+      return fullPath;
+    } catch {
+      rmSync(fullPath, { recursive: true, force: true });
+    }
   }
 
   if (existsSync(fullPath)) {
@@ -65,9 +108,6 @@ export async function cloneOrUseCache(
 
   const parentDir = path.dirname(fullPath);
   mkdirSync(parentDir, { recursive: true });
-
-  const cloneRemote =
-    githubToken?.trim() ? authenticatedCloneUrl(parsed, githubToken.trim()) : parsed.url;
 
   const git = simpleGit();
   await git.clone(cloneRemote, fullPath, ["--no-single-branch"]);

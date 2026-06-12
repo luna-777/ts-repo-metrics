@@ -76,8 +76,8 @@ export async function analyzeFromGitHubUrl(
   } catch (err) {
     if (isGitUnavailable(err)) {
       usedZipball = true;
-      repoPath = await downloadZipball(parsed, cacheDir, useCache, ghToken);
       source = await getSourceFromGitHubApi(parsed, ghToken);
+      repoPath = await downloadZipball(parsed, cacheDir, useCache, ghToken, source.commit || undefined);
     } else {
       throw err;
     }
