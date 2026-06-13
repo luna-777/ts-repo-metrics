@@ -72,6 +72,8 @@ export async function getSourceFromGitHubApi(
  * Zipball has one top-level dir (owner-repo-sha); we flatten so repo root is fullPath.
  * When commitSha is provided, the cache is keyed by commit and the zipball of
  * that exact ref is downloaded, so a new push can never reuse a stale snapshot.
+ * Without commitSha the cache is never reused (a snapshot of unknown ref could
+ * be stale) and the default branch is re-downloaded.
  * @param githubToken - Optional PAT for private repository zipball download.
  * @param commitSha - Latest commit SHA of the default branch (from getSourceFromGitHubApi).
  */
@@ -82,12 +84,13 @@ export async function downloadZipball(
   githubToken?: string,
   commitSha?: string,
 ): Promise<string> {
-  const fullPath = path.resolve(baseDir, CACHE_DIR, cacheKey(parsed, commitSha));
+  const sha = commitSha?.trim() || undefined;
+  const fullPath = path.resolve(baseDir, CACHE_DIR, cacheKey(parsed, sha));
 
   const parentDir = path.dirname(fullPath);
   mkdirSync(parentDir, { recursive: true });
 
-  if (useCache && existsSync(fullPath)) {
+  if (useCache && sha && existsSync(fullPath)) {
     try {
       const entries = readdirSync(fullPath);
       if (entries.length > 0) return fullPath;
@@ -101,7 +104,7 @@ export async function downloadZipball(
   }
 
   const zipUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/zipball${
-    commitSha ? `/${commitSha}` : ""
+    sha ? `/${sha}` : ""
   }`;
   const res = await fetch(zipUrl, {
     redirect: "follow",
