@@ -1,0 +1,10 @@
+# Raw and generated research data (not committed)
+research/survey/data/raw/
+research/survey/data/processed/
+research/survey/outputs/
+research/datasets/post_ai_30.csv
+research/datasets/pre_ai_baseline.csv
+research/datasets/samples/
+*.pyc
+__pycache__/
+.venv/
