@@ -166,7 +166,7 @@ A Next.js dashboard app in `apps/dashboard/` provides a web UI:
 
 Run with `npm run dashboard` (starts `next dev` in `apps/dashboard/`). For Vercel deployment, set `GITHUB_TOKEN` to enable API-derived git metrics when the git CLI is unavailable.
 
-**GitHub analysis & cache:** The API clones under `os.tmpdir()/repo-metrics-git-cache/` (not the app folder) so stale layouts do not poison results. Cached directories are reused only if they pass `git` validation (`checkIsRepo()`); corrupt or partial clones (e.g. interrupted download) are removed and re-cloned. The CLI still uses `.cache/ts-repo-metrics/` under the current working directory unless you pass `--no-cache`.
+**GitHub analysis & cache:** The API clones under `os.tmpdir()/repo-metrics-git-cache/` (not the app folder) so stale layouts do not poison results. Cached directories are reused only if they pass `git` validation (`checkIsRepo()`); corrupt or partial clones (e.g. interrupted download) are removed and re-cloned. Reused clones are checked against the remote tip and fetched + reset only when it changed, so reanalysis always reflects the latest commit; if the sync fails, the repo is re-cloned fresh. The CLI still uses `.cache/ts-repo-metrics/` under the current working directory unless you pass `--no-cache`.
 
 ## Project Structure
 
