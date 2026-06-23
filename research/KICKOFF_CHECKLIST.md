@@ -27,7 +27,7 @@ Track instructor delivery in issue **SIP-1.0** (Kickoff packet).
 
 - [ ] Sanitized Cursor JSONL sample (no PII)
 - [ ] Document macOS log path(s) students should support
-- [ ] Place sample at `research/fixtures/cursor/` when ready (or shared drive link for kickoff)
+- [ ] Sample committed at [`data/samples/cursor/sample-session.jsonl`](../data/samples/cursor/sample-session.jsonl) (synthetic, no PII)
 
 ## 5. Access
 

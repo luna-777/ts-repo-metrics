@@ -11,3 +11,9 @@ Supabase `public.analyses` table export for SIP dataset work (SIP-1.3).
 **Privacy:** Contains pseudonymous user IDs and GitHub logins. Do not share outside the research team. Consider moving to a private repo or Git LFS if the public repo policy changes.
 
 **Usage:** See [research/datasets/README.md](../research/datasets/README.md) for manifest and Post-AI audit tasks.
+
+## Samples (sanitized, safe to share)
+
+| Path | Description |
+|------|-------------|
+| [samples/cursor/](samples/cursor/) | Synthetic Cursor agent JSONL for SIP-1.4 parser development |
