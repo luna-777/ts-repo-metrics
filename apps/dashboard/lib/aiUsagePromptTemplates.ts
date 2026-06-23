@@ -1,4 +1,4 @@
-export type AiUsagePromptPlatform = "claude" | "codex" | "gemini";
+export type AiUsagePromptPlatform = "claude" | "codex" | "gemini" | "cursor";
 
 export const AGENT_STATS_REPO_URL = "https://github.com/scottyUX/agent_stats";
 export const AGENT_STATS_BRANCH = "main";
@@ -10,6 +10,7 @@ interface AiUsagePromptPlatformConfig {
   label: string;
   shortLabel: string;
   rootsGlob: string;
+  codingAgent?: string;
 }
 
 export const AI_USAGE_PROMPT_PLATFORMS: readonly AiUsagePromptPlatformConfig[] = [
@@ -31,6 +32,14 @@ export const AI_USAGE_PROMPT_PLATFORMS: readonly AiUsagePromptPlatformConfig[] =
     shortLabel: "Gemini",
     rootsGlob: "$HOME/.gemini/tmp/**/session-*.json",
   },
+  {
+    id: "cursor",
+    label: "Cursor",
+    shortLabel: "Cursor",
+    rootsGlob:
+      "$HOME/Library/Application Support/Cursor/User/workspaceStorage/**/*.jsonl",
+    codingAgent: "cursor",
+  },
 ] as const;
 
 export function getAiUsagePromptPlatform(
@@ -45,12 +54,21 @@ export function getAiUsagePromptPlatform(
 
 export function buildAiUsagePrompt(platform: AiUsagePromptPlatform): string {
   const config = getAiUsagePromptPlatform(platform);
+  const platformGuidance = config.codingAgent
+    ? [
+        `The exported CSV must use coding_agent = ${config.codingAgent}.`,
+        "Cursor logs are JSONL files under the --roots path below.",
+        "",
+      ]
+    : [];
+
   return [
     "Use your terminal tools to help me generate my AI usage CSV. Do not modify my project files.",
     "",
     "Infer the best value for --filter from the current project or repository context you are working in.",
     "If the correct filter is not obvious, ask me for it before continuing.",
     "",
+    ...platformGuidance,
     "Then do exactly this:",
     "",
     `1. Make sure the repo ${AGENT_STATS_REPO_URL} is available locally on branch ${AGENT_STATS_BRANCH}.`,
