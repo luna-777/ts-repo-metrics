@@ -35,6 +35,14 @@ Track instructor delivery in issue **SIP-1.0** (Kickoff packet).
 - [ ] Supabase: read-only credentials or export dump for Obj 3 audit (optional if lists are pre-verified)
 - [ ] Confirm students can run `npm test` and Python 3 locally
 
+## 6. agent-stats clone (all students — not in ts-repo-metrics repo)
+
+`agent_stats/` is **not** on the `ts-repo-metrics` GitHub repo. Students must clone it separately. Share this doc at kickoff: [`research/AGENT_STATS_SETUP.md`](AGENT_STATS_SETUP.md)
+
+- [ ] Walk through the clone commands in the first 10 minutes of kickoff
+- [ ] PM verifies every student has `agent_stats/ai_usage_stats.py` by EOD Day 2
+- [ ] Pinned commit for Sprint 1: `a2a051d0991e` on `scottyUX/agent_stats`
+
 ## Replication targets (Objective 2 reference)
 
 Paper statistics to reproduce are documented in [`apps/dashboard/components/research/ResearchPaperBody.tsx`](../apps/dashboard/components/research/ResearchPaperBody.tsx):
