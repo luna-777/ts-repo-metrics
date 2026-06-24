@@ -15,6 +15,7 @@ describe("aiUsagePromptTemplates", () => {
       "claude",
       "codex",
       "gemini",
+      "cursor",
     ]);
   });
 
