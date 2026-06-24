@@ -8,15 +8,15 @@
 | Status | Count | Percentage |
 |--------|-------|-----------|
 | ✅ Complete | 6 | 20% |
-| ⚠️ Incomplete | 24 | 80% |
-| ❌ Not Found | 0 | 0% |
+| ⚠️ Incomplete | 23 | 77% |
+| ❌ Not Found | 1 | 3% |
 
 ## Data Quality Analysis
 
 | Field | Populated | Empty | Percentage |
 |-------|-----------|-------|-----------|
 | result_id | 30 | 0 | 100% |
-| commit_sha | 29 | 1 | 100% |
+| commit_sha | 29 | 1 | 97% |
 | course_id | 6 | 24 | 20% |
 | team_name | 6 | 24 | 20% |
 | analysis_timestamp | 30 | 0 | 100% |
