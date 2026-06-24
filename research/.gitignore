@@ -3,8 +3,6 @@ research/survey/data/raw/
 research/survey/data/processed/
 research/survey/outputs/
 research/datasets/post_ai_30.csv
-research/datasets/post_ai_30.json
-research/datasets/audit_post_ai.md
 research/datasets/pre_ai_baseline.csv
 research/datasets/samples/
 *.pyc
