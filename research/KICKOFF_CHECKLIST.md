@@ -10,6 +10,7 @@ Track instructor delivery in issue **SIP-1.0** (Kickoff packet).
 - [ ] Data dictionary / codebook: AU, AUM, TAM items per SDLC stage (Planning → Maintenance)
 - [ ] Notes on missingness rules and expected **N** after cleaning (paper baseline **N = 85**)
 - [ ] Delivery: shared drive link **or** place file at `research/survey/data/raw/` (gitignored) and notify PM in Discussion
+- [ ] Students clone analysis pipeline: [`scottyUX/aum-survey-analytics`](https://github.com/scottyUX/aum-survey-analytics) (see [`research/survey/README.md`](survey/README.md))
 
 ## 2. Pre-AI repo list (Objective 3)
 
@@ -35,9 +36,11 @@ Track instructor delivery in issue **SIP-1.0** (Kickoff packet).
 - [ ] Supabase: read-only credentials or export dump for Obj 3 audit (optional if lists are pre-verified)
 - [ ] Confirm students can run `npm test` and Python 3 locally
 
-## 6. agent-stats clone (all students — not in ts-repo-metrics repo)
+## 6. External repos (not inside ts-repo-metrics)
 
-`agent_stats/` is **not** on the `ts-repo-metrics` GitHub repo. Students must clone it separately. Share this doc at kickoff: [`research/AGENT_STATS_SETUP.md`](AGENT_STATS_SETUP.md)
+**AUM Survey Analytics** — survey replication pipeline for Objective 2. Clone: [`scottyUX/aum-survey-analytics`](https://github.com/scottyUX/aum-survey-analytics). Setup: [`research/survey/README.md`](survey/README.md)
+
+**agent_stats** — Cursor log analysis for Objective 4. Share this doc at kickoff: [`research/AGENT_STATS_SETUP.md`](AGENT_STATS_SETUP.md)
 
 - [ ] Walk through the clone commands in the first 10 minutes of kickoff
 - [ ] PM verifies every student has `agent_stats/ai_usage_stats.py` by EOD Day 2
