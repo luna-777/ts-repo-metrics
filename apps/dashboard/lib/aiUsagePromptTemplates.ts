@@ -18,6 +18,10 @@ interface AiUsagePromptPlatformConfig {
   /** Windows PowerShell log path glob. */
   rootsGlobWindows: string;
   codingAgent?: string;
+  tools?: ReadonlyArray<{
+    name: string;
+    bucket: "exploration" | "generation" | "verification";
+  }>;
 }
 
 export const AI_USAGE_PROMPT_PLATFORMS: readonly AiUsagePromptPlatformConfig[] =
@@ -55,6 +59,19 @@ export const AI_USAGE_PROMPT_PLATFORMS: readonly AiUsagePromptPlatformConfig[] =
       rootsGlobWindows:
         "$env:APPDATA\\Cursor\\User\\workspaceStorage\\**\\*.jsonl",
       codingAgent: "cursor",
+      tools: [
+        { name: "Read",           bucket: "exploration"  },
+        { name: "Glob",           bucket: "exploration"  },
+        { name: "Grep",           bucket: "exploration"  },
+        { name: "SemanticSearch", bucket: "exploration"  },
+        { name: "WebSearch",      bucket: "exploration"  },
+        { name: "WebFetch",       bucket: "exploration"  },
+        { name: "Write",          bucket: "generation"   },
+        { name: "StrReplace",     bucket: "generation"   },
+        { name: "EditNotebook",   bucket: "generation"   },
+        { name: "Shell",          bucket: "verification" },
+        { name: "Task",           bucket: "verification" },
+      ],
     },
   ] as const;
 
