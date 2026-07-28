@@ -1,0 +1,30 @@
+{
+  "comment": "Corpus for the metric-validity evaluation. `self` is this repository, analyzed in place at whatever commit is checked out. The remainder are CSE 115A student repositories already referenced in research/datasets/manifest_sprint1.csv, cloned at the pinned commit so the study is reproducible.",
+  "repos": [
+    {
+      "name": "ts-repo-metrics",
+      "self": true,
+      "url": "https://github.com/scottyUX/ts-repo-metrics"
+    },
+    {
+      "name": "example-org__P9",
+      "url": "https://github.com/example-org/P9",
+      "commit": "eaa2bcb6cf539d04a74ae45d8c060a1bcdd1f21ee03118e9daf0b43c8979c1fb"
+    },
+    {
+      "name": "example-org__P10",
+      "url": "https://github.com/example-org/P10",
+      "commit": "2844ee6548840d14177f26a62c30c5105ec24cace10e80d07b394f780ac4addc"
+    },
+    {
+      "name": "example-org__P8",
+      "url": "https://github.com/example-org/P8",
+      "commit": "a9583ccbc095f3f7cdb6af9b03047f01b7bc0bc7c00e8b713487201f366d9019"
+    },
+    {
+      "name": "example-org__P11",
+      "url": "https://github.com/example-org/P11",
+      "commit": "df23b4a2bc529f69d4651c4c576d9decc0eb81b9d368dc8a35db904a2e49be9f"
+    }
+  ]
+}
