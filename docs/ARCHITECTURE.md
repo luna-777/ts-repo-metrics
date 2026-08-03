@@ -2,35 +2,25 @@
 
 This document describes the module structure and data flow of `ts-repo-metrics`.
 
+For the SIP off-boarding companion, see [HANDOFF.md](HANDOFF.md). Execution-grounded LLM routing (Hecate Stage 1) lives in the sibling repo [`scottyUX/hecate`](https://github.com/scottyUX/hecate) — see that repo’s [ARCHITECTURE.md](https://github.com/scottyUX/hecate/blob/main/docs/ARCHITECTURE.md). These systems are related for research; this dashboard is **not** a live model-routing gate.
+
 ## Overview: One Engine, Two Entry Points
 
 The analysis logic lives in a single **engine** package. The **CLI** and the **dashboard API** both import from the engine; nothing is spawned.
 
+```mermaid
+flowchart TB
+  Engine[packages_engine]
+  Engine --> CLI[src_cli]
+  Engine --> Batch[batch_batchAnalyze]
+  Engine --> Dash[apps_dashboard_api_analyze]
 ```
-                    ┌─────────────────────────────┐
-                    │  packages/engine             │
-                    │  (pipeline, collect,        │
-                    │   parsing, extract, types,   │
-                    │   utils)                     │
-                    │  Exports: analyzeRepo,       │
-                    │  analyzeFromGitHubUrl, etc.  │
-                    └──────────────┬──────────────┘
-                                   │
-           ┌───────────────────────┼───────────────────────┐
-           ▼                       ▼                       ▼
-   ┌───────────────┐       ┌───────────────┐       ┌───────────────┐
-   │ src/cli.ts    │       │ batch/       │       │ apps/dashboard│
-   │ (thin wrapper)│       │ batchAnalyze │       │ /api/analyze  │
-   │               │       │ (uses engine)│       │ (imports       │
-   │ - URL →       │       │              │       │  engine)      │
-   │   analyzeFrom │       │              │       │               │
-   │   GitHubUrl   │       │              │       │ - no spawn    │
-   │ - path →      │       │              │       │ - cacheDir    │
-   │   getSource   │       │              │       │   e.g.        │
-   │   Metadata +  │       │              │       │   os.tmpdir() │
-   │   analyzeRepo │       │              │       │               │
-   └───────────────┘       └───────────────┘       └───────────────┘
-```
+
+| Entry | Role |
+|-------|------|
+| `src/cli.ts` | Thin wrapper: GitHub URL → `analyzeFromGitHubUrl`; local path → `getSourceMetadata` + `analyzeRepo` |
+| `src/batch/batchAnalyze.ts` | Multi-repo analysis via `analyzeRepo` |
+| `apps/dashboard/app/api/analyze/route.ts` | In-process engine; cache under `os.tmpdir()`; optional Supabase session + GitHub token |
 
 ## Pipeline Overview
 
@@ -47,6 +37,8 @@ The analysis logic lives in a single **engine** package. The **CLI** and the **d
 
 When `cloneOrUseCache` fails because the git binary is unavailable (e.g. on Vercel), the engine calls `downloadZipball` with the same optional token. The extracted path has no `.git` directory, so `extractGitMetrics` and `extractGitMetricsV2` return null. `analyzeFromGitHubUrl` then calls `extractGitMetricsApi(parsed, token)` to populate `report.git` from the GitHub REST API. API-derived metrics are proxies (commit metadata only; no diff stats such as lines changed).
 
+Railway Docker deployments include `git` and restore full clone-based git metrics — see [`RAILWAY_DEPLOY.md`](../RAILWAY_DEPLOY.md).
+
 ## Dashboard Supabase clients
 
 - **`getSupabase()`** ([`apps/dashboard/lib/supabase/server.ts`](../apps/dashboard/lib/supabase/server.ts)): service role — trusted server writes (e.g. `analyses` upsert, `user_github_tokens` upsert in OAuth callback).
@@ -55,30 +47,45 @@ When `cloneOrUseCache` fails because the git binary is unavailable (e.g. on Verc
 
 ## Data Flow (Engine Internals)
 
+```mermaid
+flowchart TB
+  Pipeline[pipeline_analyzeRepo]
+  Pipeline --> Collect[collect_loc_git_dup]
+  Pipeline --> Parsing[parsing_tsParser]
+  Pipeline --> ExtractFn[extract_fnMetrics_complexity]
+  Pipeline --> ExtractReact[extract_react_TSX]
+  Pipeline --> ExtractOther[extract_smells_testCov]
+  Collect --> Report[types_RepoReport]
+  Parsing --> Report
+  ExtractFn --> Report
+  ExtractReact --> Report
+  ExtractOther --> Report
 ```
-                    ┌──────────────────────────────┐
-                    │  pipeline/analyzeRepo.ts     │
-                    │  (orchestrator)             │
-                    └──────────────┬──────────────┘
-                                    │
-    ┌──────────────┬────────────────┼────────────────┬──────────────┐
-    ▼              ▼                ▼                ▼              ▼
-┌──────────┐ ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
-│ collect/ │ │ parsing/ │   │ extract/ │   │ extract/ │   │ extract/ │
-│ loc,     │ │ tsParser │   │ fnCount  │   │ complex. │   │ smells,  │
-│ fileDis.,│ │          │   │ fnMetric │   │ distrib. │   │ testCov,  │
-│ dup,     │ │          │   │ maintIdx │   │          │   │          │
-│ git,     │ │          │   │ react/   │   │          │   │          │
-│ gitMetApi│ │          │   │ (TSX)    │   │          │   │          │
-│ gitClone,│ │          │   │          │   │          │   │          │
-│ fwDetect │ │          │   │          │   │          │   │          │
-└──────────┘ └──────────┘   └──────────┘   └──────────┘   └──────────┘
-                                    │
-                                    ▼
-                    ┌──────────────────────────────┐
-                    │  types/report.ts (RepoReport)  │
-                    └──────────────────────────────┘
+
+## Research ecosystem
+
+Sibling research systems used with this repo. They are **not** a unified live routing product.
+
+```mermaid
+flowchart TB
+  subgraph metrics [ts_repo_metrics]
+    EngineNode[engine_RepoReport]
+    DashNode[dashboard]
+    EngineNode --> DashNode
+    DashNode --> Supa[Supabase_analyses]
+  end
+  AgentStats[agent_stats_CSV] --> DashNode
+  Survey[aum_survey_analytics] -.-> Research[SIP_research_outputs]
+  Supa --> Research
+  Hecate[hecate_Stage1_patches] -.->|future_quality_and_SDLC| Research
 ```
+
+| System | Role |
+|--------|------|
+| `ts-repo-metrics` | Static analyzer + dashboard; persists `report_json` / AI usage CSV |
+| `agent_stats` | Local Cursor / Claude Code / Codex / Gemini logs → `ai_usage_trace.csv` |
+| `aum-survey-analytics` | Qualtrics → AUM/TAM replication pipeline |
+| `hecate` | SWE-bench Lite Stage 1 patch generation; DistilBERT router is future work |
 
 ## Phase 2 (lexical / cognitive / GRAD-AI MI)
 
