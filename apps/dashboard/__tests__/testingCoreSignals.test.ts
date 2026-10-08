@@ -59,4 +59,27 @@ describe("Test-to-source card text", () => {
     expect(html).toContain("about 300%");
     expect(html).not.toMatch(/about 100%/i);
   });
+
+  it("shows No data instead of 0% / Critical when there is no source code (#256)", () => {
+    const html = renderCard(metrics({ testLoc: 345, sourceLoc: 0, testLocRatio: 0 }));
+    expect(html).toContain("No data");
+    expect(html).toMatch(/>—<\/p>/);
+    expect(html).not.toContain("Critical");
+  });
+
+  it("shows No data when an author changed no source code", () => {
+    const html = renderCard(
+      metrics({
+        mode: "contributor",
+        contributorDisplayName: "A. Student",
+        locSource: "gitChurn",
+        testLoc: 50,
+        sourceLoc: 0,
+        testLocRatio: 0,
+      }),
+    );
+    expect(html).toContain("No data");
+    expect(html).toMatch(/>—<\/p>/);
+    expect(html).not.toContain("Critical");
+  });
 });

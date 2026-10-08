@@ -22,7 +22,7 @@ interface TestingCoreSignalsSectionProps {
   testingScopeId: CommitHabitsScopeId;
 }
 
-type SignalTier = "strong" | "good" | "needs_work" | "critical";
+type SignalTier = "strong" | "good" | "needs_work" | "critical" | "no_data";
 
 const tierMeta: Record<SignalTier, { label: string; badgeClass: string }> = {
   strong: {
@@ -41,9 +41,14 @@ const tierMeta: Record<SignalTier, { label: string; badgeClass: string }> = {
     label: "Critical",
     badgeClass: "border-0 bg-red-950 font-medium text-red-400 shadow-none",
   },
+  no_data: {
+    label: "No data",
+    badgeClass: "border-0 bg-muted font-medium text-muted-foreground shadow-none",
+  },
 };
 
 function tierForTestLocRatio(ratio: number, sourceLoc: number): SignalTier {
+  if (sourceLoc <= 0) return "no_data";
   if (sourceLoc > 0 && ratio <= 0) return "critical";
   if (ratio < 0.08) return "critical";
   if (ratio < 0.15) return "needs_work";
@@ -111,6 +116,11 @@ export function TestingCoreSignalsSection({
   const testFilesTitle = fromGitChurn ? "Test paths touched" : "Test files";
 
   const ratioDescription = (() => {
+    if (ratioTier === "no_data") {
+      return fromGitChurn
+        ? "No source-path churn for this author to compare test-path churn against."
+        : "No source code in the snapshot to compare test code against.";
+    }
     if (fromGitChurn) {
       if (ratioTier === "strong" || ratioTier === "good") {
         return `Test-path churn (lines added + deleted) is about ${churnSharePct}% of source-path churn for this author—a healthy ratio for this git-history proxy. Keep pairing production edits with test updates when behavior changes.`;
@@ -179,7 +189,7 @@ export function TestingCoreSignalsSection({
         <SignalCard
           title={ratioTitle}
           tier={ratioTier}
-          value={formatRatioAsPercent(mv.testLocRatio)}
+          value={ratioTier === "no_data" ? "—" : formatRatioAsPercent(mv.testLocRatio)}
           description={ratioDescription}
         />
         <SignalCard
