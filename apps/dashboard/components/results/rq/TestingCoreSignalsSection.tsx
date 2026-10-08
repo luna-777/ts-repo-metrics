@@ -102,7 +102,8 @@ export function TestingCoreSignalsSection({
     ? Math.round(mv.pctCommitsTouchingTests)
     : 0;
 
-  const churnSharePct = Math.min(100, Math.max(0, Math.round(mv.testLocRatio * 100)));
+  // Test ÷ source (lines or churn) compares two separate totals, so it can exceed 100%; don't cap it.
+  const churnSharePct = Math.max(0, Math.round(mv.testLocRatio * 100));
   const snapshotSharePct = churnSharePct;
 
   // Test LOC ÷ source LOC. Not line coverage, so the title avoids "coverage".
@@ -112,9 +113,9 @@ export function TestingCoreSignalsSection({
   const ratioDescription = (() => {
     if (fromGitChurn) {
       if (ratioTier === "strong" || ratioTier === "good") {
-        return `About ${churnSharePct}% of this author’s line churn (add + delete) landed on test paths—a healthy share for this git-history proxy. Keep pairing production edits with test updates when behavior changes.`;
+        return `Test-path churn (lines added + deleted) is about ${churnSharePct}% of source-path churn for this author—a healthy ratio for this git-history proxy. Keep pairing production edits with test updates when behavior changes.`;
       }
-      return `Only about ${churnSharePct}% of this author’s line churn is on test paths. Aim to raise the share of test-path edits as features stabilize—same threshold idea as snapshot test/source ratio, but from numstat history.`;
+      return `Test-path churn (lines added + deleted) is only about ${churnSharePct}% of source-path churn for this author. Aim to raise the share of test-path edits as features stabilize—same threshold idea as the snapshot test/source ratio, but from numstat history.`;
     }
     if (ratioTier === "strong" || ratioTier === "good") {
       return `Test code is about ${snapshotSharePct}% of source in the snapshot—within a healthy band for this proxy. Keep pairing new features with tests so the ratio does not slip.`;
